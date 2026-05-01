@@ -1,0 +1,29 @@
+"""Evidence model."""
+import uuid
+
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
+
+from app.db.base import Base
+
+
+class Evidence(Base):
+    __tablename__ = "evidences"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    evidence_type = Column(String(50), nullable=False)
+    storage_uri = Column(String(500))
+    external_url = Column(String(500))
+    version = Column(String(20))
+    owner_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    valid_from = Column(DateTime)
+    valid_until = Column(DateTime)
+    review_due_date = Column(DateTime)
+    created_at = Column(DateTime, server_default="now()")
+
+    tenant = relationship("Tenant", back_populates="evidences")
+    owner_user = relationship("User", back_populates="owned_evidences")
+    links = relationship("EvidenceLink", back_populates="evidence")

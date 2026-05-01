@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  backend:
+    working_dir: /app/backend
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
+
+  frontend:
+    working_dir: /app/frontend
+    environment:
+      - NODE_ENV=development
