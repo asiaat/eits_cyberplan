@@ -1051,7 +1051,25 @@ Coding agents must not:
 
 ---
 
-## 26. Useful Local Commands
+## 26. Logging and Output Files
+
+All log files, output files, and temporary data must be written inside the project directory, not outside it.
+
+- Write logs to `logs/` (create the directory if needed)
+- Write temporary scripts to the project root or a `/tmp/` subdirectory within the project
+- Never write outside `/Users/kalle/proj/asiaat/` or the project root
+- All background processes (frontend dev server, etc.) must redirect output to log files
+- Append to log files rather than overwriting when re-running services
+
+Example dev script pattern:
+```bash
+mkdir -p logs
+nohup pnpm dev > logs/frontend.log 2>&1 &
+```
+
+---
+
+## 27. Useful Local Commands
 
 ```bash
 # Start infrastructure

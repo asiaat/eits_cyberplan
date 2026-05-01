@@ -20,20 +20,13 @@ cp .env.example .env
 # 3. Start infrastructure
 docker compose up -d postgres redis minio
 
-# 4. Install backend deps
-cd backend && python -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"
+# 4. Install dependencies and seed database
+make setup
+make migrate
+make seed
 
-# 5. Install frontend deps
-cd ../frontend && pnpm install
-
-# 6. Run migrations
-cd ../backend && alembic upgrade head
-
-# 7. Seed data
-python -m app.db.init_db
-
-# 8. Start development
-make dev  # or: uvicorn app.main:app --reload & cd ../frontend && pnpm dev
+# 5. Start development
+make dev
 ```
 
 ## Ports

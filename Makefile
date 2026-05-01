@@ -27,10 +27,11 @@ setup: backend-install frontend-install
 	@echo "Environment ready. Edit .env if needed."
 
 dev:
-	@echo "Starting backend..."
-	@cd backend && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 &
-	@echo "Starting frontend..."
-	@cd frontend && pnpm dev
+	@mkdir -p logs
+	@echo "Starting backend (logs/backend.log)..."
+	@cd backend && . .venv/bin/activate && PYTHONPATH=. uvicorn app.main:app --reload --host 0.0.0.0 --port 8000 >> ../logs/backend.log 2>&1 &
+	@echo "Starting frontend (logs/frontend.log)..."
+	@cd frontend && pnpm dev >> ../logs/frontend.log 2>&1 &
 
 backend-install:
 	@cd backend && python3 -m venv .venv && \
@@ -43,18 +44,18 @@ frontend-install:
 	cd frontend && pnpm install
 
 migrate:
-	cd backend && . .venv/bin/activate && alembic upgrade head
+	cd backend && . .venv/bin/activate && PYTHONPATH=. alembic upgrade head
 
 migration:
-	cd backend && . .venv/bin/activate && alembic revision --autogenerate -m "$(MESSAGE)"
+	cd backend && . .venv/bin/activate && PYTHONPATH=. alembic revision --autogenerate -m "$(MESSAGE)"
 
 seed:
-	cd backend && . .venv/bin/activate && python -m app.db.init_db
+	cd backend && . .venv/bin/activate && PYTHONPATH=. python -m app.db.init_db
 
 test: test-backend test-frontend
 
 test-backend:
-	cd backend && . .venv/bin/activate && pytest
+	cd backend && . .venv/bin/activate && PYTHONPATH=. pytest
 
 test-frontend:
 	cd frontend && pnpm test

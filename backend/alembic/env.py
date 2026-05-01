@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 """Alembic migration env.
 
 This is a minimal env for a migrations-only setup.
@@ -10,9 +14,6 @@ from sqlalchemy import pool
 from alembic import context
 
 config = context.config
-
-if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
 
 from app.db.base import Base
 from app.models import *  # noqa

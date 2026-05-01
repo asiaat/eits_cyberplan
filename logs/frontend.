@@ -1,0 +1,11 @@
+
+> eits-frontend@0.1.0 dev /Users/kalle/proj/asiaat/eits_cyberplan/frontend
+> vite "log"
+
+(!) Could not auto-determine entry point from rollupOptions or html files and there are no explicit optimizeDeps.include patterns. Skipping dependency pre-bundling.
+Port 5173 is in use, trying another one...
+
+  VITE v5.4.21  ready in 97 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose

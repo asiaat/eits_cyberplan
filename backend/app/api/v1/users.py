@@ -32,7 +32,7 @@ class UserResponse(BaseModel):
 
 
 @router.get("/", response_model=List[UserResponse])
-def list_users(db: DB, current_user: CurrentUser = Depends()):
+def list_users(db: DB, current_user: CurrentUser):
     """List all users (admin only)."""
     from app.models.user import User
 
@@ -57,7 +57,7 @@ def create_user(user_in: UserCreate, db: DB):
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-def get_user(user_id: str, db: DB, current_user: CurrentUser = Depends()):
+def get_user(user_id: str, db: DB, current_user: CurrentUser):
     """Get a user by ID."""
     from app.models.user import User
 
@@ -70,7 +70,7 @@ def get_user(user_id: str, db: DB, current_user: CurrentUser = Depends()):
 
 
 @router.patch("/{user_id}", response_model=UserResponse)
-def update_user(user_id: str, user_in: UserUpdate, db: DB, current_user: CurrentUser = Depends()):
+def update_user(user_id: str, user_in: UserUpdate, db: DB, current_user: CurrentUser):
     """Update a user."""
     from app.models.user import User
 

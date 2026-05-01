@@ -31,7 +31,7 @@ class UserResponse(BaseModel):
 
 
 @router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: DB):
+def login(db: DB, form_data: OAuth2PasswordRequestForm = Depends()):
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -53,10 +53,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: DB):
 
 
 @router.post("/logout")
-def logout(current_user: CurrentUser = Depends()):
+def logout(current_user: CurrentUser):
     return {"message": "Successfully logged out"}
 
 
 @router.get("/me", response_model=UserResponse)
-def read_users_me(current_user: CurrentUser = Depends()):
+def read_users_me(current_user: CurrentUser):
     return current_user

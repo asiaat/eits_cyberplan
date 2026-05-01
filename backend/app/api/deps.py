@@ -26,7 +26,7 @@ def require_role(role_code: str):
     return role_checker
 
 
-def require_admin(current_user: CurrentUser = Depends(_get_current_user)):
+def require_admin(current_user: CurrentUser):
     """Require admin role."""
     membership = current_user.memberships.first()
     if not membership or membership.role.code != "admin":
