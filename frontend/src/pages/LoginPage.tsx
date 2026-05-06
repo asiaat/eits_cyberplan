@@ -18,10 +18,17 @@ export default function LoginPage() {
     setError("")
     setLoading(true)
     try {
+      console.log("Starting login...")
       await login(email, password)
-      navigate("/")
-    } catch (err) {
-      setError("Invalid email or password")
+      console.log("Login successful, redirecting...")
+      navigate("/", { replace: true })
+    } catch (err: unknown) {
+      console.error("Login failed:", err)
+      if (err instanceof Error) {
+        setError(err.message)
+      } else {
+        setError("Invalid email or password")
+      }
     } finally {
       setLoading(false)
     }
@@ -34,7 +41,7 @@ export default function LoginPage() {
           <CardTitle className="text-center">E-ITS Management System</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
             {error && <p className="text-sm text-destructive">{error}</p>}
             <div>
               <Input
@@ -43,6 +50,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
               />
             </div>
             <div>
@@ -52,6 +60,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="current-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>

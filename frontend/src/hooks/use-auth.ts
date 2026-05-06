@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { apiClient } from "../lib/api-client"
 
 const TOKEN_KEY = "access_token"
+const API_BASE = "http://localhost:8000/api/v1"
 
 export function useAuth() {
   const [user, setUser] = useState<{ id: string; email: string; name: string; is_active: boolean } | null>(null)
@@ -11,9 +12,15 @@ export function useAuth() {
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY)
     if (token) {
-      apiClient.get("/auth/me")
+      fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
         .then((res) => {
-          setUser(res.data)
+          if (!res.ok) throw new Error("Unauthorized")
+          return res.json()
+        })
+        .then((data) => {
+          setUser(data)
           setIsAuthenticated(true)
         })
         .catch(() => {
@@ -29,13 +36,32 @@ export function useAuth() {
     const formData = new URLSearchParams()
     formData.append("username", email)
     formData.append("password", password)
-    const res = await apiClient.post("/auth/login", formData, {
+
+    const loginRes = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: formData,
     })
-    const token = res.data.access_token
+
+    if (!loginRes.ok) {
+      const errorData = await loginRes.json().catch(() => ({}))
+      throw new Error(errorData.detail || "Login failed")
+    }
+
+    const tokenData = await loginRes.json()
+    const token = tokenData.access_token
     localStorage.setItem(TOKEN_KEY, token)
-    const userRes = await apiClient.get("/auth/me")
-    setUser(userRes.data)
+
+    const userRes = await fetch(`${API_BASE}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!userRes.ok) {
+      throw new Error("Failed to get user info")
+    }
+
+    const userData = await userRes.json()
+    setUser(userData)
     setIsAuthenticated(true)
   }
 

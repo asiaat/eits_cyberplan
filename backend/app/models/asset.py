@@ -30,6 +30,3 @@ class Asset(Base):
     relations_from = relationship("AssetRelation", back_populates="source_asset", foreign_keys="AssetRelation.source_asset_id")
     relations_to = relationship("AssetRelation", back_populates="target_asset", foreign_keys="AssetRelation.target_asset_id")
     processes = relationship("ProcessAsset", back_populates="asset")
-    mappings = relationship("ObjectModuleMapping", back_populates="asset", viewonly=True)
-    implementation_items = relationship("ImplementationPlanItem", back_populates="asset", viewonly=True)
-    risks = relationship("Risk", back_populates="asset", viewonly=True)

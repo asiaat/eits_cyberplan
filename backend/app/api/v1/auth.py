@@ -2,16 +2,19 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 
-from app.api.deps import DB, CurrentUser
+from app.api.deps import DB, get_db
 from app.core.config import get_settings
-from app.core.security import verify_password, create_access_token
+from app.core.security import verify_password, create_access_token, decode_token
 from app.models.user import User
+from uuid import UUID
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 settings = get_settings()
+bearer = HTTPBearer(auto_error=False)
 
 
 class Token(BaseModel):
@@ -28,6 +31,38 @@ class UserResponse(BaseModel):
     email: str
     name: str
     is_active: bool
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: Session = Depends(get_db),
+) -> User:
+    if credentials is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = credentials.credentials
+    payload = decode_token(token)
+    user_id: str = payload.get("sub")
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user = db.query(User).filter(User.id == UUID(user_id)).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return user
+
+
+CurrentUser = Depends(get_current_user)
 
 
 @router.post("/login", response_model=Token)
@@ -53,10 +88,21 @@ def login(db: DB, form_data: OAuth2PasswordRequestForm = Depends()):
 
 
 @router.post("/logout")
-def logout(current_user: CurrentUser):
+def logout(current_user: User = Depends(get_current_user)):
     return {"message": "Successfully logged out"}
 
 
+@router.get("/debug")
+def debug_auth():
+    """Debug endpoint without any dependencies."""
+    return {"status": "ok"}
+
+
 @router.get("/me", response_model=UserResponse)
-def read_users_me(current_user: CurrentUser):
-    return current_user
+def read_users_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": str(current_user.id),
+        "email": current_user.email,
+        "name": current_user.name,
+        "is_active": current_user.is_active,
+    }
