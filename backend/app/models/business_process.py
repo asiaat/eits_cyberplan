@@ -29,6 +29,3 @@ class BusinessProcess(Base):
     tenant = relationship("Tenant", back_populates="business_processes")
     owner_user = relationship("User", back_populates="owned_business_processes", foreign_keys=[owner_user_id])
     assets = relationship("ProcessAsset", back_populates="business_process")
-    mappings = relationship("ObjectModuleMapping", back_populates="business_process", viewonly=True)
-    implementation_items = relationship("ImplementationPlanItem", back_populates="business_process", viewonly=True)
-    risks = relationship("Risk", back_populates="business_process", viewonly=True)

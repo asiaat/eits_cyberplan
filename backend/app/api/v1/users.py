@@ -1,8 +1,9 @@
 """Users API endpoints."""
 from typing import List
+from uuid import UUID
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.deps import DB, CurrentUser
 
@@ -22,13 +23,12 @@ class UserUpdate(BaseModel):
 
 
 class UserResponse(BaseModel):
-    id: str
+    id: UUID
     email: str
     name: str
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
 
 
 @router.get("/", response_model=List[UserResponse])

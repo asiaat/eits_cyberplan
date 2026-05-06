@@ -14,10 +14,16 @@ import AuditViewPage from "@/pages/AuditViewPage"
 import AdminPage from "@/pages/AdminPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
+  
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>
+  }
+  
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
+  
   return <Layout>{children}</Layout>
 }
 

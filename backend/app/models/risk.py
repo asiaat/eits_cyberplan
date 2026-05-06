@@ -31,4 +31,3 @@ class Risk(Base):
 
     tenant = relationship("Tenant", back_populates="risks")
     owner_user = relationship("User", back_populates="owned_risks")
-    implementation_items = relationship("ImplementationPlanItem")  # Via separate table
