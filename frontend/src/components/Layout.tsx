@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/hooks/use-auth"
 import { useTranslation } from "@/lib/i18n"
 import LanguageSelector from "@/lib/i18n/LanguageSelector"
+import ThemeToggle from "@/components/ThemeToggle"
 import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
@@ -69,7 +70,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="absolute bottom-0 w-64 p-2 border-t flex flex-col gap-2">
-          <LanguageSelector />
+          <div className="flex items-center justify-between">
+            <LanguageSelector />
+            <ThemeToggle />
+          </div>
           <Button
             variant="ghost"
             className="w-full justify-start"
