@@ -15,6 +15,7 @@ import {
   Shield,
   Settings,
   LogOut,
+  BookOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -29,6 +30,7 @@ function getNavItems(t: (key: string) => string) {
     { path: "/risks", label: t("nav.risks"), icon: AlertTriangle },
     { path: "/evidences", label: t("nav.evidence"), icon: FileText },
     { path: "/audit", label: t("nav.auditView"), icon: Shield },
+    { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
     { path: "/admin", label: t("nav.admin"), icon: Settings },
   ]
 }

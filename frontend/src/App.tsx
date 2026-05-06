@@ -13,6 +13,7 @@ import RisksPage from "@/pages/RisksPage"
 import EvidencesPage from "@/pages/EvidencesPage"
 import AuditViewPage from "@/pages/AuditViewPage"
 import AdminPage from "@/pages/AdminPage"
+import TerminologyPage from "@/pages/TerminologyPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
@@ -103,6 +104,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <AuditViewPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/terminology"
+          element={
+            <ProtectedRoute>
+              <TerminologyPage />
             </ProtectedRoute>
           }
         />
