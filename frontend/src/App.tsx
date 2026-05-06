@@ -32,8 +32,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <I18nProvider>
-      <BrowserRouter>
-        <Routes>
+      <div className="scanlines">
+        <BrowserRouter>
+          <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/"
@@ -124,7 +125,8 @@ export default function App() {
           }
         />
       </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </div>
     </I18nProvider>
   )
 }

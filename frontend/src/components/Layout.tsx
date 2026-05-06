@@ -52,7 +52,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex">
       <aside className="w-64 border-r bg-card">
         <div className="p-4 border-b">
-          <h1 className="text-xl font-bold">E-ITS</h1>
+          <h1 className="text-2xl font-cyber font-bold text-primary cyber-glow-subtle tracking-wider">
+            CYBER<span className="text-primary">PLAN</span>
+          </h1>
         </div>
         <nav className="p-2">
           {navItems.map((item) => (

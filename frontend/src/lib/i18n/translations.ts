@@ -26,7 +26,7 @@ export const translations = {
       logout: "Logout",
     },
     login: {
-      title: "E-ITS Management System",
+      title: "CYBER PLAN",
       email: "Email",
       password: "Password",
       signIn: "Sign In",
@@ -129,7 +129,7 @@ export const translations = {
       logout: "Logi välja",
     },
     login: {
-      title: "E-ITS Haldussüsteem",
+      title: "CYBER PLAN",
       email: "E-post",
       password: "Parool",
       signIn: "Logi sisse",

@@ -40,7 +40,9 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center">{t("login.title")}</CardTitle>
+          <CardTitle className="text-center text-3xl font-cyber font-bold tracking-wider cyber-glow-subtle">
+            {t("login.title")}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
