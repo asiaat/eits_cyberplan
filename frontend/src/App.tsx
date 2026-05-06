@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { useAuth } from "@/hooks/use-auth"
+import { I18nProvider } from "@/lib/i18n"
 import Layout from "@/components/Layout"
 import LoginPage from "@/pages/LoginPage"
 import DashboardPage from "@/pages/DashboardPage"
@@ -12,6 +13,7 @@ import RisksPage from "@/pages/RisksPage"
 import EvidencesPage from "@/pages/EvidencesPage"
 import AuditViewPage from "@/pages/AuditViewPage"
 import AdminPage from "@/pages/AdminPage"
+import TerminologyPage from "@/pages/TerminologyPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
@@ -29,8 +31,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <I18nProvider>
+      <BrowserRouter>
+        <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/"
@@ -105,6 +108,14 @@ export default function App() {
           }
         />
         <Route
+          path="/terminology"
+          element={
+            <ProtectedRoute>
+              <TerminologyPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin"
           element={
             <ProtectedRoute>
@@ -113,6 +124,7 @@ export default function App() {
           }
         />
       </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </I18nProvider>
   )
 }

@@ -1,5 +1,7 @@
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useAuth } from "@/hooks/use-auth"
+import { useTranslation } from "@/lib/i18n"
+import LanguageSelector from "@/lib/i18n/LanguageSelector"
 import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
@@ -13,26 +15,32 @@ import {
   Shield,
   Settings,
   LogOut,
+  BookOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-const navItems = [
-  { path: "/", label: "Dashboard", icon: LayoutDashboard },
-  { path: "/processes", label: "Business Processes", icon: FolderKanban },
-  { path: "/assets", label: "Assets", icon: Boxes },
-  { path: "/catalog", label: "E-ITS Catalog", icon: BookMarked },
-  { path: "/mappings", label: "Mappings", icon: Link2 },
-  { path: "/implementation-plan", label: "Implementation Plan", icon: ListTodo },
-  { path: "/risks", label: "Risks", icon: AlertTriangle },
-  { path: "/evidences", label: "Evidence", icon: FileText },
-  { path: "/audit", label: "Audit View", icon: Shield },
-  { path: "/admin", label: "Admin", icon: Settings },
-]
+function getNavItems(t: (key: string) => string) {
+  return [
+    { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+    { path: "/processes", label: t("nav.businessProcesses"), icon: FolderKanban },
+    { path: "/assets", label: t("nav.assets"), icon: Boxes },
+    { path: "/catalog", label: t("nav.catalog"), icon: BookMarked },
+    { path: "/mappings", label: t("nav.mappings"), icon: Link2 },
+    { path: "/implementation-plan", label: t("nav.implementationPlan"), icon: ListTodo },
+    { path: "/risks", label: t("nav.risks"), icon: AlertTriangle },
+    { path: "/evidences", label: t("nav.evidence"), icon: FileText },
+    { path: "/audit", label: t("nav.auditView"), icon: Shield },
+    { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
+    { path: "/admin", label: t("nav.admin"), icon: Settings },
+  ]
+}
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation()
   const location = useLocation()
   const navigate = useNavigate()
   const { logout } = useAuth()
+  const navItems = getNavItems(t)
 
   const handleLogout = async () => {
     await logout()
@@ -60,14 +68,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="absolute bottom-0 w-64 p-2 border-t">
+        <div className="absolute bottom-0 w-64 p-2 border-t flex flex-col gap-2">
+          <LanguageSelector />
           <Button
             variant="ghost"
             className="w-full justify-start"
             onClick={handleLogout}
           >
             <LogOut className="h-4 w-4 mr-2" />
-            Logout
+            {t("nav.logout")}
           </Button>
         </div>
       </aside>

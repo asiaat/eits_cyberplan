@@ -4,8 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/hooks/use-auth"
+import { useTranslation } from "@/lib/i18n"
 
 export default function LoginPage() {
+  const { t } = useTranslation()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState("")
@@ -27,7 +29,7 @@ export default function LoginPage() {
       if (err instanceof Error) {
         setError(err.message)
       } else {
-        setError("Invalid email or password")
+        setError(t("login.invalidCredentials"))
       }
     } finally {
       setLoading(false)
@@ -38,7 +40,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-center">E-ITS Management System</CardTitle>
+          <CardTitle className="text-center">{t("login.title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
@@ -46,7 +48,7 @@ export default function LoginPage() {
             <div>
               <Input
                 type="email"
-                placeholder="Email"
+                placeholder={t("login.email")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -56,7 +58,7 @@ export default function LoginPage() {
             <div>
               <Input
                 type="password"
-                placeholder="Password"
+                placeholder={t("login.password")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -64,7 +66,7 @@ export default function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? t("login.signingIn") : t("login.signIn")}
             </Button>
           </form>
         </CardContent>
