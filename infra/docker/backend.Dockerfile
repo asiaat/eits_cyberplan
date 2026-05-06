@@ -8,14 +8,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY backend/pyproject.toml /app/backend/
-
-RUN pip install --upgrade pip && \
-    pip install uv && \
-    uv sync --no-dev || true
-
 COPY backend /app/backend/
+
+RUN rm -rf .venv && \
+    pip install --upgrade pip && \
+    pip install uv && \
+    uv sync --no-dev
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["/app/backend/.venv/bin/python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
