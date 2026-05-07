@@ -20,6 +20,7 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
+  Users,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -37,6 +38,7 @@ function getNavItems(t: (key: string) => string) {
     { path: "/evidences", label: t("nav.evidence"), icon: FileText },
     { path: "/audit", label: t("nav.auditView"), icon: Shield },
     { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
+    { path: "/organization", label: t("nav.organization"), icon: Users },
     { path: "/admin", label: t("nav.admin"), icon: Settings },
   ]
 }

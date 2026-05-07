@@ -2,6 +2,8 @@
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.role import Role
+from app.models.permission import Permission
+from app.models.role_permission import RolePermission
 from app.models.membership import Membership
 from app.models.business_process import BusinessProcess
 from app.models.asset import Asset
@@ -23,6 +25,8 @@ __all__ = [
     "Tenant",
     "User",
     "Role",
+    "Permission",
+    "RolePermission",
     "Membership",
     "BusinessProcess",
     "Asset",
