@@ -60,6 +60,22 @@ def list_roles(db: DB, current_user: CurrentUser):
     return roles
 
 
+@router.get("/permissions", response_model=List[PermissionResponse])
+def list_permissions(db: DB, current_user: CurrentUser, category: Optional[str] = None):
+    """List all permissions, optionally filtered by category."""
+    query = db.query(Permission)
+    if category:
+        query = query.filter(Permission.category == category)
+    return query.all()
+
+
+@router.get("/permissions/categories")
+def list_permission_categories(db: DB, current_user: CurrentUser):
+    """List all permission categories."""
+    perms = db.query(Permission.category).distinct().all()
+    return [p[0] for p in perms]
+
+
 @router.post("/", response_model=RoleResponse)
 def create_role(role_in: RoleCreate, db: DB, current_user: CurrentUser):
     """Create a new role."""
@@ -151,19 +167,3 @@ def set_role_permissions_endpoint(role_id: str, data: RolePermissionsUpdate, db:
 
     set_role_permissions(db, role_id, data.permission_ids)
     return {"message": "Permissions updated"}
-
-
-@router.get("/permissions", response_model=List[PermissionResponse])
-def list_permissions(db: DB, current_user: CurrentUser, category: Optional[str] = None):
-    """List all permissions, optionally filtered by category."""
-    query = db.query(Permission)
-    if category:
-        query = query.filter(Permission.category == category)
-    return query.all()
-
-
-@router.get("/permissions/categories")
-def list_permission_categories(db: DB, current_user: CurrentUser):
-    """List all permission categories."""
-    perms = db.query(Permission.category).distinct().all()
-    return [p[0] for p in perms]
