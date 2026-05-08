@@ -1,17 +1,20 @@
 """Assets API endpoints."""
 from fastapi import APIRouter, Depends
 
+from app.api.deps import DB, CurrentUser
+
 router = APIRouter()
 
 
 @router.get("/")
-def list_assets():
+def list_assets(db: DB, current_user: CurrentUser):
     """List assets."""
-    return []
+    from app.models.asset import Asset
+    return db.query(Asset).filter(Asset.tenant_id == current_user.tenant_id).all()
 
 
 @router.post("/")
-def create_asset():
+def create_asset(db: DB, current_user: CurrentUser):
     """Create an asset."""
     return {}
 

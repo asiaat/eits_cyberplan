@@ -3,22 +3,28 @@ from typing import List
 
 from fastapi import APIRouter, Depends, Query
 
+from app.api.deps import DB, CurrentUser
+
 router = APIRouter()
 
 
 @router.get("/versions")
-def list_catalog_versions():
+def list_catalog_versions(db: DB, current_user: CurrentUser):
     """List catalog versions."""
-    return []
+    from app.models.eits_catalog_version import EitsCatalogVersion
+    return db.query(EitsCatalogVersion).all()
 
 
 @router.get("/modules")
 def list_modules(
+    db: DB,
+    current_user: CurrentUser,
     catalog_version_id: str | None = Query(None),
     search: str | None = Query(None),
 ):
     """List E-ITS modules."""
-    return []
+    from app.models.eits_module import EitsModule
+    return db.query(EitsModule).all()
 
 
 @router.get("/modules/{module_id}")

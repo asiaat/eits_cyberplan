@@ -3,17 +3,20 @@ from typing import List
 
 from fastapi import APIRouter, Depends
 
+from app.api.deps import DB, CurrentUser
+
 router = APIRouter()
 
 
 @router.get("/")
-def list_business_processes():
+def list_business_processes(db: DB, current_user: CurrentUser):
     """List business processes."""
-    return []
+    from app.models.business_process import BusinessProcess
+    return db.query(BusinessProcess).filter(BusinessProcess.tenant_id == current_user.tenant_id).all()
 
 
 @router.post("/")
-def create_business_process():
+def create_business_process(db: DB, current_user: CurrentUser):
     """Create a business process."""
     return {}
 

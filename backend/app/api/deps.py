@@ -5,11 +5,16 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from app.db.session import get_db, SessionLocal
+from app.db.session import get_db, get_session_maker
 from app.models.user import User
 from app.models.role import Role
 from app.core.security import decode_token
 from uuid import UUID
+
+
+def get_session_local():
+    """Get session maker for dependency injection."""
+    return get_session_maker()
 
 DB = Annotated[Session, Depends(get_db)]
 

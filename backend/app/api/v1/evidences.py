@@ -1,17 +1,20 @@
 """Evidence API endpoints."""
 from fastapi import APIRouter, Depends
 
+from app.api.deps import DB, CurrentUser
+
 router = APIRouter()
 
 
 @router.get("/")
-def list_evidences():
+def list_evidences(db: DB, current_user: CurrentUser):
     """List evidence."""
-    return []
+    from app.models.evidence import Evidence
+    return db.query(Evidence).filter(Evidence.tenant_id == current_user.tenant_id).all()
 
 
 @router.post("/")
-def create_evidence():
+def create_evidence(db: DB, current_user: CurrentUser):
     """Create evidence."""
     return {}
 
