@@ -335,7 +335,7 @@ export default function OrganizationPage() {
                         onChange={e => setNewUserPassword(e.target.value)}
                       />
                       <select 
-                        className="border rounded px-3 py-2"
+                        className="bg-background text-foreground border-input rounded px-3 py-2"
                         value={selectedAssetForUser}
                         onChange={e => setSelectedAssetForUser(e.target.value)}
                       >
@@ -385,7 +385,7 @@ export default function OrganizationPage() {
                           ))}
                           {canManageUsers && (
                             <select 
-                              className="text-xs border rounded px-2 py-1"
+                              className="text-xs bg-background text-foreground border-input rounded px-2 py-1"
                               onChange={e => e.target.value && assignRole(user.id, e.target.value)}
                               value=""
                             >

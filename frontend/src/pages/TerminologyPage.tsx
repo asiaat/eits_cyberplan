@@ -61,7 +61,7 @@ export default function TerminologyPage() {
           />
         </div>
         <select
-          className="px-3 py-2 border rounded-md bg-background"
+          className="px-3 py-2 border-input rounded-md bg-background text-foreground"
           value={selectedCategory}
           onChange={(e) => setSelectedCategory(e.target.value)}
         >

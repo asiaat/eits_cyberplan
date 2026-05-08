@@ -202,7 +202,7 @@ export default function AdminPage() {
                     ))}
                     {canManageRoles && (
                       <select 
-                        className="text-sm border rounded px-2 py-1"
+                        className="text-sm bg-background text-foreground border-input rounded px-2 py-1"
                         onChange={e => e.target.value && assignRole(user.id, e.target.value)}
                         value=""
                       >
