@@ -18,7 +18,7 @@ bearer = HTTPBearer(auto_error=False)
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
-    db: Session = Depends(SessionLocal),
+    db: Session = Depends(get_db),
 ) -> User:
     if credentials is None:
         raise HTTPException(

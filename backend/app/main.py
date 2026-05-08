@@ -14,6 +14,13 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.db.init_db import init_db
+    from app.db.session import SessionLocal
+    db = SessionLocal()
+    try:
+        init_db(db)
+    finally:
+        db.close()
     yield
 
 

@@ -27,6 +27,7 @@ class UserResponse(BaseModel):
     email: str
     name: str
     is_active: bool
+    roles: list = []
 
     model_config = {"from_attributes": True}
 
@@ -88,3 +89,87 @@ def update_user(user_id: str, user_in: UserUpdate, db: DB, current_user: Current
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.get("/{user_id}/roles")
+def get_user_roles(user_id: str, db: DB, current_user: CurrentUser):
+    """Get roles assigned to a user."""
+    from app.models.membership import Membership
+    from app.models.role import Role
+    from app.core.permissions import get_user_roles as get_user_roles_helper
+    from uuid import UUID
+
+    user = db.query(User).filter(User.id == UUID(user_id)).first()
+    if not user:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return get_user_roles_helper(db, user)
+
+
+@router.post("/{user_id}/roles")
+def assign_user_role(user_id: str, data: dict, db: DB, current_user: CurrentUser):
+    """Assign a role to a user."""
+    from app.models.membership import Membership
+    from app.models.role import Role
+    from uuid import UUID
+
+    user = db.query(User).filter(User.id == UUID(user_id)).first()
+    if not user:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="User not found")
+
+    role_id = data.get("role_id")
+    if not role_id:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="role_id is required")
+
+    role = db.query(Role).filter(Role.id == role_id).first()
+    if not role:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Role not found")
+
+    # Check if already assigned
+    existing = db.query(Membership).filter(
+        Membership.user_id == UUID(user_id),
+        Membership.role_id == role_id
+    ).first()
+
+    if existing:
+        return {"message": "Role already assigned"}
+
+    # Get or create default tenant
+    from app.models.tenant import Tenant
+    tenant = db.query(Tenant).first()
+    if not tenant:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail="No tenant found")
+
+    membership = Membership(
+        tenant_id=tenant.id,
+        user_id=UUID(user_id),
+        role_id=role_id
+    )
+    db.add(membership)
+    db.commit()
+    return {"message": "Role assigned"}
+
+
+@router.delete("/{user_id}/roles/{role_id}")
+def remove_user_role(user_id: str, role_id: str, db: DB, current_user: CurrentUser):
+    """Remove a role from a user."""
+    from app.models.membership import Membership
+    from uuid import UUID
+
+    membership = db.query(Membership).filter(
+        Membership.user_id == UUID(user_id),
+        Membership.role_id == role_id
+    ).first()
+
+    if not membership:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Role not assigned to user")
+
+    db.delete(membership)
+    db.commit()
+    return {"message": "Role removed"}

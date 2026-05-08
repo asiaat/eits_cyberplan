@@ -14,6 +14,7 @@ import EvidencesPage from "@/pages/EvidencesPage"
 import AuditViewPage from "@/pages/AuditViewPage"
 import AdminPage from "@/pages/AdminPage"
 import TerminologyPage from "@/pages/TerminologyPage"
+import OrganizationPage from "@/pages/OrganizationPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
@@ -32,8 +33,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <I18nProvider>
-      <BrowserRouter>
-        <Routes>
+      <div className="scanlines">
+        <BrowserRouter>
+          <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
           path="/"
@@ -116,6 +118,14 @@ export default function App() {
           }
         />
         <Route
+          path="/organization"
+          element={
+            <ProtectedRoute>
+              <OrganizationPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin"
           element={
             <ProtectedRoute>
@@ -124,7 +134,8 @@ export default function App() {
           }
         />
       </Routes>
-      </BrowserRouter>
+        </BrowserRouter>
+      </div>
     </I18nProvider>
   )
 }

@@ -12,5 +12,7 @@ class Role(Base):
     code = Column(String(50), unique=True, nullable=False)
     name = Column(String(100), nullable=False)
     description = Column(Text)
+    is_default = Column(String(10), default="false")  # "true" for E-ITS default roles
 
     memberships = relationship("Membership", back_populates="role")
+    role_permissions = relationship("RolePermission", back_populates="role")
