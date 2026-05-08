@@ -164,23 +164,23 @@ export default function AdminPage() {
       <h1 className="text-3xl font-bold mb-6">{t("admin.title")}</h1>
       
       <div className="flex gap-2 mb-4">
-        <Button variant={activeTab === "users" ? "default" : "outline"} onClick={() => setActiveTab("users")}>Users</Button>
-        <Button variant={activeTab === "roles" ? "default" : "outline"} onClick={() => setActiveTab("roles")}>Roles</Button>
-        <Button variant={activeTab === "permissions" ? "default" : "outline"} onClick={() => setActiveTab("permissions")}>Permissions</Button>
+        <Button variant={activeTab === "users" ? "default" : "outline"} onClick={() => setActiveTab("users")}>{t("admin.usersTab")}</Button>
+        <Button variant={activeTab === "roles" ? "default" : "outline"} onClick={() => setActiveTab("roles")}>{t("admin.rolesTab")}</Button>
+        <Button variant={activeTab === "permissions" ? "default" : "outline"} onClick={() => setActiveTab("permissions")}>{t("admin.permissionsTab")}</Button>
       </div>
 
       {activeTab === "users" && (
         <Card>
           <CardHeader>
-            <CardTitle>User Management</CardTitle>
+            <CardTitle>{t("admin.userManagement")}</CardTitle>
           </CardHeader>
           <CardContent>
             {canManageUsers && (
               <div className="flex gap-2 mb-4">
-                <Input placeholder="Email" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} />
-                <Input placeholder="Name" value={newUserName} onChange={e => setNewUserName(e.target.value)} />
-                <Input placeholder="Password" type="password" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} />
-                <Button onClick={createUser}>Add User</Button>
+                <Input placeholder={t("admin.email")} value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} />
+                <Input placeholder={t("admin.name")} value={newUserName} onChange={e => setNewUserName(e.target.value)} />
+                <Input placeholder={t("admin.password")} type="password" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} />
+                <Button onClick={createUser}>{t("admin.addUser")}</Button>
               </div>
             )}
             
@@ -194,7 +194,7 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     {user.roles?.map(role => (
                       <span key={role.id} className="text-xs bg-secondary px-2 py-1 rounded">
-                        {role.name}
+                        {t(role.name)}
                         {canManageRoles && (
                           <button onClick={() => removeRole(user.id, role.id)} className="ml-1 text-red-500">x</button>
                         )}
@@ -202,13 +202,13 @@ export default function AdminPage() {
                     ))}
                     {canManageRoles && (
                       <select 
-                        className="text-sm border rounded px-2 py-1"
+                        className="text-sm bg-background text-foreground border-input rounded px-2 py-1"
                         onChange={e => e.target.value && assignRole(user.id, e.target.value)}
                         value=""
                       >
-                        <option value="">+ Add Role</option>
+                        <option value="">{t("admin.addRole")}</option>
                         {roles.filter(r => !user.roles?.some(ur => ur.id === r.id)).map(role => (
-                          <option key={role.id} value={role.id}>{role.name}</option>
+                          <option key={role.id} value={role.id}>{t(role.name)}</option>
                         ))}
                       </select>
                     )}
@@ -223,15 +223,15 @@ export default function AdminPage() {
       {activeTab === "roles" && (
         <Card>
           <CardHeader>
-            <CardTitle>Role Management</CardTitle>
+            <CardTitle>{t("admin.roleManagement")}</CardTitle>
           </CardHeader>
           <CardContent>
             {canManageRoles && (
               <div className="flex gap-2 mb-4">
-                <Input placeholder="Role Code (e.g., custom_role)" value={newRoleCode} onChange={e => setNewRoleCode(e.target.value)} />
-                <Input placeholder="Role Name" value={newRoleName} onChange={e => setNewRoleName(e.target.value)} />
-                <Input placeholder="Description" value={newRoleDesc} onChange={e => setNewRoleDesc(e.target.value)} />
-                <Button onClick={createRole}>Create Role</Button>
+                <Input placeholder={t("admin.roleCode")} value={newRoleCode} onChange={e => setNewRoleCode(e.target.value)} />
+                <Input placeholder={t("admin.roleName")} value={newRoleName} onChange={e => setNewRoleName(e.target.value)} />
+                <Input placeholder={t("admin.description")} value={newRoleDesc} onChange={e => setNewRoleDesc(e.target.value)} />
+                <Button onClick={createRole}>{t("admin.createRole")}</Button>
               </div>
             )}
             
@@ -239,11 +239,11 @@ export default function AdminPage() {
               {roles.map(role => (
                 <div key={role.id} className="flex items-center justify-between p-2 border rounded">
                   <div>
-                    <div className="font-medium">{role.name}</div>
+                    <div className="font-medium">{t(role.name)}</div>
                     <div className="text-sm text-muted-foreground">
-                      {role.code} {role.is_default === "true" && <span className="bg-secondary px-1 rounded text-xs">E-ITS</span>}
+                      {role.code} {role.is_default === "true" && <span className="bg-secondary px-1 rounded text-xs">{t("admin.eitsDefault")}</span>}
                     </div>
-                    {role.description && <div className="text-sm text-muted-foreground">{role.description}</div>}
+                    {role.description && <div className="text-sm text-muted-foreground">{t(role.description)}</div>}
                   </div>
                   {canManageRoles && role.is_default === "false" && (
                     <Button variant="destructive" size="sm" onClick={() => deleteRole(role.id)}>Delete</Button>
@@ -258,11 +258,11 @@ export default function AdminPage() {
       {activeTab === "permissions" && (
         <Card>
           <CardHeader>
-            <CardTitle>Permission Configuration</CardTitle>
+            <CardTitle>{t("admin.permissionConfig")}</CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground mb-4">
-              Configure which permissions each role has. Click on a role to manage its permissions.
+              {t("admin.permissionConfigDesc")}
             </p>
             
             {roles.map(role => (
@@ -298,6 +298,7 @@ function RolePermissionEditor({
   getRolePermissions: (roleId: string) => Promise<Permission[]>
   updateRolePermissions: (roleId: string, permIds: string[]) => void
 }) {
+  const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const [rolePermissions, setRolePermissions] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
@@ -324,7 +325,7 @@ function RolePermissionEditor({
   return (
     <div className="border rounded mb-2">
       <div className="flex items-center justify-between p-2 cursor-pointer hover:bg-accent" onClick={openEditor}>
-        <div className="font-medium">{role.name}</div>
+        <div className="font-medium">{t(role.name)}</div>
         <div className="text-sm text-muted-foreground">{role.code}</div>
       </div>
       
