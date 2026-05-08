@@ -81,7 +81,7 @@ def get_role_permissions(db: Session, role_id: str) -> List[dict]:
 
     permissions = db.query(Permission).filter(Permission.id.in_(perm_ids)).all()
     return [
-        {"id": p.id, "code": p.code, "name": p.name, "category": p.category}
+        {"id": p.id, "code": p.code, "name": p.name, "description": p.description, "category": p.category}
         for p in permissions
     ]
 
