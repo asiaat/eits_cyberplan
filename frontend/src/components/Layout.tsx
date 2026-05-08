@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useTranslation } from "@/lib/i18n"
 import LanguageSelector from "@/lib/i18n/LanguageSelector"
 import ThemeToggle from "@/components/ThemeToggle"
+import UserMenu from "@/components/UserMenu"
 import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
@@ -144,13 +145,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             {!collapsed && <span className="ml-2">{t("nav.logout")}</span>}
           </Button>
         </div>
-      </aside>
-      <main className={cn(
-        "flex-1 p-8 transition-all duration-500",
-        collapsed ? "ml-16" : "ml-64"
-      )}>
-        {children}
-      </main>
+</aside>
+      <div className="flex-1 flex flex-col">
+        <header className="h-14 border-b bg-card flex items-center justify-end px-4 gap-3">
+          <LanguageSelector />
+          <ThemeToggle />
+          <UserMenu />
+        </header>
+        <main className={cn(
+          "flex-1 p-8 transition-all duration-500",
+          collapsed ? "ml-16" : "ml-64"
+        )}>
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
