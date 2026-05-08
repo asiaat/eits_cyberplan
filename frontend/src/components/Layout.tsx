@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react"
-import { Link, useLocation, useNavigate } from "react-router-dom"
-import { useAuth } from "@/hooks/use-auth"
+import { Link, useLocation } from "react-router-dom"
 import { useTranslation } from "@/lib/i18n"
 import LanguageSelector from "@/lib/i18n/LanguageSelector"
 import ThemeToggle from "@/components/ThemeToggle"
 import UserMenu from "@/components/UserMenu"
-import { Button } from "@/components/ui/button"
 import {
   LayoutDashboard,
   FolderKanban,
@@ -16,8 +14,6 @@ import {
   AlertTriangle,
   FileText,
   Shield,
-  Settings,
-  LogOut,
   BookOpen,
   ChevronLeft,
   ChevronRight,
@@ -40,15 +36,12 @@ function getNavItems(t: (key: string) => string) {
     { path: "/audit", label: t("nav.auditView"), icon: Shield },
     { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
     { path: "/organization", label: t("nav.organization"), icon: Users },
-    { path: "/admin", label: t("nav.admin"), icon: Settings },
   ]
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
   const location = useLocation()
-  const navigate = useNavigate()
-  const { logout } = useAuth()
   const navItems = getNavItems(t)
 
   const [collapsed, setCollapsed] = useState(() => {
@@ -59,11 +52,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed))
   }, [collapsed])
-
-  const handleLogout = async () => {
-    await logout()
-    navigate("/login")
-  }
 
   return (
     <div className="min-h-screen flex">
@@ -118,34 +106,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className={cn(
-          "p-2 border-t flex flex-col gap-2",
-          collapsed ? "items-center" : ""
-        )}>
-          {collapsed ? (
-            <div className="flex flex-col gap-2">
-              <ThemeToggle />
-            </div>
-          ) : (
-            <div className="flex items-center justify-between">
-              <LanguageSelector />
-              <ThemeToggle />
-            </div>
-          )}
-          <Button
-            variant="ghost"
-            className={cn(
-              "w-full justify-start hover:bg-accent transition-all duration-500",
-              collapsed ? "px-2 justify-center" : ""
-            )}
-            onClick={handleLogout}
-            title={collapsed ? t("nav.logout") : undefined}
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            {!collapsed && <span className="ml-2">{t("nav.logout")}</span>}
-          </Button>
-        </div>
-</aside>
+      </aside>
       <div className="flex-1 flex flex-col">
         <header className="h-14 border-b bg-card flex items-center justify-end px-4 gap-3">
           <LanguageSelector />

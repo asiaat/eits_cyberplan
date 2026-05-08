@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuth } from "@/hooks/use-auth"
 import { useTranslation } from "@/lib/i18n"
-import { Settings, LogOut, ChevronDown } from "lucide-react"
+import { Settings, Crown, LogOut, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export default function UserMenu() {
@@ -18,6 +18,7 @@ export default function UserMenu() {
 
   const userName = user?.name || "User"
   const userEmail = user?.email || ""
+  const isAdmin = user?.roles?.some((role) => role.code === "admin") || false
   const initials = userName
     .split(" ")
     .map((n) => n[0])
@@ -62,6 +63,16 @@ export default function UserMenu() {
                 <Settings className="h-4 w-4" />
                 {t("settings.title")}
               </Link>
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  onClick={() => setIsOpen(false)}
+                  className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent cursor-pointer"
+                >
+                  <Crown className="h-4 w-4" />
+                  {t("nav.admin")}
+                </Link>
+              )}
             </div>
             <div className="border-t py-1">
               <button
