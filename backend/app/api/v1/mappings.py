@@ -1,20 +1,25 @@
 """Module Mappings API endpoints."""
 from fastapi import APIRouter, Depends, Query
 
+from app.api.deps import DB, CurrentUser
+
 router = APIRouter()
 
 
 @router.get("/")
 def list_mappings(
+    db: DB,
+    current_user: CurrentUser,
     target_type: str | None = Query(None),
     target_id: str | None = Query(None),
 ):
     """List module mappings."""
-    return []
+    from app.models.object_module_mapping import ObjectModuleMapping
+    return db.query(ObjectModuleMapping).filter(ObjectModuleMapping.tenant_id == current_user.tenant_id).all()
 
 
 @router.post("/")
-def create_mapping():
+def create_mapping(db: DB, current_user: CurrentUser):
     """Create a module mapping."""
     return {}
 

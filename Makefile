@@ -55,7 +55,7 @@ seed:
 test: test-backend test-frontend
 
 test-backend:
-	cd backend && . .venv/bin/activate && PYTHONPATH=. pytest
+	cd backend && . .venv/bin/activate && PYTHONPATH=. pytest -v
 
 test-frontend:
 	cd frontend && pnpm test

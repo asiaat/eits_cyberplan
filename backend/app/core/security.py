@@ -9,7 +9,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.db.session import SessionLocal
+from app.db.session import get_session_maker
 
 settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -47,7 +47,12 @@ def decode_token(token: str) -> dict:
         )
 
 
-def get_current_user(credentials: HTTPAuthorizationCredentials | None = Depends(oauth2_scheme), db: Session = Depends(SessionLocal)):
+def get_db_session():
+    """Get database session for dependency injection."""
+    return get_session_maker()
+
+
+def get_current_user(credentials: HTTPAuthorizationCredentials | None = Depends(oauth2_scheme), db: Session = Depends(get_db_session)):
     from app.models.user import User
 
     if credentials is None:

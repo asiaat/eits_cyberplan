@@ -1,13 +1,16 @@
 """Implementation Plan API endpoints."""
 from fastapi import APIRouter, Depends
 
+from app.api.deps import DB, CurrentUser
+
 router = APIRouter()
 
 
 @router.get("/")
-def list_implementation_plan():
+def list_implementation_plan(db: DB, current_user: CurrentUser):
     """List implementation plan items."""
-    return []
+    from app.models.implementation_plan_item import ImplementationPlanItem
+    return db.query(ImplementationPlanItem).filter(ImplementationPlanItem.tenant_id == current_user.tenant_id).all()
 
 
 @router.post("/generate")

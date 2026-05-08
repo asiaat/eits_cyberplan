@@ -1,17 +1,20 @@
 """Risks API endpoints."""
 from fastapi import APIRouter, Depends
 
+from app.api.deps import DB, CurrentUser
+
 router = APIRouter()
 
 
 @router.get("/")
-def list_risks():
+def list_risks(db: DB, current_user: CurrentUser):
     """List risks."""
-    return []
+    from app.models.risk import Risk
+    return db.query(Risk).filter(Risk.tenant_id == current_user.tenant_id).all()
 
 
 @router.post("/")
-def create_risk():
+def create_risk(db: DB, current_user: CurrentUser):
     """Create a risk."""
     return {}
 
