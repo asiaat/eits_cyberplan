@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n"
 import LanguageSelector from "@/lib/i18n/LanguageSelector"
 import ThemeToggle from "@/components/ThemeToggle"
 import UserMenu from "@/components/UserMenu"
+import AlertBell from "@/components/AlertBell"
 import {
   LayoutDashboard,
   FolderKanban,
@@ -164,6 +165,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       </aside>
       <div className="flex-1 flex flex-col">
         <header className="border-b p-4 flex items-center justify-end gap-4">
+          <AlertBell />
           <UserMenu />
         </header>
         <main className={cn(

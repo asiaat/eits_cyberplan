@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { useAuth } from "@/hooks/use-auth"
 import { I18nProvider } from "@/lib/i18n"
+import { AlertProvider } from "@/contexts/AlertContext"
 import Layout from "@/components/Layout"
 import LoginPage from "@/pages/LoginPage"
 import DashboardPage from "@/pages/DashboardPage"
@@ -16,6 +17,7 @@ import AdminPage from "@/pages/AdminPage"
 import TerminologyPage from "@/pages/TerminologyPage"
 import OrganizationPage from "@/pages/OrganizationPage"
 import SettingsPage from "@/pages/SettingsPage"
+import AlertsPage from "@/pages/AlertsPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
@@ -34,10 +36,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <I18nProvider>
-      <div className="scanlines">
-        <BrowserRouter>
-          <Routes>
-        <Route path="/login" element={<LoginPage />} />
+      <AlertProvider>
+        <div className="scanlines">
+          <BrowserRouter>
+            <Routes>
+          <Route path="/login" element={<LoginPage />} />
         <Route
           path="/"
           element={
@@ -142,9 +145,18 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/alerts"
+          element={
+            <ProtectedRoute>
+              <AlertsPage />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
         </BrowserRouter>
       </div>
+      </AlertProvider>
     </I18nProvider>
   )
 }

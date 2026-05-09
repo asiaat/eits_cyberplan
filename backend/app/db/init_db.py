@@ -7,6 +7,7 @@ from app.models.permission import Permission
 from app.models.role_permission import RolePermission
 from app.models.membership import Membership
 from app.models.tenant import Tenant
+from app.models.alert import Alert
 from app.core.security import get_password_hash
 
 
@@ -206,4 +207,76 @@ def init_db(db: Session) -> None:
                 print(f"Assigned auditor role to existing user: {user.email}")
         db.commit()
 
+    # Create default alerts
+    existing_alerts = db.query(Alert).first()
+    if existing_alerts is None:
+        default_alerts = [
+            {
+                "title": "Welcome to CyberPlan",
+                "message": "E-ITS Management System is ready. Configure your organization to get started.",
+                "level": "info",
+                "target_role": "all",
+                "link": "/organization",
+            },
+            {
+                "title": "Configure Your Organization",
+                "message": "Add team members and assign roles to start managing your information security.",
+                "level": "info",
+                "target_role": "admin",
+                "link": "/organization",
+            },
+            {
+                "title": "Review Risk Register",
+                "message": "You have risks that need assessment. Please review your risk register.",
+                "level": "warning",
+                "target_role": "ism",
+                "link": "/risks",
+            },
+            {
+                "title": "Evidence Required",
+                "message": "Some controls need evidence documentation. Please upload supporting documents.",
+                "level": "warning",
+                "target_role": "admin",
+                "link": "/evidences",
+            },
+            {
+                "title": "Implementation Plan Update",
+                "message": "Review your implementation plan to ensure timely completion of security measures.",
+                "level": "info",
+                "target_role": "all",
+                "link": "/implementation-plan",
+            },
+        ]
+        for alert_data in default_alerts:
+            alert = Alert(**alert_data)
+            db.add(alert)
+        db.commit()
+        print("Default alerts created.")
+
+    # Daily cleanup: Mark old read alerts as inactive
+    cleanup_old_alerts(db)
+
     print("Database initialized with E-ITS roles and permissions.")
+
+
+def cleanup_old_alerts(db: Session):
+    """Mark old read alerts as inactive (daily cleanup)."""
+    from datetime import datetime, timedelta
+
+    thresholds = {
+        "error": 7,
+        "warning": 14,
+        "info": 30,
+        "success": 7,
+    }
+
+    for level, days in thresholds.items():
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        result = db.query(Alert).filter(
+            Alert.level == level,
+            Alert.is_read == "true",
+            Alert.is_active == "true",
+            Alert.read_at < cutoff
+        ).update({"is_active": "false"})
+        
+    db.commit()

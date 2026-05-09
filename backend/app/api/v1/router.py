@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, users, tenants, catalog, business_processes, assets, mappings, implementation_plan, risks, evidences, dashboard, reports, roles, organization
+from app.api.v1 import auth, users, tenants, catalog, business_processes, assets, mappings, implementation_plan, risks, evidences, dashboard, reports, roles, organization, alerts
 
 api_router = APIRouter()
 
@@ -18,3 +18,4 @@ api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboar
 api_router.include_router(reports.router, prefix="/reports", tags=["reports"])
 api_router.include_router(roles.router, prefix="/roles", tags=["roles"])
 api_router.include_router(organization.router, prefix="/organization", tags=["organization"])
+api_router.include_router(alerts.router, prefix="/alerts", tags=["alerts"])
