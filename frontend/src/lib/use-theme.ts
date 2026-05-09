@@ -22,34 +22,38 @@ function getInitialTheme(): Theme {
 export function useTheme() {
   const [theme, setThemeState] = useState<Theme>(() => getInitialTheme());
 
-  const getEffectiveTheme = useCallback((): "light" | "dark" => {
-    if (theme === "system") {
-      return getSystemPreference();
-    }
-    return theme;
-  }, [theme]);
-
-  useEffect(() => {
-    const effectiveTheme = getEffectiveTheme();
+  const applyTheme = useCallback((themeToApply: Theme) => {
     const root = document.documentElement;
-    if (effectiveTheme === "dark") {
+    if (themeToApply === "system") {
+      const systemTheme = getSystemPreference();
+      if (systemTheme === "dark") {
+        root.classList.add("dark");
+      } else {
+        root.classList.remove("dark");
+      }
+    } else if (themeToApply === "dark") {
       root.classList.add("dark");
     } else {
       root.classList.remove("dark");
     }
-    localStorage.setItem(STORAGE_KEY, theme);
-  }, [theme, getEffectiveTheme]);
+    localStorage.setItem(STORAGE_KEY, themeToApply);
+  }, []);
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme, applyTheme]);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
     const handleChange = () => {
-      if (theme === "system") {
-        setThemeState((prev) => prev);
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === "system" || !stored) {
+        applyTheme("system");
       }
     };
     mediaQuery.addEventListener("change", handleChange);
     return () => mediaQuery.removeEventListener("change", handleChange);
-  }, [theme]);
+  }, [applyTheme]);
 
   const setTheme = useCallback((newTheme: Theme) => {
     setThemeState(newTheme);

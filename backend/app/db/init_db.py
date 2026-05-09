@@ -1,9 +1,13 @@
 """Database initialization and seeding."""
 from sqlalchemy.orm import Session
 
+from app.models.user import User
 from app.models.role import Role
 from app.models.permission import Permission
 from app.models.role_permission import RolePermission
+from app.models.membership import Membership
+from app.models.tenant import Tenant
+from app.core.security import get_password_hash
 
 
 DEFAULT_ROLES = [
@@ -109,6 +113,10 @@ ROLE_PERMISSIONS = {
     ],
 }
 
+DEFAULT_USERS = [
+    {"email": "admin@eits.ee", "name": "System Administrator", "password": "admin123", "role_code": "admin"},
+]
+
 
 def init_db(db: Session) -> None:
     """Initialize database with default data."""
@@ -144,5 +152,58 @@ def init_db(db: Session) -> None:
                         db.add(rp)
         db.commit()
         print("Default role-permission mappings created.")
+
+    # Get or create default tenant
+    default_tenant = db.query(Tenant).first()
+    if default_tenant is None:
+        default_tenant = Tenant(name="Default Organization", registry_code="DEFAULT")
+        db.add(default_tenant)
+        db.commit()
+        db.refresh(default_tenant)
+        print("Default tenant created.")
+
+    # Create default users with roles
+    existing_user = db.query(User).filter(User.email == "admin@eits.ee").first()
+    if existing_user is None:
+        for user_data in DEFAULT_USERS:
+            user = User(
+                email=user_data["email"],
+                name=user_data["name"],
+                hashed_password=get_password_hash(user_data["password"]),
+            )
+            db.add(user)
+            db.flush()
+
+            role = db.query(Role).filter(Role.code == user_data["role_code"]).first()
+            if role:
+                membership = Membership(user_id=user.id, role_id=role.id, tenant_id=default_tenant.id)
+                db.add(membership)
+
+        db.commit()
+        print("Default users created with roles.")
+    else:
+        admin_role = db.query(Role).filter(Role.code == "admin").first()
+        if admin_role:
+            has_admin = db.query(Membership).filter(
+                Membership.user_id == existing_user.id,
+                Membership.role_id == admin_role.id
+            ).first()
+            if not has_admin:
+                membership = Membership(user_id=existing_user.id, role_id=admin_role.id, tenant_id=default_tenant.id)
+                db.add(membership)
+                db.commit()
+                print("Admin role assigned to existing admin user.")
+
+    # Fix existing users without roles - assign auditor role
+    auditor_role = db.query(Role).filter(Role.code == "auditor").first()
+    if auditor_role:
+        all_users = db.query(User).all()
+        for user in all_users:
+            has_membership = db.query(Membership).filter(Membership.user_id == user.id).first()
+            if not has_membership:
+                membership = Membership(user_id=user.id, role_id=auditor_role.id, tenant_id=default_tenant.id)
+                db.add(membership)
+                print(f"Assigned auditor role to existing user: {user.email}")
+        db.commit()
 
     print("Database initialized with E-ITS roles and permissions.")

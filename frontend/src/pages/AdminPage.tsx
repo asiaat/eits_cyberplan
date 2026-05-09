@@ -5,13 +5,14 @@ import { apiClient } from "@/lib/api-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Crown } from "lucide-react"
 
 interface User {
   id: string
   email: string
   name: string
   is_active: boolean
-  roles: { id: string; code: string; name: string }[]
+  roles: { id: string; code: string; name: string; is_default?: string }[]
 }
 
 interface Role {
@@ -151,7 +152,10 @@ export default function AdminPage() {
   if (!canManageUsers && !canManageRoles) {
     return (
       <div>
-        <h1 className="text-3xl font-bold mb-6">{t("admin.title")}</h1>
+        <div className="flex items-center gap-3 mb-6">
+          <Crown className="h-8 w-8" />
+          <h1 className="text-3xl font-bold">{t("admin.title")}</h1>
+        </div>
         <p className="text-muted-foreground">You do not have permission to access this page.</p>
       </div>
     )
@@ -161,7 +165,10 @@ export default function AdminPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">{t("admin.title")}</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <Crown className="h-8 w-8" />
+        <h1 className="text-3xl font-bold">{t("admin.title")}</h1>
+      </div>
       
       <div className="flex gap-2 mb-4">
         <Button variant={activeTab === "users" ? "default" : "outline"} onClick={() => setActiveTab("users")}>{t("admin.usersTab")}</Button>
@@ -194,8 +201,8 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     {user.roles?.map(role => (
                       <span key={role.id} className="text-xs bg-secondary px-2 py-1 rounded">
-                        {t(role.name)}
-                        {canManageRoles && (
+                        {t(`roles.${role.code}.name`)}
+                        {canManageRoles && role.is_default !== "true" && (
                           <button onClick={() => removeRole(user.id, role.id)} className="ml-1 text-red-500">x</button>
                         )}
                       </span>
@@ -239,7 +246,7 @@ export default function AdminPage() {
               {roles.map(role => (
                 <div key={role.id} className="flex items-center justify-between p-2 border rounded">
                   <div>
-                    <div className="font-medium">{t(role.name)}</div>
+<div className="font-medium">{t(`roles.${role.code}.name`)}</div>
                     <div className="text-sm text-muted-foreground">
                       {role.code} {role.is_default === "true" && <span className="bg-secondary px-1 rounded text-xs">{t("admin.eitsDefault")}</span>}
                     </div>

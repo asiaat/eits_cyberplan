@@ -36,15 +36,31 @@ class UserResponse(BaseModel):
 def list_users(db: DB, current_user: CurrentUser):
     """List all users (admin only)."""
     from app.models.user import User
-
-    return db.query(User).all()
+    from app.core.permissions import get_user_roles
+    
+    users = db.query(User).all()
+    
+    result = []
+    for user in users:
+        roles = get_user_roles(db, user)
+        result.append({
+            "id": str(user.id),
+            "email": user.email,
+            "name": user.name,
+            "is_active": user.is_active,
+            "roles": roles,
+        })
+    
+    return result
 
 
 @router.post("/", response_model=UserResponse)
-def create_user(user_in: UserCreate, db: DB):
-    """Create a new user."""
+def create_user(user_in: UserCreate, db: DB, current_user: CurrentUser):
+    """Create a new user with default auditor role."""
     from app.core.security import get_password_hash
     from app.models.user import User
+    from app.models.membership import Membership
+    from app.models.role import Role
 
     user = User(
         email=user_in.email,
@@ -52,6 +68,13 @@ def create_user(user_in: UserCreate, db: DB):
         hashed_password=get_password_hash(user_in.password),
     )
     db.add(user)
+    db.flush()
+
+    auditor_role = db.query(Role).filter(Role.code == "auditor").first()
+    if auditor_role:
+        membership = Membership(user_id=user.id, role_id=auditor_role.id)
+        db.add(membership)
+
     db.commit()
     db.refresh(user)
     return user

@@ -106,15 +106,28 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </Link>
           ))}
         </nav>
+        <div className={cn(
+          "p-2 border-t",
+          collapsed ? "items-center" : ""
+        )}>
+          {collapsed ? (
+            <div className="flex flex-col gap-2">
+              <ThemeToggle />
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <LanguageSelector />
+              <ThemeToggle />
+            </div>
+          )}
+        </div>
       </aside>
       <div className="flex-1 flex flex-col">
-        <header className="h-14 border-b bg-card flex items-center justify-end px-4 gap-3">
-          <LanguageSelector />
-          <ThemeToggle />
+        <header className="border-b p-4 flex items-center justify-end gap-4">
           <UserMenu />
         </header>
         <main className={cn(
-          "flex-1 p-8 transition-all duration-500",
+          "p-8 transition-all duration-500",
           collapsed ? "ml-16" : "ml-64"
         )}>
           {children}
