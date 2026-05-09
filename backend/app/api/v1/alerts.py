@@ -56,9 +56,15 @@ def list_alerts(
     """List alerts for current user based on their role."""
     user_roles = get_user_role_codes(db, current_user.id)
     
+    # Filter to only valid alert target roles
+    valid_alert_roles = ["admin", "ism", "all"]
+    user_valid_roles = [r for r in user_roles if r in valid_alert_roles]
+    if not user_valid_roles:
+        user_valid_roles = ["all"]
+    
     query = db.query(Alert).filter(
         (Alert.target_role == "all") |
-        (Alert.target_role.in_(user_roles))
+        (Alert.target_role.in_(user_valid_roles))
     )
     
     # Filter out inactive alerts by default
@@ -100,9 +106,15 @@ def list_alert_history(
     
     user_roles = get_user_role_codes(db, current_user.id)
     
+    # Filter to only valid alert target roles
+    valid_alert_roles = ["admin", "ism", "all"]
+    user_valid_roles = [r for r in user_roles if r in valid_alert_roles]
+    if not user_valid_roles:
+        user_valid_roles = ["all"]
+    
     alerts = db.query(Alert).filter(
         (Alert.target_role == "all") |
-        (Alert.target_role.in_(user_roles)),
+        (Alert.target_role.in_(user_valid_roles)),
         Alert.is_active == "false"
     ).order_by(Alert.created_at.desc()).all()
     
