@@ -15,6 +15,7 @@ import AuditViewPage from "@/pages/AuditViewPage"
 import AdminPage from "@/pages/AdminPage"
 import TerminologyPage from "@/pages/TerminologyPage"
 import OrganizationPage from "@/pages/OrganizationPage"
+import SettingsPage from "@/pages/SettingsPage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading } = useAuth()
@@ -130,6 +131,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
             </ProtectedRoute>
           }
         />
