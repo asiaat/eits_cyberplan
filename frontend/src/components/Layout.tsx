@@ -23,26 +23,52 @@ import { cn } from "@/lib/utils"
 
 const SIDEBAR_STORAGE_KEY = "eits-sidebar-collapsed"
 
-function getNavItems(t: (key: string) => string) {
+interface NavItem {
+  path: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+}
+
+interface NavSection {
+  key: string
+  items: NavItem[]
+}
+
+function getNavSections(t: (key: string) => string): NavSection[] {
   return [
-    { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
-    { path: "/processes", label: t("nav.businessProcesses"), icon: FolderKanban },
-    { path: "/assets", label: t("nav.assets"), icon: Boxes },
-    { path: "/catalog", label: t("nav.catalog"), icon: BookMarked },
-    { path: "/mappings", label: t("nav.mappings"), icon: Link2 },
-    { path: "/implementation-plan", label: t("nav.implementationPlan"), icon: ListTodo },
-    { path: "/risks", label: t("nav.risks"), icon: AlertTriangle },
-    { path: "/evidences", label: t("nav.evidence"), icon: FileText },
-    { path: "/audit", label: t("nav.auditView"), icon: Shield },
-    { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
-    { path: "/organization", label: t("nav.organization"), icon: Users },
+    {
+      key: "eits",
+      items: [
+        { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+        { path: "/processes", label: t("nav.businessProcesses"), icon: FolderKanban },
+        { path: "/assets", label: t("nav.assets"), icon: Boxes },
+        { path: "/catalog", label: t("nav.catalog"), icon: BookMarked },
+        { path: "/mappings", label: t("nav.mappings"), icon: Link2 },
+        { path: "/implementation-plan", label: t("nav.implementationPlan"), icon: ListTodo },
+      ]
+    },
+    {
+      key: "risk",
+      items: [
+        { path: "/risks", label: t("nav.risks"), icon: AlertTriangle },
+        { path: "/evidences", label: t("nav.evidence"), icon: FileText },
+      ]
+    },
+    {
+      key: "support",
+      items: [
+        { path: "/audit", label: t("nav.auditView"), icon: Shield },
+        { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
+        { path: "/organization", label: t("nav.organization"), icon: Users },
+      ]
+    },
   ]
 }
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation()
   const location = useLocation()
-  const navItems = getNavItems(t)
+  const navSections = getNavSections(t)
 
   const [collapsed, setCollapsed] = useState(() => {
     const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
@@ -89,21 +115,35 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             )}
           </button>
         </div>
-        <nav className={cn("p-2 flex-1", collapsed ? "px-1" : "")}>
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-accent transition-all duration-500",
-                location.pathname === item.path && "bg-accent",
-                collapsed ? "justify-center" : ""
+        <nav className={cn("p-2 flex-1 overflow-y-auto", collapsed ? "px-1" : "")}>
+          {navSections.map((section, sectionIdx) => (
+            <div key={section.key} className={cn("mb-4", sectionIdx === 0 && "mt-2")}>
+              {!collapsed && (
+                <div className="px-3 mb-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    {t(`nav.section.${section.key}`)}
+                  </span>
+                </div>
               )}
-              title={collapsed ? item.label : undefined}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {!collapsed && <span className="truncate">{item.label}</span>}
-            </Link>
+              {section.items.map((item) => (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2 rounded-md text-sm hover:bg-accent transition-all duration-500",
+                    location.pathname === item.path && "bg-accent",
+                    collapsed ? "justify-center" : ""
+                  )}
+                  title={collapsed ? item.label : undefined}
+                >
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                </Link>
+              ))}
+              {collapsed && sectionIdx < navSections.length - 1 && (
+                <div className="border-b my-2 mx-2" />
+              )}
+            </div>
           ))}
         </nav>
         <div className={cn(

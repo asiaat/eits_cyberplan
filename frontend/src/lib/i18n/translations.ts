@@ -12,6 +12,11 @@ export const translations = {
       actions: "Actions",
     },
     nav: {
+      section: {
+        eits: "E-ITS",
+        risk: "Risk & Compliance",
+        support: "Support",
+      },
       dashboard: "Dashboard",
       businessProcesses: "Business Processes",
       assets: "Assets",
@@ -240,6 +245,11 @@ export const translations = {
       actions: "Tegevused",
     },
     nav: {
+      section: {
+        eits: "E-ITS",
+        risk: "Risk ja vastavus",
+        support: "Toetus",
+      },
       dashboard: "Töölaud",
       businessProcesses: "Äriprotsessid",
       assets: "Vara",
