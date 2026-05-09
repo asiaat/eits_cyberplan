@@ -79,7 +79,7 @@ def list_people(db: DB, current_user: CurrentUser, include_all: bool = False):
                 for m in memberships:
                     role = db.query(Role).filter(Role.id == m.role_id).first()
                     if role:
-                        user_roles.append({"id": role.id, "code": role.code, "name": role.name})
+                        user_roles.append({"id": role.id, "code": role.code, "name": role.name, "is_default": role.is_default})
         
         result.append(PersonAssetResponse(
             id=str(asset.id),
@@ -196,7 +196,7 @@ def list_organization_users(db: DB, current_user: CurrentUser, with_asset_only: 
         for m in memberships:
             role = db.query(Role).filter(Role.id == m.role_id).first()
             if role:
-                roles.append({"id": role.id, "code": role.code, "name": role.name})
+                roles.append({"id": role.id, "code": role.code, "name": role.name, "is_default": role.is_default})
         
         # Find linked asset
         linked_asset = None
@@ -389,7 +389,7 @@ def get_organization_user(db: DB, current_user: CurrentUser, user_id: str):
     for m in memberships:
         role = db.query(Role).filter(Role.id == m.role_id).first()
         if role:
-            roles.append({"id": role.id, "code": role.code, "name": role.name})
+            roles.append({"id": role.id, "code": role.code, "name": role.name, "is_default": role.is_default})
     
     linked_asset = None
     owned_assets = db.query(Asset).filter(Asset.owner_user_id == user.id, Asset.asset_type == "person").first()

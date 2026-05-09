@@ -69,6 +69,7 @@ def get_user_roles(db: Session, user: User) -> List[dict]:
                 "id": role.id,
                 "code": role.code,
                 "name": role.name,
+                "is_default": role.is_default,
             })
     return roles
 

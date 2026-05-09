@@ -55,7 +55,7 @@ export const translations = {
       noUsers: "No CyberPlan users yet",
     },
     admin: {
-      title: "Admin",
+      title: "Administration",
       noData: "Admin panel placeholder.",
       roles: "Roles",
       permissions: "Permissions",
@@ -251,7 +251,7 @@ export const translations = {
       auditView: "Auditi vaade",
       terminology: "Terminoloogia",
       organization: "Organisatsioon",
-      admin: "Admin",
+      admin: "Administreerimine",
       logout: "Logi välja",
     },
     organization: {
@@ -283,7 +283,7 @@ export const translations = {
       noUsers: "CyberPlan kasutajaid veel pole",
     },
     admin: {
-      title: "Admin",
+      title: "Administreerimine",
       noData: "Admin paneeli asutus.",
       roles: "Rollid",
       permissions: "Õigused",

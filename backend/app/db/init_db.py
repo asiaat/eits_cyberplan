@@ -181,6 +181,18 @@ def init_db(db: Session) -> None:
 
         db.commit()
         print("Default users created with roles.")
+    else:
+        admin_role = db.query(Role).filter(Role.code == "admin").first()
+        if admin_role:
+            has_admin = db.query(Membership).filter(
+                Membership.user_id == existing_user.id,
+                Membership.role_id == admin_role.id
+            ).first()
+            if not has_admin:
+                membership = Membership(user_id=existing_user.id, role_id=admin_role.id, tenant_id=default_tenant.id)
+                db.add(membership)
+                db.commit()
+                print("Admin role assigned to existing admin user.")
 
     # Fix existing users without roles - assign auditor role
     auditor_role = db.query(Role).filter(Role.code == "auditor").first()

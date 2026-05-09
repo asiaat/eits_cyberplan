@@ -13,7 +13,7 @@ interface PersonAsset {
   description: string | null
   owner_user_id: string | null
   has_user_account: boolean
-  user_roles: { id: string; code: string; name: string }[]
+  user_roles: { id: string; code: string; name: string; is_default?: string }[]
 }
 
 interface UserWithRoles {
@@ -21,7 +21,7 @@ interface UserWithRoles {
   email: string
   name: string
   is_active: boolean
-  roles: { id: string; code: string; name: string }[]
+  roles: { id: string; code: string; name: string; is_default?: string }[]
   linked_asset_id: string | null
 }
 
@@ -377,8 +377,8 @@ export default function OrganizationPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           {user.roles.map(role => (
                             <span key={role.id} className="text-xs bg-secondary px-2 py-1 rounded flex items-center gap-1">
-                              {role.name}
-                              {canManageUsers && (
+                              {t(`roles.${role.code}.name`)}
+                              {canManageUsers && role.is_default !== "true" && (
                                 <button onClick={() => removeRole(user.id, role.id)} className="text-red-500">x</button>
                               )}
                             </span>
@@ -391,7 +391,7 @@ export default function OrganizationPage() {
                             >
                               <option value="">+ {t("organization.addRole")}</option>
                               {roles.filter(r => !user.roles.some(ur => ur.id === r.id)).map(role => (
-                                <option key={role.id} value={role.id}>{role.name}</option>
+                                <option key={role.id} value={role.id}>{t(`roles.${role.code}.name`)}</option>
                               ))}
                             </select>
                           )}

@@ -33,7 +33,7 @@ export default function SettingsPage() {
   }
 
   const handleThemeChange = (newTheme: string) => {
-    setTheme(newTheme as "light" | "dark")
+    setTheme(newTheme as "light" | "dark" | "system")
   }
 
   const handleSidebarChange = (checked: boolean) => {
