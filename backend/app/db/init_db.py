@@ -66,6 +66,11 @@ DEFAULT_PERMISSIONS = [
 
     # Audit
     {"id": "audit.view", "code": "audit.view", "name": "View Audit Logs", "description": "View audit logs", "category": "audit"},
+
+    # Organization
+    {"id": "organization.view", "code": "organization.view", "name": "View Organization", "description": "View organization details", "category": "organization"},
+    {"id": "organization.edit", "code": "organization.edit", "name": "Edit Organization", "description": "Edit company and division details", "category": "organization"},
+    {"id": "people.manage", "code": "people.manage", "name": "Manage People", "description": "Create, edit, delete people (person assets)", "category": "organization"},
 ]
 
 ROLE_PERMISSIONS = {
@@ -80,6 +85,7 @@ ROLE_PERMISSIONS = {
         "dashboard.view", "dashboard.export",
         "catalog.view", "mappings.view", "mappings.manage",
         "audit.view",
+        "organization.view", "organization.edit", "people.manage",
     ],
     "ism": [
         "processes.view", "processes.create", "processes.edit", "processes.delete",
@@ -90,16 +96,19 @@ ROLE_PERMISSIONS = {
         "dashboard.view", "dashboard.export",
         "catalog.view", "mappings.view", "mappings.manage",
         "audit.view",
+        "organization.view", "organization.edit", "people.manage",
     ],
     "process_owner": [
         "processes.view", "processes.edit",
         "evidence.view", "evidence.upload",
         "dashboard.view",
+        "organization.view", "people.manage",
     ],
     "asset_owner": [
         "assets.view", "assets.edit",
         "evidence.view", "evidence.upload",
         "dashboard.view",
+        "organization.view", "people.manage",
     ],
     "auditor": [
         "users.view",
@@ -111,6 +120,7 @@ ROLE_PERMISSIONS = {
         "dashboard.view", "dashboard.export",
         "catalog.view", "mappings.view",
         "audit.view",
+        "organization.view",
     ],
 }
 

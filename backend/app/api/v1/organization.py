@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.asset import Asset
 from app.models.membership import Membership
 from app.models.role import Role
+from app.models.tenant import Tenant
 from app.core.security import get_password_hash
 
 router = APIRouter()
@@ -443,14 +444,9 @@ class UpdateCompanyRequest(BaseModel):
     parent_company_id: Optional[str] = None
 
 
-@router.get("/company", response_model=CompanyDetailResponse)
-def get_company(
-    db: Session = Depends(DB),
-    current_user: User = Depends(CurrentUser),
-):
+@router.get("/company")
+def get_company(db: DB, current_user: CurrentUser):
     """Get company/organization details."""
-    from app.models.tenant import Tenant
-    
     membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
     if not membership:
         raise HTTPException(status_code=404, detail="No membership found")
@@ -459,34 +455,38 @@ def get_company(
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant not found")
     
-    return CompanyDetailResponse(
-        id=str(tenant.id),
-        name=tenant.name,
-        registry_code=tenant.registry_code,
-        legal_form=tenant.legal_form,
-        registration_date=tenant.registration_date.isoformat() if tenant.registration_date else None,
-        status=tenant.status or "active",
-        registered_address=tenant.registered_address,
-        contact_address=tenant.contact_address,
-        phone=tenant.phone,
-        email=tenant.email,
-        website=tenant.website,
-        share_capital=float(tenant.share_capital) if tenant.share_capital is not None else None,
-        nace_codes=tenant.nace_codes,
-        company_type=tenant.company_type or "main_company",
-        parent_company_id=str(tenant.parent_company_id) if tenant.parent_company_id else None,
-    )
+    return {
+        "id": str(tenant.id),
+        "name": tenant.name,
+        "registry_code": tenant.registry_code,
+        "legal_form": tenant.legal_form,
+        "registration_date": tenant.registration_date.isoformat() if tenant.registration_date else None,
+        "status": tenant.status or "active",
+        "registered_address": tenant.registered_address,
+        "contact_address": tenant.contact_address,
+        "phone": tenant.phone,
+        "email": tenant.email,
+        "website": tenant.website,
+        "share_capital": float(tenant.share_capital) if tenant.share_capital is not None else None,
+        "nace_codes": tenant.nace_codes,
+        "company_type": tenant.company_type or "main_company",
+        "parent_company_id": str(tenant.parent_company_id) if tenant.parent_company_id else None,
+    }
 
 
-@router.patch("/company", response_model=CompanyDetailResponse)
+@router.patch("/company")
 def update_company(
     request: UpdateCompanyRequest,
-    db: Session = Depends(DB),
-    current_user: User = Depends(CurrentUser),
+    db: DB,
+    current_user: CurrentUser,
 ):
     """Update company/organization details."""
     from app.models.tenant import Tenant
     from datetime import date
+    from app.core.permissions import has_permission
+    
+    if not has_permission(db, current_user, "organization.edit"):
+        raise HTTPException(status_code=403, detail="Permission denied")
     
     membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
     if not membership:
@@ -564,8 +564,8 @@ class UpdateDivisionRequest(BaseModel):
 
 @router.get("/divisions", response_model=List[DivisionResponse])
 def list_divisions(
-    db: Session = Depends(DB),
-    current_user: User = Depends(CurrentUser),
+    db: DB,
+    current_user: CurrentUser,
 ):
     """List all divisions."""
     from app.models.division import Division
@@ -597,8 +597,8 @@ def list_divisions(
 
 @router.get("/divisions/tree", response_model=List[DivisionResponse])
 def get_division_tree(
-    db: Session = Depends(DB),
-    current_user: User = Depends(CurrentUser),
+    db: DB,
+    current_user: CurrentUser,
 ):
     """Get division hierarchy as tree."""
     from app.models.division import Division
@@ -637,11 +637,15 @@ def get_division_tree(
 @router.post("/divisions", response_model=DivisionResponse)
 def create_division(
     request: CreateDivisionRequest,
-    db: Session = Depends(DB),
-    current_user: User = Depends(CurrentUser),
+    db: DB,
+    current_user: CurrentUser,
 ):
     """Create a new division."""
     from app.models.division import Division
+    from app.core.permissions import has_permission
+    
+    if not has_permission(db, current_user, "organization.edit"):
+        raise HTTPException(status_code=403, detail="Permission denied")
     
     membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
     if not membership:
@@ -686,8 +690,8 @@ def create_division(
 @router.get("/divisions/{division_id}", response_model=DivisionResponse)
 def get_division(
     division_id: str,
-    db: Session = Depends(DB),
-    current_user: User = Depends(CurrentUser),
+    db: DB,
+    current_user: CurrentUser,
 ):
     """Get a specific division."""
     from app.models.division import Division
@@ -723,11 +727,15 @@ def get_division(
 def update_division(
     division_id: str,
     request: UpdateDivisionRequest,
-    db: Session = Depends(DB),
-    current_user: User = Depends(CurrentUser),
+    db: DB,
+    current_user: CurrentUser,
 ):
     """Update a division."""
     from app.models.division import Division
+    from app.core.permissions import has_permission
+    
+    if not has_permission(db, current_user, "organization.edit"):
+        raise HTTPException(status_code=403, detail="Permission denied")
     
     membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
     if not membership:
@@ -771,11 +779,15 @@ def update_division(
 @router.delete("/divisions/{division_id}")
 def delete_division(
     division_id: str,
-    db: Session = Depends(DB),
-    current_user: User = Depends(CurrentUser),
+    db: DB,
+    current_user: CurrentUser,
 ):
     """Delete a division (soft delete)."""
     from app.models.division import Division
+    from app.core.permissions import has_permission
+    
+    if not has_permission(db, current_user, "organization.edit"):
+        raise HTTPException(status_code=403, detail="Permission denied")
     
     membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
     if not membership:

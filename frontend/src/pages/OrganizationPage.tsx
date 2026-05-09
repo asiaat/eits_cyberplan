@@ -70,7 +70,9 @@ export default function OrganizationPage() {
 
   const canViewPeople = hasAnyPermission(["processes.view", "assets.view", "dashboard.view"])
   const canManageUsers = hasPermission("users.create")
-  const canCreatePerson = hasPermission("assets.create")
+  const canManageOrg = hasPermission("organization.edit")
+  const canManagePeople = hasPermission("people.manage")
+  const canManageDivisions = hasPermission("organization.edit")
 
   useEffect(() => {
     loadData()
@@ -263,15 +265,17 @@ export default function OrganizationPage() {
                     <CardTitle>{t("organization.companyDetails")}</CardTitle>
                     <CardDescription>{t("organization.companyDetailsDesc")}</CardDescription>
                   </div>
-                  <Button variant={companyEditing ? "default" : "outline"} onClick={() => {
-                    if (companyEditing) {
-                      saveCompany()
-                    } else {
-                      setCompanyEditing(true)
-                    }
-                  }}>
-                    {companyEditing ? t("common.save") : t("common.edit")}
-                  </Button>
+                  {canManageOrg && (
+                    <Button variant={companyEditing ? "default" : "outline"} onClick={() => {
+                      if (companyEditing) {
+                        saveCompany()
+                      } else {
+                        setCompanyEditing(true)
+                      }
+                    }}>
+                      {companyEditing ? t("common.save") : t("common.edit")}
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -394,9 +398,11 @@ export default function OrganizationPage() {
                     <CardTitle>{t("organization.divisionsList")}</CardTitle>
                     <CardDescription>{t("organization.divisionsDesc")}</CardDescription>
                   </div>
-                  <Button onClick={() => { setEditingDivision(null); setDivisionForm({ code: "", name: "", description: "", parent_division_id: "", head_user_id: "" }); setDivisionModalOpen(true) }}>
-                    {t("organization.addDivision")}
-                  </Button>
+                  {canManageDivisions && (
+                    <Button onClick={() => { setEditingDivision(null); setDivisionForm({ code: "", name: "", description: "", parent_division_id: "", head_user_id: "" }); setDivisionModalOpen(true) }}>
+                      {t("organization.addDivision")}
+                    </Button>
+                  )}
                 </CardHeader>
                 <CardContent>
                   {divisions.length === 0 ? (
@@ -410,12 +416,16 @@ export default function OrganizationPage() {
                             <p className="text-sm text-muted-foreground">{div.code} • {div.member_count} {t("organization.members")}</p>
                           </div>
                           <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => {
-                              setEditingDivision(div)
-                              setDivisionForm({ code: div.code, name: div.name, description: div.description || "", parent_division_id: div.parent_division_id || "", head_user_id: div.head_user_id || "" })
-                              setDivisionModalOpen(true)
-                            }}>{t("common.edit")}</Button>
-                            <Button variant="destructive" size="sm" onClick={() => deleteDivision(div.id)}>{t("common.delete")}</Button>
+                            {canManageDivisions && (
+                              <>
+                                <Button variant="outline" size="sm" onClick={() => {
+                                  setEditingDivision(div)
+                                  setDivisionForm({ code: div.code, name: div.name, description: div.description || "", parent_division_id: div.parent_division_id || "", head_user_id: div.head_user_id || "" })
+                                  setDivisionModalOpen(true)
+                                }}>{t("common.edit")}</Button>
+                                <Button variant="destructive" size="sm" onClick={() => deleteDivision(div.id)}>{t("common.delete")}</Button>
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -469,7 +479,7 @@ export default function OrganizationPage() {
 
           {activeTab === "people" && (
             <div className="space-y-4">
-              {canCreatePerson && (
+              {canManagePeople && (
                 <Card>
                   <CardHeader>
                     <CardTitle>{t("organization.addPerson")}</CardTitle>
