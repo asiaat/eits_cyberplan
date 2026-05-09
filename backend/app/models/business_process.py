@@ -14,6 +14,7 @@ class BusinessProcess(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     owner_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    division_id = Column(UUID(as_uuid=True), ForeignKey("divisions.id"), nullable=True, index=True)
     name = Column(String(255), nullable=False)
     description = Column(Text)
     purpose = Column(Text)
@@ -28,4 +29,5 @@ class BusinessProcess(Base):
 
     tenant = relationship("Tenant", back_populates="business_processes")
     owner_user = relationship("User", back_populates="owned_business_processes", foreign_keys=[owner_user_id])
+    division = relationship("Division", back_populates="business_processes")
     assets = relationship("ProcessAsset", back_populates="business_process")

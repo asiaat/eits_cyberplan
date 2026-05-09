@@ -21,6 +21,7 @@ from app.models.evidence_link import EvidenceLink
 from app.models.audit_log import AuditLog
 from app.models.comment import Comment
 from app.models.alert import Alert
+from app.models.division import Division
 
 __all__ = [
     "Tenant",
@@ -45,4 +46,5 @@ __all__ = [
     "AuditLog",
     "Comment",
     "Alert",
+    "Division",
 ]

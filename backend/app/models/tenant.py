@@ -1,8 +1,8 @@
 """Tenant model."""
 import uuid
 
-from sqlalchemy import Column, String, DateTime, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, Text, Numeric, Date, Enum
+from sqlalchemy.dialects.postgresql import UUID, JSON
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -14,6 +14,18 @@ class Tenant(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False)
     registry_code = Column(String(20), unique=True, nullable=True)
+    legal_form = Column(String(50), nullable=True)
+    registration_date = Column(Date, nullable=True)
+    status = Column(String(50), default="active")
+    registered_address = Column(Text, nullable=True)
+    contact_address = Column(Text, nullable=True)
+    phone = Column(String(50), nullable=True)
+    email = Column(String(255), nullable=True)
+    website = Column(String(255), nullable=True)
+    share_capital = Column(Numeric(15, 2), nullable=True)
+    nace_codes = Column(JSON, nullable=True)
+    company_type = Column(String(20), default="main_company")
+    parent_company_id = Column(UUID(as_uuid=True), nullable=True)
     created_at = Column(DateTime, server_default="now()")
     updated_at = Column(DateTime, server_default="now()", onupdate="now()")
 
@@ -29,3 +41,4 @@ class Tenant(Base):
     evidence_links = relationship("EvidenceLink", back_populates="tenant")
     audit_logs = relationship("AuditLog", back_populates="tenant")
     comments = relationship("Comment", back_populates="tenant")
+    divisions = relationship("Division", back_populates="tenant", cascade="all, delete-orphan")

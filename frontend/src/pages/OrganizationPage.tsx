@@ -37,11 +37,23 @@ export default function OrganizationPage() {
   const { t } = useTranslation()
   const { hasPermission, hasAnyPermission } = usePermission()
   
-  const [activeTab, setActiveTab] = useState("people")
+  const [activeTab, setActiveTab] = useState("company")
   const [people, setPeople] = useState<PersonAsset[]>([])
   const [users, setUsers] = useState<UserWithRoles[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
+
+  // Company state
+  const [company, setCompany] = useState<any>(null)
+  const [companyEditing, setCompanyEditing] = useState(false)
+  const [companyForm, setCompanyForm] = useState<any>({})
+
+  // Division state
+  const [divisions, setDivisions] = useState<any[]>([])
+  // const [divisionTree, setDivisionTree] = useState<any[]>([])
+  const [divisionModalOpen, setDivisionModalOpen] = useState(false)
+  const [editingDivision, setEditingDivision] = useState<any>(null)
+  const [divisionForm, setDivisionForm] = useState({ code: "", name: "", description: "", parent_division_id: "", head_user_id: "" })
   
   // Form states
   const [newPersonName, setNewPersonName] = useState("")
@@ -67,11 +79,16 @@ export default function OrganizationPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const [peopleRes, usersRes, rolesRes] = await Promise.all([
+      const [companyRes, divisionsRes, peopleRes, usersRes, rolesRes] = await Promise.all([
+        apiClient.get("/organization/company"),
+        apiClient.get("/organization/divisions"),
         apiClient.get("/organization/people"),
         apiClient.get("/organization/users"),
         apiClient.get("/roles/"),
       ])
+      setCompany(companyRes.data)
+      setCompanyForm(companyRes.data)
+      setDivisions(divisionsRes.data)
       setPeople(peopleRes.data)
       setUsers(usersRes.data)
       setRoles(rolesRes.data)
@@ -79,6 +96,42 @@ export default function OrganizationPage() {
       console.error("Failed to load organization data:", error)
     }
     setLoading(false)
+  }
+
+  const saveCompany = async () => {
+    try {
+      const res = await apiClient.patch("/organization/company", companyForm)
+      setCompany(res.data)
+      setCompanyForm(res.data)
+      setCompanyEditing(false)
+    } catch (error) {
+      console.error("Failed to save company:", error)
+    }
+  }
+
+  const saveDivision = async () => {
+    if (!divisionForm.code || !divisionForm.name) return
+    try {
+      if (editingDivision) {
+        await apiClient.patch(`/organization/divisions/${editingDivision.id}`, divisionForm)
+      } else {
+        await apiClient.post("/organization/divisions", divisionForm)
+      }
+      setDivisionModalOpen(false)
+      loadData()
+    } catch (error) {
+      console.error("Failed to save division:", error)
+    }
+  }
+
+  const deleteDivision = async (id: string) => {
+    if (!confirm(t("organization.confirmDeleteDivision"))) return
+    try {
+      await apiClient.delete(`/organization/divisions/${id}`)
+      loadData()
+    } catch (error) {
+      console.error("Failed to delete division:", error)
+    }
   }
 
   const createPerson = async () => {
@@ -184,6 +237,12 @@ export default function OrganizationPage() {
       <p className="text-muted-foreground mb-6">{t("organization.description")}</p>
       
       <div className="flex gap-2 mb-6">
+        <Button variant={activeTab === "company" ? "default" : "outline"} onClick={() => setActiveTab("company")}>
+          {t("organization.company")}
+        </Button>
+        <Button variant={activeTab === "divisions" ? "default" : "outline"} onClick={() => setActiveTab("divisions")}>
+          {t("organization.divisions")}
+        </Button>
         <Button variant={activeTab === "people" ? "default" : "outline"} onClick={() => setActiveTab("people")}>
           {t("organization.people")}
         </Button>
@@ -196,6 +255,218 @@ export default function OrganizationPage() {
         <div className="text-center py-8">{t("common.loading")}</div>
       ) : (
         <>
+          {activeTab === "company" && (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>{t("organization.companyDetails")}</CardTitle>
+                    <CardDescription>{t("organization.companyDetailsDesc")}</CardDescription>
+                  </div>
+                  <Button variant={companyEditing ? "default" : "outline"} onClick={() => {
+                    if (companyEditing) {
+                      saveCompany()
+                    } else {
+                      setCompanyEditing(true)
+                    }
+                  }}>
+                    {companyEditing ? t("common.save") : t("common.edit")}
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium">{t("organization.companyName")}</label>
+                      {companyEditing ? (
+                        <Input value={companyForm.name || ""} onChange={e => setCompanyForm({...companyForm, name: e.target.value})} className="mt-1" />
+                      ) : (
+                        <p className="text-muted-foreground mt-1">{company?.name || "-"}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">{t("organization.registryCode")}</label>
+                      {companyEditing ? (
+                        <Input value={companyForm.registry_code || ""} onChange={e => setCompanyForm({...companyForm, registry_code: e.target.value})} className="mt-1" />
+                      ) : (
+                        <p className="text-muted-foreground mt-1">{company?.registry_code || "-"}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">{t("organization.legalForm")}</label>
+                      {companyEditing ? (
+                        <select 
+                          value={companyForm.legal_form || ""} 
+                          onChange={e => setCompanyForm({...companyForm, legal_form: e.target.value})}
+                          className="w-full mt-1 px-3 py-2 border rounded-md"
+                        >
+                          <option value="">-</option>
+                          <option value="OÜ">OÜ</option>
+                          <option value="AS">AS</option>
+                          <option value="MTÜ">MTÜ</option>
+                          <option value="FIE">FIE</option>
+                          <option value="TÜ">TÜ</option>
+                          <option value="SA">SA</option>
+                        </select>
+                      ) : (
+                        <p className="text-muted-foreground mt-1">{company?.legal_form || "-"}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">{t("organization.registrationDate")}</label>
+                      {companyEditing ? (
+                        <Input type="date" value={companyForm.registration_date || ""} onChange={e => setCompanyForm({...companyForm, registration_date: e.target.value})} className="mt-1" />
+                      ) : (
+                        <p className="text-muted-foreground mt-1">{company?.registration_date || "-"}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">{t("organization.status")}</label>
+                      {companyEditing ? (
+                        <select 
+                          value={companyForm.status || "active"} 
+                          onChange={e => setCompanyForm({...companyForm, status: e.target.value})}
+                          className="w-full mt-1 px-3 py-2 border rounded-md"
+                        >
+                          <option value="active">Active</option>
+                          <option value="in_liquidation">In Liquidation</option>
+                          <option value="reorganizing">Reorganizing</option>
+                        </select>
+                      ) : (
+                        <p className="text-muted-foreground mt-1">{company?.status || "active"}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">{t("organization.phone")}</label>
+                      {companyEditing ? (
+                        <Input value={companyForm.phone || ""} onChange={e => setCompanyForm({...companyForm, phone: e.target.value})} className="mt-1" />
+                      ) : (
+                        <p className="text-muted-foreground mt-1">{company?.phone || "-"}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">{t("organization.email")}</label>
+                      {companyEditing ? (
+                        <Input type="email" value={companyForm.email || ""} onChange={e => setCompanyForm({...companyForm, email: e.target.value})} className="mt-1" />
+                      ) : (
+                        <p className="text-muted-foreground mt-1">{company?.email || "-"}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">{t("organization.website")}</label>
+                      {companyEditing ? (
+                        <Input value={companyForm.website || ""} onChange={e => setCompanyForm({...companyForm, website: e.target.value})} className="mt-1" />
+                      ) : (
+                        <p className="text-muted-foreground mt-1">{company?.website || "-"}</p>
+                      )}
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-sm font-medium">{t("organization.registeredAddress")}</label>
+                      {companyEditing ? (
+                        <Input value={companyForm.registered_address || ""} onChange={e => setCompanyForm({...companyForm, registered_address: e.target.value})} className="mt-1" />
+                      ) : (
+                        <p className="text-muted-foreground mt-1">{company?.registered_address || "-"}</p>
+                      )}
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-sm font-medium">{t("organization.contactAddress")}</label>
+                      {companyEditing ? (
+                        <Input value={companyForm.contact_address || ""} onChange={e => setCompanyForm({...companyForm, contact_address: e.target.value})} className="mt-1" />
+                      ) : (
+                        <p className="text-muted-foreground mt-1">{company?.contact_address || "-"}</p>
+                      )}
+                    </div>
+                  </div>
+                  {companyEditing && (
+                    <div className="mt-4 flex gap-2">
+                      <Button onClick={() => { setCompanyEditing(false); setCompanyForm(company) }}>{t("common.cancel")}</Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === "divisions" && (
+            <div className="space-y-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>{t("organization.divisionsList")}</CardTitle>
+                    <CardDescription>{t("organization.divisionsDesc")}</CardDescription>
+                  </div>
+                  <Button onClick={() => { setEditingDivision(null); setDivisionForm({ code: "", name: "", description: "", parent_division_id: "", head_user_id: "" }); setDivisionModalOpen(true) }}>
+                    {t("organization.addDivision")}
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {divisions.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">{t("organization.noDivisions")}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {divisions.map(div => (
+                        <div key={div.id} className="flex items-center justify-between p-3 border rounded-lg">
+                          <div>
+                            <p className="font-medium">{div.name}</p>
+                            <p className="text-sm text-muted-foreground">{div.code} • {div.member_count} {t("organization.members")}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={() => {
+                              setEditingDivision(div)
+                              setDivisionForm({ code: div.code, name: div.name, description: div.description || "", parent_division_id: div.parent_division_id || "", head_user_id: div.head_user_id || "" })
+                              setDivisionModalOpen(true)
+                            }}>{t("common.edit")}</Button>
+                            <Button variant="destructive" size="sm" onClick={() => deleteDivision(div.id)}>{t("common.delete")}</Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {divisionModalOpen && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{editingDivision ? t("organization.editDivision") : t("organization.addNewDivision")}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="text-sm font-medium">{t("organization.divisionCode")} *</label>
+                        <Input value={divisionForm.code} onChange={e => setDivisionForm({...divisionForm, code: e.target.value})} className="mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">{t("organization.divisionName")} *</label>
+                        <Input value={divisionForm.name} onChange={e => setDivisionForm({...divisionForm, name: e.target.value})} className="mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">{t("organization.description")}</label>
+                        <Input value={divisionForm.description} onChange={e => setDivisionForm({...divisionForm, description: e.target.value})} className="mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium">{t("organization.parentDivision")}</label>
+                        <select 
+                          value={divisionForm.parent_division_id} 
+                          onChange={e => setDivisionForm({...divisionForm, parent_division_id: e.target.value})}
+                          className="w-full mt-1 px-3 py-2 border rounded-md"
+                        >
+                          <option value="">{t("organization.none")}</option>
+                          {divisions.filter(d => d.id !== editingDivision?.id).map(d => (
+                            <option key={d.id} value={d.id}>{d.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button onClick={saveDivision}>{t("common.save")}</Button>
+                        <Button variant="outline" onClick={() => setDivisionModalOpen(false)}>{t("common.cancel")}</Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+
           {activeTab === "people" && (
             <div className="space-y-4">
               {canCreatePerson && (

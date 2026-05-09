@@ -404,3 +404,395 @@ def get_organization_user(db: DB, current_user: CurrentUser, user_id: str):
         "roles": roles,
         "linked_asset": linked_asset
     }
+
+
+class CompanyDetailResponse(BaseModel):
+    id: str
+    name: str
+    registry_code: Optional[str] = None
+    legal_form: Optional[str] = None
+    registration_date: Optional[str] = None
+    status: str = "active"
+    registered_address: Optional[str] = None
+    contact_address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    share_capital: Optional[float] = None
+    nace_codes: Optional[List[str]] = None
+    company_type: str = "main_company"
+    parent_company_id: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class UpdateCompanyRequest(BaseModel):
+    name: Optional[str] = None
+    registry_code: Optional[str] = None
+    legal_form: Optional[str] = None
+    registration_date: Optional[str] = None
+    status: Optional[str] = None
+    registered_address: Optional[str] = None
+    contact_address: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    website: Optional[str] = None
+    share_capital: Optional[float] = None
+    nace_codes: Optional[List[str]] = None
+    company_type: Optional[str] = None
+    parent_company_id: Optional[str] = None
+
+
+@router.get("/company", response_model=CompanyDetailResponse)
+def get_company(
+    db: Session = Depends(DB),
+    current_user: User = Depends(CurrentUser),
+):
+    """Get company/organization details."""
+    from app.models.tenant import Tenant
+    
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="No membership found")
+    
+    tenant = db.query(Tenant).filter(Tenant.id == membership.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    return CompanyDetailResponse(
+        id=str(tenant.id),
+        name=tenant.name,
+        registry_code=tenant.registry_code,
+        legal_form=tenant.legal_form,
+        registration_date=tenant.registration_date.isoformat() if tenant.registration_date else None,
+        status=tenant.status or "active",
+        registered_address=tenant.registered_address,
+        contact_address=tenant.contact_address,
+        phone=tenant.phone,
+        email=tenant.email,
+        website=tenant.website,
+        share_capital=float(tenant.share_capital) if tenant.share_capital is not None else None,
+        nace_codes=tenant.nace_codes,
+        company_type=tenant.company_type or "main_company",
+        parent_company_id=str(tenant.parent_company_id) if tenant.parent_company_id else None,
+    )
+
+
+@router.patch("/company", response_model=CompanyDetailResponse)
+def update_company(
+    request: UpdateCompanyRequest,
+    db: Session = Depends(DB),
+    current_user: User = Depends(CurrentUser),
+):
+    """Update company/organization details."""
+    from app.models.tenant import Tenant
+    from datetime import date
+    
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="No membership found")
+    
+    tenant = db.query(Tenant).filter(Tenant.id == membership.tenant_id).first()
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    
+    update_data = request.model_dump(exclude_unset=True)
+    
+    if "registration_date" in update_data and update_data["registration_date"]:
+        update_data["registration_date"] = date.fromisoformat(update_data["registration_date"])
+    
+    for field, value in update_data.items():
+        setattr(tenant, field, value)
+    
+    db.commit()
+    db.refresh(tenant)
+    
+    return CompanyDetailResponse(
+        id=str(tenant.id),
+        name=tenant.name,
+        registry_code=tenant.registry_code,
+        legal_form=tenant.legal_form,
+        registration_date=tenant.registration_date.isoformat() if tenant.registration_date else None,
+        status=tenant.status or "active",
+        registered_address=tenant.registered_address,
+        contact_address=tenant.contact_address,
+        phone=tenant.phone,
+        email=tenant.email,
+        website=tenant.website,
+        share_capital=float(tenant.share_capital) if tenant.share_capital is not None else None,
+        nace_codes=tenant.nace_codes,
+        company_type=tenant.company_type or "main_company",
+        parent_company_id=str(tenant.parent_company_id) if tenant.parent_company_id else None,
+    )
+
+
+class DivisionResponse(BaseModel):
+    id: str
+    tenant_id: str
+    parent_division_id: Optional[str] = None
+    code: str
+    name: str
+    description: Optional[str] = None
+    head_user_id: Optional[str] = None
+    is_active: str = "true"
+    sort_order: int = 0
+    children: List["DivisionResponse"] = []
+    member_count: int = 0
+
+    model_config = {"from_attributes": True}
+
+
+class CreateDivisionRequest(BaseModel):
+    code: str
+    name: str
+    description: Optional[str] = None
+    parent_division_id: Optional[str] = None
+    head_user_id: Optional[str] = None
+    is_active: str = "true"
+    sort_order: int = 0
+
+
+class UpdateDivisionRequest(BaseModel):
+    code: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    parent_division_id: Optional[str] = None
+    head_user_id: Optional[str] = None
+    is_active: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+@router.get("/divisions", response_model=List[DivisionResponse])
+def list_divisions(
+    db: Session = Depends(DB),
+    current_user: User = Depends(CurrentUser),
+):
+    """List all divisions."""
+    from app.models.division import Division
+    
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="No membership found")
+    
+    divisions = db.query(Division).filter(Division.tenant_id == membership.tenant_id).all()
+    
+    result = []
+    for div in divisions:
+        member_count = db.query(Membership).filter(Membership.division_id == div.id).count()
+        result.append(DivisionResponse(
+            id=str(div.id),
+            tenant_id=str(div.tenant_id),
+            parent_division_id=str(div.parent_division_id) if div.parent_division_id else None,
+            code=div.code,
+            name=div.name,
+            description=div.description,
+            head_user_id=str(div.head_user_id) if div.head_user_id else None,
+            is_active=div.is_active or "true",
+            sort_order=div.sort_order or 0,
+            member_count=member_count,
+        ))
+    
+    return result
+
+
+@router.get("/divisions/tree", response_model=List[DivisionResponse])
+def get_division_tree(
+    db: Session = Depends(DB),
+    current_user: User = Depends(CurrentUser),
+):
+    """Get division hierarchy as tree."""
+    from app.models.division import Division
+    
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="No membership found")
+    
+    all_divisions = db.query(Division).filter(Division.tenant_id == membership.tenant_id).all()
+    
+    div_map = {div.id: div for div in all_divisions}
+    
+    def build_tree(parent_id: Optional[UUID]) -> List[DivisionResponse]:
+        children = []
+        for div in all_divisions:
+            if div.parent_division_id == parent_id:
+                member_count = db.query(Membership).filter(Membership.division_id == div.id).count()
+                children.append(DivisionResponse(
+                    id=str(div.id),
+                    tenant_id=str(div.tenant_id),
+                    parent_division_id=str(div.parent_division_id) if div.parent_division_id else None,
+                    code=div.code,
+                    name=div.name,
+                    description=div.description,
+                    head_user_id=str(div.head_user_id) if div.head_user_id else None,
+                    is_active=div.is_active or "true",
+                    sort_order=div.sort_order or 0,
+                    children=build_tree(div.id),
+                    member_count=member_count,
+                ))
+        return children
+    
+    return build_tree(None)
+
+
+@router.post("/divisions", response_model=DivisionResponse)
+def create_division(
+    request: CreateDivisionRequest,
+    db: Session = Depends(DB),
+    current_user: User = Depends(CurrentUser),
+):
+    """Create a new division."""
+    from app.models.division import Division
+    
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="No membership found")
+    
+    existing = db.query(Division).filter(
+        Division.tenant_id == membership.tenant_id,
+        Division.code == request.code
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Division code already exists")
+    
+    division = Division(
+        tenant_id=membership.tenant_id,
+        code=request.code,
+        name=request.name,
+        description=request.description,
+        parent_division_id=UUID(request.parent_division_id) if request.parent_division_id else None,
+        head_user_id=UUID(request.head_user_id) if request.head_user_id else None,
+        is_active=request.is_active or "true",
+        sort_order=request.sort_order or 0,
+    )
+    
+    db.add(division)
+    db.commit()
+    db.refresh(division)
+    
+    return DivisionResponse(
+        id=str(division.id),
+        tenant_id=str(division.tenant_id),
+        parent_division_id=str(division.parent_division_id) if division.parent_division_id else None,
+        code=division.code,
+        name=division.name,
+        description=division.description,
+        head_user_id=str(division.head_user_id) if division.head_user_id else None,
+        is_active=division.is_active or "true",
+        sort_order=division.sort_order or 0,
+        member_count=0,
+    )
+
+
+@router.get("/divisions/{division_id}", response_model=DivisionResponse)
+def get_division(
+    division_id: str,
+    db: Session = Depends(DB),
+    current_user: User = Depends(CurrentUser),
+):
+    """Get a specific division."""
+    from app.models.division import Division
+    
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="No membership found")
+    
+    division = db.query(Division).filter(
+        Division.id == UUID(division_id),
+        Division.tenant_id == membership.tenant_id
+    ).first()
+    if not division:
+        raise HTTPException(status_code=404, detail="Division not found")
+    
+    member_count = db.query(Membership).filter(Membership.division_id == division.id).count()
+    
+    return DivisionResponse(
+        id=str(division.id),
+        tenant_id=str(division.tenant_id),
+        parent_division_id=str(division.parent_division_id) if division.parent_division_id else None,
+        code=division.code,
+        name=division.name,
+        description=division.description,
+        head_user_id=str(division.head_user_id) if division.head_user_id else None,
+        is_active=division.is_active or "true",
+        sort_order=division.sort_order or 0,
+        member_count=member_count,
+    )
+
+
+@router.patch("/divisions/{division_id}", response_model=DivisionResponse)
+def update_division(
+    division_id: str,
+    request: UpdateDivisionRequest,
+    db: Session = Depends(DB),
+    current_user: User = Depends(CurrentUser),
+):
+    """Update a division."""
+    from app.models.division import Division
+    
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="No membership found")
+    
+    division = db.query(Division).filter(
+        Division.id == UUID(division_id),
+        Division.tenant_id == membership.tenant_id
+    ).first()
+    if not division:
+        raise HTTPException(status_code=404, detail="Division not found")
+    
+    update_data = request.model_dump(exclude_unset=True)
+    
+    for field, value in update_data.items():
+        if field == "parent_division_id" and value:
+            value = UUID(value)
+        elif field == "head_user_id" and value:
+            value = UUID(value)
+        setattr(division, field, value)
+    
+    db.commit()
+    db.refresh(division)
+    
+    member_count = db.query(Membership).filter(Membership.division_id == division.id).count()
+    
+    return DivisionResponse(
+        id=str(division.id),
+        tenant_id=str(division.tenant_id),
+        parent_division_id=str(division.parent_division_id) if division.parent_division_id else None,
+        code=division.code,
+        name=division.name,
+        description=division.description,
+        head_user_id=str(division.head_user_id) if division.head_user_id else None,
+        is_active=division.is_active or "true",
+        sort_order=division.sort_order or 0,
+        member_count=member_count,
+    )
+
+
+@router.delete("/divisions/{division_id}")
+def delete_division(
+    division_id: str,
+    db: Session = Depends(DB),
+    current_user: User = Depends(CurrentUser),
+):
+    """Delete a division (soft delete)."""
+    from app.models.division import Division
+    
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=404, detail="No membership found")
+    
+    division = db.query(Division).filter(
+        Division.id == UUID(division_id),
+        Division.tenant_id == membership.tenant_id
+    ).first()
+    if not division:
+        raise HTTPException(status_code=404, detail="Division not found")
+    
+    has_children = db.query(Division).filter(Division.parent_division_id == division.id).count() > 0
+    if has_children:
+        raise HTTPException(status_code=400, detail="Cannot delete division with child divisions")
+    
+    division.is_active = "false"
+    db.commit()
+    
+    return {"message": "Division deleted"}
