@@ -40,6 +40,17 @@ export default function OrgSelector() {
     )
   }
 
+  if (organizations.length === 1) {
+    return (
+      <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-primary/10 border border-primary/20 text-primary">
+        <Building2 className="h-4 w-4" />
+        <span className="text-sm font-medium max-w-[150px] truncate">
+          {currentOrg?.name || "Organization"}
+        </span>
+      </div>
+    )
+  }
+
   return (
     <div className="relative">
       <button

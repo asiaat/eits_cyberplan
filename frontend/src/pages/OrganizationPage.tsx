@@ -144,18 +144,18 @@ export default function OrganizationPage() {
       setOrgRegistryCode(tenantRes.data.registry_code || "")
       
       // Load people and users for this org
-      await loadPeopleAndUsers(orgId)
+      await loadPeopleAndUsers()
     } catch (error) {
       console.error("Failed to load org data:", error)
     }
     setLoading(false)
   }
 
-  const loadPeopleAndUsers = async (orgId: string) => {
+  const loadPeopleAndUsers = async (_tenantId?: string) => {
     try {
       const [peopleRes, usersRes, rolesRes] = await Promise.all([
-        apiClient.get(`/organization/people?tenant_id=${orgId}`),
-        apiClient.get(`/organization/users?tenant_id=${orgId}`),
+        apiClient.get("/organization/people"),
+        apiClient.get("/organization/users"),
         apiClient.get("/roles/"),
       ])
       setPeople(peopleRes.data)
@@ -348,7 +348,7 @@ export default function OrganizationPage() {
       
       {/* Org Selector */}
       <div className="flex items-center gap-4 mb-6 p-4 bg-card border rounded">
-        <label className="text-sm font-medium">{t("organization.selectOrg") || "Select Organization:"}</label>
+        <label className="text-sm font-medium">{t("organization.selectOrg.label") || "Select Organization:"}</label>
         <select 
           className="bg-background text-foreground border-input rounded px-3 py-2 min-w-[200px]"
           value={currentOrgId || ""}
