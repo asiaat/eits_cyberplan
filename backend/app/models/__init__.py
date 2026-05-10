@@ -20,6 +20,7 @@ from app.models.evidence import Evidence
 from app.models.evidence_link import EvidenceLink
 from app.models.audit_log import AuditLog
 from app.models.comment import Comment
+from app.models.organization_people import OrganizationPeople
 
 __all__ = [
     "Tenant",
@@ -43,4 +44,5 @@ __all__ = [
     "EvidenceLink",
     "AuditLog",
     "Comment",
+    "OrganizationPeople",
 ]

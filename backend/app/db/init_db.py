@@ -65,6 +65,10 @@ DEFAULT_PERMISSIONS = [
 
     # Audit
     {"id": "audit.view", "code": "audit.view", "name": "View Audit Logs", "description": "View audit logs", "category": "audit"},
+    
+    # Organizations
+    {"id": "organizations.view", "code": "organizations.view", "name": "View Organizations", "description": "View all organizations", "category": "organizations"},
+    {"id": "organizations.create", "code": "organizations.create", "name": "Create Organizations", "description": "Create new organizations", "category": "organizations"},
 ]
 
 ROLE_PERMISSIONS = {
@@ -79,6 +83,7 @@ ROLE_PERMISSIONS = {
         "dashboard.view", "dashboard.export",
         "catalog.view", "mappings.view", "mappings.manage",
         "audit.view",
+        "organizations.view", "organizations.create",
     ],
     "ism": [
         "processes.view", "processes.create", "processes.edit", "processes.delete",
@@ -89,6 +94,7 @@ ROLE_PERMISSIONS = {
         "dashboard.view", "dashboard.export",
         "catalog.view", "mappings.view", "mappings.manage",
         "audit.view",
+        "organizations.view", "organizations.create",
     ],
     "process_owner": [
         "processes.view", "processes.edit",

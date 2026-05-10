@@ -7,11 +7,11 @@ export function usePermission() {
   const hasPermission = useCallback(
     (permissionCode: string): boolean => {
       if (!user) return false
-      if (!user.permissions) return false
 
-      // Admin has all permissions (admin role code)
       const roleCodes = user.roles?.map((r) => r.code) || []
       if (roleCodes.includes("admin")) return true
+
+      if (!user.permissions) return false
 
       return user.permissions.includes(permissionCode)
     },
@@ -25,6 +25,8 @@ export function usePermission() {
       const roleCodes = user.roles?.map((r) => r.code) || []
       if (roleCodes.includes("admin")) return true
 
+      if (!user.permissions) return false
+
       return permissionCodes.some((code) => user.permissions?.includes(code))
     },
     [user]
@@ -36,6 +38,8 @@ export function usePermission() {
 
       const roleCodes = user.roles?.map((r) => r.code) || []
       if (roleCodes.includes("admin")) return true
+
+      if (!user.permissions) return false
 
       return permissionCodes.every((code) => user.permissions?.includes(code))
     },
