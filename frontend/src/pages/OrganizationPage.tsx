@@ -375,10 +375,10 @@ export default function OrganizationPage() {
               {t("organization.details") || "Details"}
             </Button>
             <Button variant={activeSection === "people" ? "default" : "outline"} onClick={() => setActiveSection("people")}>
-              {t("organization.people")}
+              {t("organization.workersTab")}
             </Button>
             <Button variant={activeSection === "users" ? "default" : "outline"} onClick={() => setActiveSection("users")}>
-              {t("organization.cyberplanUsers")}
+              {t("organization.cyberplanUsersTab")}
             </Button>
           </div>
 
@@ -490,7 +490,7 @@ export default function OrganizationPage() {
                       </div>
                     ))}
                     {people.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">{t("organization.noPeople")}</p>
+                      <p className="text-muted-foreground text-center py-4">{t("organization.noWorkers")}</p>
                     )}
                   </div>
                 </CardContent>

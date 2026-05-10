@@ -13,6 +13,7 @@ interface User {
   name: string
   is_active: boolean
   roles: { id: string; code: string; name: string; is_default?: string }[]
+  organizations: { id: string; name: string }[]
 }
 
 interface Role {
@@ -197,6 +198,15 @@ export default function AdminPage() {
                   <div>
                     <div className="font-medium">{user.name}</div>
                     <div className="text-sm text-muted-foreground">{user.email}</div>
+                    {user.organizations && user.organizations.length > 0 && (
+                      <div className="flex gap-1 mt-1">
+                        {user.organizations.map(org => (
+                          <span key={org.id} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
+                            {org.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {user.roles?.map(role => (
