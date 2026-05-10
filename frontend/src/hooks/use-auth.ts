@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react"
 
 const TOKEN_KEY = "access_token"
+const ORG_ID_KEY = "current_org_id"
 const API_BASE = "http://localhost:8000/api/v1"
 
 export interface UserRole {
@@ -18,10 +19,17 @@ export interface User {
   permissions: string[]
 }
 
+export interface Organization {
+  id: string
+  name: string
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
 
   const fetchUser = useCallback(async (token: string) => {
     try {
@@ -41,14 +49,38 @@ export function useAuth() {
     }
   }, [])
 
+  const fetchOrganizations = useCallback(async (token: string) => {
+    try {
+      const res = await fetch(`${API_BASE}/tenants/my-organizations`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (res.ok) {
+        const orgs = await res.json()
+        setOrganizations(orgs)
+        return orgs
+      }
+    } catch (error) {
+      console.error("Failed to fetch organizations:", error)
+    }
+    return []
+  }, [])
+
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY)
     if (token) {
-      fetchUser(token).finally(() => setLoading(false))
+      fetchUser(token).then(() => {
+        fetchOrganizations(token).then((orgs) => {
+          const storedOrgId = localStorage.getItem(ORG_ID_KEY)
+          if (storedOrgId && orgs.some((o: Organization) => o.id === storedOrgId)) {
+            setSelectedOrgId(storedOrgId)
+          }
+          setLoading(false)
+        })
+      })
     } else {
       setLoading(false)
     }
-  }, [fetchUser])
+  }, [fetchUser, fetchOrganizations])
 
   const login = async (email: string, password: string) => {
     const formData = new URLSearchParams()
@@ -83,7 +115,20 @@ export function useAuth() {
     setIsAuthenticated(true)
     localStorage.setItem("user_permissions", JSON.stringify(userData.permissions || []))
     localStorage.setItem("user_roles", JSON.stringify(userData.roles || []))
+
+    const orgs = await fetchOrganizations(token)
+    if (orgs.length > 0) {
+      if (orgs.length === 1) {
+        localStorage.setItem(ORG_ID_KEY, orgs[0].id)
+        setSelectedOrgId(orgs[0].id)
+      }
+    }
   }
+
+  const selectOrg = useCallback((orgId: string) => {
+    localStorage.setItem(ORG_ID_KEY, orgId)
+    setSelectedOrgId(orgId)
+  }, [])
 
   const logout = async () => {
     try {
@@ -93,12 +138,15 @@ export function useAuth() {
       })
     } finally {
       localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(ORG_ID_KEY)
       localStorage.removeItem("user_permissions")
       localStorage.removeItem("user_roles")
       setUser(null)
       setIsAuthenticated(false)
+      setOrganizations([])
+      setSelectedOrgId(null)
     }
   }
 
-  return { user, isAuthenticated, loading, login, logout }
+  return { user, isAuthenticated, loading, login, logout, organizations, selectedOrgId, selectOrg }
 }

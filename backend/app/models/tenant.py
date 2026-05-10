@@ -44,3 +44,4 @@ class Tenant(Base):
     audit_logs = relationship("AuditLog", back_populates="tenant")
     comments = relationship("Comment", back_populates="tenant")
     child_tenants = relationship("Tenant", backref="parent", remote_side=[id])
+    person_organizations = relationship("PersonOrganization", back_populates="tenant")
