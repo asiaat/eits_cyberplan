@@ -20,7 +20,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
-  UserCog,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 

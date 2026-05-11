@@ -1,10 +1,10 @@
-"""Persons API endpoints - Global People Directory."""
+"""Persons API endpoints - Tenant-scoped People Directory."""
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import DB, CurrentUser
 from app.models.user import User
@@ -13,283 +13,367 @@ from app.models.person import Person, PersonOrganization
 from app.models.tenant import Tenant
 from app.models.asset import Asset
 from app.models.role import Role
+from app.core.permissions import has_permission
 
 router = APIRouter()
 
 
 class PersonResponse(BaseModel):
     id: str
+    national_id: Optional[str] = None
+    first_name: str
+    last_name: str
     name: str
+    date_of_birth: Optional[str] = None
     email: Optional[str] = None
-    position: Optional[str] = None
     phone: Optional[str] = None
-    notes: Optional[str] = None
+    additional_info: Optional[str] = None
     organizations: List[dict] = []
     has_user_account: bool = False
     user_roles: List[dict] = []
+    linked_org_ids: List[str] = []
 
     model_config = {"from_attributes": True}
 
 
 class PersonCreate(BaseModel):
-    name: str
+    national_id: Optional[str] = None
+    first_name: str
+    last_name: str
+    date_of_birth: Optional[str] = None
     email: Optional[str] = None
-    position: Optional[str] = None
     phone: Optional[str] = None
-    notes: Optional[str] = None
+    additional_info: Optional[str] = None
 
 
 class PersonUpdate(BaseModel):
-    name: Optional[str] = None
+    national_id: Optional[str] = None
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    date_of_birth: Optional[str] = None
     email: Optional[str] = None
-    position: Optional[str] = None
     phone: Optional[str] = None
-    notes: Optional[str] = None
+    additional_info: Optional[str] = None
 
 
 class OrganizationLinkCreate(BaseModel):
-    tenant_id: str
     role: Optional[str] = None
-
-
-def get_user_roles(db: Session, user: User) -> List[dict]:
-    memberships = db.query(Membership).filter(Membership.user_id == user.id).all()
-    roles = []
-    for m in memberships:
-        role = db.query(Role).filter(Role.id == m.role_id).first()
-        if role:
-            roles.append({"id": role.id, "code": role.code, "name": role.name, "is_default": role.is_default})
-    return roles
-
-
-def is_admin_or_ism(db: DB, current_user: CurrentUser) -> bool:
-    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
-    if not membership:
-        return False
-    role = db.query(Role).filter(Role.id == membership.role_id).first()
-    if not role:
-        return False
-    return role.code in ["admin", "ism"]
 
 
 @router.get("/", response_model=List[PersonResponse])
 def list_persons(db: DB, current_user: CurrentUser, search: Optional[str] = None):
-    """List all persons in the global directory."""
-    query = db.query(Person).order_by(Person.name)
-    
+    """List all persons in the current user's tenant (cluster)."""
+    user_membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not user_membership:
+        return []
+    tenant_id = user_membership.tenant_id
+
+    query = db.query(Person).order_by(Person.last_name, Person.first_name)
+
     if search:
-        query = query.filter(Person.name.ilike(f"%{search}%"))
-    
+        search_filter = f"%{search}%"
+        query = query.filter(
+            (Person.first_name.ilike(search_filter)) |
+            (Person.last_name.ilike(search_filter)) |
+            (Person.national_id.ilike(search_filter)) |
+            (Person.email.ilike(search_filter))
+        )
+
     persons = query.all()
-    
+    person_ids = [p.id for p in persons]
+
+    person_org_links = db.query(PersonOrganization).filter(
+        PersonOrganization.person_id.in_(person_ids)
+    ).all() if person_ids else []
+
+    org_ids = {link.tenant_id for link in person_org_links}
+    tenants = {t.id: t for t in db.query(Tenant).filter(Tenant.id.in_(org_ids)).all()} if org_ids else {}
+
+    links_by_person = {}
+    for link in person_org_links:
+        links_by_person.setdefault(link.person_id, []).append(link)
+
+    linked_org_ids_by_person = {}
+    for link in person_org_links:
+        linked_org_ids_by_person.setdefault(link.person_id, set()).add(str(link.tenant_id))
+
+    assets = db.query(Asset).filter(
+        Asset.person_id.in_(person_ids),
+        Asset.owner_user_id.isnot(None)
+    ).all() if person_ids else []
+
+    owner_user_ids = {a.owner_user_id for a in assets if a.owner_user_id}
+    user_memberships = db.query(Membership).options(
+        selectinload(Membership.role)
+    ).filter(Membership.user_id.in_(owner_user_ids)).all() if owner_user_ids else []
+
+    memberships_by_user = {}
+    for m in user_memberships:
+        memberships_by_user.setdefault(m.user_id, []).append(m)
+
+    assets_by_owner = {a.owner_user_id: a for a in assets}
+
     result = []
     for person in persons:
-        org_links = db.query(PersonOrganization).filter(PersonOrganization.person_id == person.id).all()
+        person_links = links_by_person.get(person.id, [])
         orgs = []
-        for link in org_links:
-            tenant = db.query(Tenant).filter(Tenant.id == link.tenant_id).first()
+        for link in person_links:
+            tenant = tenants.get(link.tenant_id)
             if tenant:
-                orgs.append({"tenant_id": str(link.tenant_id), "tenant_name": tenant.name, "role": link.role})
-        
-        has_user = False
+                orgs.append({
+                    "tenant_id": str(link.tenant_id),
+                    "tenant_name": tenant.name,
+                    "role": link.role
+                })
+
+        asset = assets_by_owner.get(person.id)
+        has_user = asset is not None
         user_roles = []
-        asset = db.query(Asset).filter(Asset.person_id == person.id).first()
-        if asset and asset.owner_user_id:
-            user = db.query(User).filter(User.id == asset.owner_user_id).first()
-            if user:
-                has_user = True
-                user_roles = get_user_roles(db, user)
-        
+        if has_user:
+            for m in memberships_by_user.get(person.id, []):
+                if m.role:
+                    user_roles.append({
+                        "id": m.role.id,
+                        "code": m.role.code,
+                        "name": m.role.name,
+                        "is_default": m.role.is_default,
+                    })
+
         result.append(PersonResponse(
             id=str(person.id),
+            national_id=person.national_id,
+            first_name=person.first_name,
+            last_name=person.last_name,
             name=person.name,
+            date_of_birth=str(person.date_of_birth) if person.date_of_birth else None,
             email=person.email,
-            position=person.position,
             phone=person.phone,
-            notes=person.notes,
+            additional_info=person.additional_info,
             organizations=orgs,
             has_user_account=has_user,
-            user_roles=user_roles
+            user_roles=user_roles,
+            linked_org_ids=list(linked_org_ids_by_person.get(person.id, set())),
         ))
-    
+
     return result
 
 
 @router.post("/", response_model=PersonResponse)
 def create_person(db: DB, current_user: CurrentUser, data: PersonCreate):
-    """Create a new person in the global directory."""
-    if not is_admin_or_ism(db, current_user):
-        raise HTTPException(status_code=403, detail="Only admins and ISM can manage persons")
-    
+    """Create a new person in the current user's tenant."""
+    if not has_permission(db, current_user, "people.create"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    user_membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not user_membership:
+        raise HTTPException(status_code=403, detail="No tenant membership")
+
     from uuid import uuid4
+
     person = Person(
         id=uuid4(),
-        name=data.name,
+        national_id=data.national_id,
+        first_name=data.first_name,
+        last_name=data.last_name,
+        date_of_birth=data.date_of_birth,
         email=data.email,
-        position=data.position,
         phone=data.phone,
-        notes=data.notes
+        additional_info=data.additional_info,
     )
     db.add(person)
     db.commit()
     db.refresh(person)
-    
+
     return PersonResponse(
         id=str(person.id),
+        national_id=person.national_id,
+        first_name=person.first_name,
+        last_name=person.last_name,
         name=person.name,
+        date_of_birth=str(person.date_of_birth) if person.date_of_birth else None,
         email=person.email,
-        position=person.position,
         phone=person.phone,
-        notes=person.notes,
+        additional_info=person.additional_info,
         organizations=[],
         has_user_account=False,
-        user_roles=[]
+        user_roles=[],
+        linked_org_ids=[],
     )
 
 
 @router.get("/{person_id}", response_model=PersonResponse)
 def get_person(db: DB, current_user: CurrentUser, person_id: str):
     """Get a specific person."""
+    user_membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not user_membership:
+        raise HTTPException(status_code=403, detail="No tenant membership")
+    tenant_id = user_membership.tenant_id
+
     person = db.query(Person).filter(Person.id == UUID(person_id)).first()
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
-    
-    org_links = db.query(PersonOrganization).filter(PersonOrganization.person_id == person.id).all()
+
+    person_links = db.query(PersonOrganization).filter(
+        PersonOrganization.person_id == person.id
+    ).all()
+
     orgs = []
-    for link in org_links:
+    for link in person_links:
         tenant = db.query(Tenant).filter(Tenant.id == link.tenant_id).first()
         if tenant:
-            orgs.append({"tenant_id": str(link.tenant_id), "tenant_name": tenant.name, "role": link.role})
-    
-    has_user = False
-    user_roles = []
+            orgs.append({
+                "tenant_id": str(link.tenant_id),
+                "tenant_name": tenant.name,
+                "role": link.role
+            })
+
     asset = db.query(Asset).filter(Asset.person_id == person.id).first()
-    if asset and asset.owner_user_id:
-        user = db.query(User).filter(User.id == asset.owner_user_id).first()
-        if user:
-            has_user = True
-            user_roles = get_user_roles(db, user)
-    
+    has_user = asset is not None and asset.owner_user_id is not None
+    user_roles = []
+
+    if has_user:
+        memberships = db.query(Membership).options(
+            selectinload(Membership.role)
+        ).filter(Membership.user_id == asset.owner_user_id).all()
+        for m in memberships:
+            if m.role:
+                user_roles.append({
+                    "id": m.role.id,
+                    "code": m.role.code,
+                    "name": m.role.name,
+                    "is_default": m.role.is_default,
+                })
+
     return PersonResponse(
         id=str(person.id),
+        national_id=person.national_id,
+        first_name=person.first_name,
+        last_name=person.last_name,
         name=person.name,
+        date_of_birth=str(person.date_of_birth) if person.date_of_birth else None,
         email=person.email,
-        position=person.position,
         phone=person.phone,
-        notes=person.notes,
+        additional_info=person.additional_info,
         organizations=orgs,
         has_user_account=has_user,
-        user_roles=user_roles
+        user_roles=user_roles,
+        linked_org_ids=[str(link.tenant_id) for link in person_links],
     )
 
 
 @router.patch("/{person_id}", response_model=PersonResponse)
 def update_person(db: DB, current_user: CurrentUser, person_id: str, data: PersonUpdate):
     """Update a person."""
-    if not is_admin_or_ism(db, current_user):
-        raise HTTPException(status_code=403, detail="Only admins and ISM can manage persons")
-    
+    if not has_permission(db, current_user, "people.edit"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
     person = db.query(Person).filter(Person.id == UUID(person_id)).first()
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
-    
-    if data.name is not None:
-        person.name = data.name
+
+    if data.national_id is not None:
+        person.national_id = data.national_id
+    if data.first_name is not None:
+        person.first_name = data.first_name
+    if data.last_name is not None:
+        person.last_name = data.last_name
+    if data.date_of_birth is not None:
+        person.date_of_birth = data.date_of_birth
     if data.email is not None:
         person.email = data.email
-    if data.position is not None:
-        person.position = data.position
     if data.phone is not None:
         person.phone = data.phone
-    if data.notes is not None:
-        person.notes = data.notes
-    
+    if data.additional_info is not None:
+        person.additional_info = data.additional_info
+
     db.commit()
     db.refresh(person)
-    
-    org_links = db.query(PersonOrganization).filter(PersonOrganization.person_id == person.id).all()
+
+    person_links = db.query(PersonOrganization).filter(
+        PersonOrganization.person_id == person.id
+    ).all()
     orgs = []
-    for link in org_links:
+    for link in person_links:
         tenant = db.query(Tenant).filter(Tenant.id == link.tenant_id).first()
         if tenant:
-            orgs.append({"tenant_id": str(link.tenant_id), "tenant_name": tenant.name, "role": link.role})
-    
-    has_user = False
-    user_roles = []
+            orgs.append({
+                "tenant_id": str(link.tenant_id),
+                "tenant_name": tenant.name,
+                "role": link.role
+            })
+
     asset = db.query(Asset).filter(Asset.person_id == person.id).first()
-    if asset and asset.owner_user_id:
-        user = db.query(User).filter(User.id == asset.owner_user_id).first()
-        if user:
-            has_user = True
-            user_roles = get_user_roles(db, user)
-    
+    has_user = asset is not None and asset.owner_user_id is not None
+    user_roles = []
+
+    if has_user:
+        memberships = db.query(Membership).options(
+            selectinload(Membership.role)
+        ).filter(Membership.user_id == asset.owner_user_id).all()
+        for m in memberships:
+            if m.role:
+                user_roles.append({
+                    "id": m.role.id,
+                    "code": m.role.code,
+                    "name": m.role.name,
+                    "is_default": m.role.is_default,
+                })
+
     return PersonResponse(
         id=str(person.id),
+        national_id=person.national_id,
+        first_name=person.first_name,
+        last_name=person.last_name,
         name=person.name,
+        date_of_birth=str(person.date_of_birth) if person.date_of_birth else None,
         email=person.email,
-        position=person.position,
         phone=person.phone,
-        notes=person.notes,
+        additional_info=person.additional_info,
         organizations=orgs,
         has_user_account=has_user,
-        user_roles=user_roles
+        user_roles=user_roles,
+        linked_org_ids=[str(link.tenant_id) for link in person_links],
     )
 
 
 @router.delete("/{person_id}")
 def delete_person(db: DB, current_user: CurrentUser, person_id: str):
     """Delete a person."""
-    if not is_admin_or_ism(db, current_user):
-        raise HTTPException(status_code=403, detail="Only admins and ISM can manage persons")
-    
+    if not has_permission(db, current_user, "people.delete"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
     person = db.query(Person).filter(Person.id == UUID(person_id)).first()
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
-    
+
     db.query(PersonOrganization).filter(PersonOrganization.person_id == person.id).delete()
     db.query(Asset).filter(Asset.person_id == person.id).delete()
     db.delete(person)
     db.commit()
-    
+
     return {"message": "Person deleted"}
-
-
-@router.get("/{person_id}/organizations", response_model=List[dict])
-def get_person_organizations(db: DB, current_user: CurrentUser, person_id: str):
-    """Get organizations a person is linked to."""
-    person = db.query(Person).filter(Person.id == UUID(person_id)).first()
-    if not person:
-        raise HTTPException(status_code=404, detail="Person not found")
-    
-    org_links = db.query(PersonOrganization).filter(PersonOrganization.person_id == person.id).all()
-    result = []
-    for link in org_links:
-        tenant = db.query(Tenant).filter(Tenant.id == link.tenant_id).first()
-        if tenant:
-            result.append({"tenant_id": str(link.tenant_id), "tenant_name": tenant.name, "role": link.role})
-    
-    return result
 
 
 @router.post("/{person_id}/organizations", response_model=dict)
 def link_person_to_organization(db: DB, current_user: CurrentUser, person_id: str, data: OrganizationLinkCreate):
-    """Link a person to an organization."""
-    if not is_admin_or_ism(db, current_user):
-        raise HTTPException(status_code=403, detail="Only admins and ISM can manage persons")
-    
+    """Link a person to the current user's organization."""
+    if not has_permission(db, current_user, "people.edit"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    user_membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not user_membership:
+        raise HTTPException(status_code=403, detail="No tenant membership")
+    tenant_id = user_membership.tenant_id
+
     person = db.query(Person).filter(Person.id == UUID(person_id)).first()
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
-    
-    tenant = db.query(Tenant).filter(Tenant.id == UUID(data.tenant_id)).first()
-    if not tenant:
-        raise HTTPException(status_code=404, detail="Organization not found")
-    
+
     existing = db.query(PersonOrganization).filter(
         PersonOrganization.person_id == person.id,
-        PersonOrganization.tenant_id == UUID(data.tenant_id)
+        PersonOrganization.tenant_id == tenant_id
     ).first()
-    
+
     if existing:
         existing.role = data.role
         db.commit()
@@ -298,69 +382,30 @@ def link_person_to_organization(db: DB, current_user: CurrentUser, person_id: st
         link = PersonOrganization(
             id=uuid4(),
             person_id=person.id,
-            tenant_id=UUID(data.tenant_id),
+            tenant_id=tenant_id,
             role=data.role
         )
         db.add(link)
         db.commit()
-    
-    return {"message": "Person linked to organization", "tenant_id": data.tenant_id, "role": data.role}
+
+    return {"message": "Person linked to organization", "tenant_id": str(tenant_id), "role": data.role}
 
 
 @router.delete("/{person_id}/organizations/{tenant_id}")
 def unlink_person_from_organization(db: DB, current_user: CurrentUser, person_id: str, tenant_id: str):
     """Unlink a person from an organization."""
-    if not is_admin_or_ism(db, current_user):
-        raise HTTPException(status_code=403, detail="Only admins and ISM can manage persons")
-    
+    if not has_permission(db, current_user, "people.edit"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
     link = db.query(PersonOrganization).filter(
         PersonOrganization.person_id == UUID(person_id),
         PersonOrganization.tenant_id == UUID(tenant_id)
     ).first()
-    
+
     if not link:
         raise HTTPException(status_code=404, detail="Link not found")
-    
+
     db.delete(link)
     db.commit()
-    
+
     return {"message": "Person unlinked from organization"}
-
-
-@router.get("/organizations/{tenant_id}", response_model=List[PersonResponse])
-def list_persons_by_organization(db: DB, current_user: CurrentUser, tenant_id: str):
-    """List all persons linked to a specific organization."""
-    org_links = db.query(PersonOrganization).filter(PersonOrganization.tenant_id == UUID(tenant_id)).all()
-    person_ids = [link.person_id for link in org_links]
-    
-    if not person_ids:
-        return []
-    
-    persons = db.query(Person).filter(Person.id.in_(person_ids)).order_by(Person.name).all()
-    
-    result = []
-    for person in persons:
-        link = next((l for l in org_links if l.person_id == person.id), None)
-        
-        has_user = False
-        user_roles = []
-        asset = db.query(Asset).filter(Asset.person_id == person.id).first()
-        if asset and asset.owner_user_id:
-            user = db.query(User).filter(User.id == asset.owner_user_id).first()
-            if user:
-                has_user = True
-                user_roles = get_user_roles(db, user)
-        
-        result.append(PersonResponse(
-            id=str(person.id),
-            name=person.name,
-            email=person.email,
-            position=person.position,
-            phone=person.phone,
-            notes=person.notes,
-            organizations=[{"tenant_id": tenant_id, "tenant_name": "", "role": link.role if link else None}],
-            has_user_account=has_user,
-            user_roles=user_roles
-        ))
-    
-    return result
