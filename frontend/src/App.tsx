@@ -17,7 +17,7 @@ import AuditViewPage from "@/pages/AuditViewPage"
 import AdminPage from "@/pages/AdminPage"
 import TerminologyPage from "@/pages/TerminologyPage"
 import OrganizationPage from "@/pages/OrganizationPage"
-import PeoplePage from "@/pages/PeoplePage"
+import SupportPeoplePage from "@/pages/SupportPeoplePage"
 import AlertsPage from "@/pages/AlertsPage"
 import SettingsPage from "@/pages/SettingsPage"
 
@@ -137,10 +137,10 @@ export default function App() {
                 }
               />
               <Route
-                path="/people"
+                path="/support/people"
                 element={
                   <ProtectedRoute>
-                    <PeoplePage />
+                    <SupportPeoplePage />
                   </ProtectedRoute>
                 }
               />

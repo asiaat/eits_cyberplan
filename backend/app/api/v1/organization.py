@@ -13,6 +13,7 @@ from app.models.membership import Membership
 from app.models.role import Role
 from app.models.person import Person, PersonOrganization
 from app.core.security import get_password_hash
+from app.core.permissions import has_permission
 
 router = APIRouter()
 
@@ -155,6 +156,9 @@ def list_people(db: DB, current_user: CurrentUser, include_all: bool = False, te
 @router.post("/people", response_model=PersonAssetResponse)
 def create_worker(db: DB, current_user: CurrentUser, data: CreateWorkerRequest):
     """Create a worker by linking an existing Person to the current organization."""
+    if not has_permission(db, current_user, "people.view"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
     from uuid import uuid4
 
     membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
@@ -212,18 +216,6 @@ def create_worker(db: DB, current_user: CurrentUser, data: CreateWorkerRequest):
         user_roles=[],
         person_id=str(person.id),
         linked=True,
-    )
-    db.add(asset)
-    db.commit()
-    db.refresh(asset)
-    
-    return PersonAssetResponse(
-        id=str(asset.id),
-        name=asset.name,
-        email=data.email,
-        description=asset.description,
-        has_user_account=False,
-        user_roles=[]
     )
 
 
@@ -322,8 +314,8 @@ def create_user_from_person(db: DB, current_user: CurrentUser, asset_id: str, da
     if not asset:
         raise HTTPException(status_code=404, detail="Person asset not found")
     
-    if asset.asset_type != "person":
-        raise HTTPException(status_code=400, detail="Asset is not a person type")
+    if not asset.person_id:
+        raise HTTPException(status_code=400, detail="Asset is not linked to a person")
     
     if asset.owner_user_id:
         raise HTTPException(status_code=400, detail="Person already has a user account")

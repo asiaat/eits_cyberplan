@@ -338,13 +338,23 @@ def update_person(db: DB, current_user: CurrentUser, person_id: str, data: Perso
 
 @router.delete("/{person_id}")
 def delete_person(db: DB, current_user: CurrentUser, person_id: str):
-    """Delete a person."""
+    """Delete a person. Fails if person has any worker assets (referential integrity)."""
     if not has_permission(db, current_user, "people.delete"):
         raise HTTPException(status_code=403, detail="Permission denied")
 
     person = db.query(Person).filter(Person.id == UUID(person_id)).first()
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
+
+    worker_assets = db.query(Asset).filter(
+        Asset.person_id == person.id,
+        Asset.asset_type == "worker"
+    ).count()
+    if worker_assets > 0:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete person: {worker_assets} worker(s) still linked. Unlink them first."
+        )
 
     db.query(PersonOrganization).filter(PersonOrganization.person_id == person.id).delete()
     db.query(Asset).filter(Asset.person_id == person.id).delete()
@@ -356,7 +366,7 @@ def delete_person(db: DB, current_user: CurrentUser, person_id: str):
 
 @router.post("/{person_id}/organizations", response_model=dict)
 def link_person_to_organization(db: DB, current_user: CurrentUser, person_id: str, data: OrganizationLinkCreate):
-    """Link a person to the current user's organization."""
+    """Link a person to the current user's organization. Creates both PersonOrganization and Asset (worker)."""
     if not has_permission(db, current_user, "people.edit"):
         raise HTTPException(status_code=403, detail="Permission denied")
 
@@ -369,31 +379,67 @@ def link_person_to_organization(db: DB, current_user: CurrentUser, person_id: st
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
 
-    existing = db.query(PersonOrganization).filter(
-        PersonOrganization.person_id == person.id,
-        PersonOrganization.tenant_id == tenant_id
+    existing_asset = db.query(Asset).filter(
+        Asset.person_id == person.id,
+        Asset.tenant_id == tenant_id,
+        Asset.asset_type == "worker"
     ).first()
+    if existing_asset:
+        if data.role is not None:
+            existing_asset.name = person.name
+            existing_asset.description = person.email
+        if data.role is not None:
+            person_org = db.query(PersonOrganization).filter(
+                PersonOrganization.person_id == person.id,
+                PersonOrganization.tenant_id == tenant_id
+            ).first()
+            if person_org:
+                person_org.role = data.role
+            else:
+                from uuid import uuid4
+                po = PersonOrganization(id=uuid4(), person_id=person.id, tenant_id=tenant_id, role=data.role)
+                db.add(po)
+        db.commit()
+        return {"message": "Person already linked, updated", "tenant_id": str(tenant_id), "role": data.role}
 
-    if existing:
-        existing.role = data.role
-        db.commit()
+    from uuid import uuid4
+
+    if data.role is not None:
+        person_org = db.query(PersonOrganization).filter(
+            PersonOrganization.person_id == person.id,
+            PersonOrganization.tenant_id == tenant_id
+        ).first()
+        if person_org:
+            person_org.role = data.role
+        else:
+            po = PersonOrganization(id=uuid4(), person_id=person.id, tenant_id=tenant_id, role=data.role)
+            db.add(po)
     else:
-        from uuid import uuid4
-        link = PersonOrganization(
-            id=uuid4(),
-            person_id=person.id,
-            tenant_id=tenant_id,
-            role=data.role
-        )
-        db.add(link)
-        db.commit()
+        existing_po = db.query(PersonOrganization).filter(
+            PersonOrganization.person_id == person.id,
+            PersonOrganization.tenant_id == tenant_id
+        ).first()
+        if not existing_po:
+            po = PersonOrganization(id=uuid4(), person_id=person.id, tenant_id=tenant_id, role=None)
+            db.add(po)
+
+    asset = Asset(
+        id=uuid4(),
+        tenant_id=tenant_id,
+        name=person.name,
+        asset_type="worker",
+        description=person.email,
+        person_id=person.id,
+    )
+    db.add(asset)
+    db.commit()
 
     return {"message": "Person linked to organization", "tenant_id": str(tenant_id), "role": data.role}
 
 
 @router.delete("/{person_id}/organizations/{tenant_id}")
 def unlink_person_from_organization(db: DB, current_user: CurrentUser, person_id: str, tenant_id: str):
-    """Unlink a person from an organization."""
+    """Unlink a person from an organization. Removes both PersonOrganization and the worker Asset."""
     if not has_permission(db, current_user, "people.edit"):
         raise HTTPException(status_code=403, detail="Permission denied")
 
@@ -404,6 +450,12 @@ def unlink_person_from_organization(db: DB, current_user: CurrentUser, person_id
 
     if not link:
         raise HTTPException(status_code=404, detail="Link not found")
+
+    db.query(Asset).filter(
+        Asset.person_id == UUID(person_id),
+        Asset.tenant_id == UUID(tenant_id),
+        Asset.asset_type == "worker"
+    ).delete()
 
     db.delete(link)
     db.commit()

@@ -62,6 +62,7 @@ function getNavSections(t: (key: string) => string): NavSection[] {
         { path: "/audit", label: t("nav.auditView"), icon: Shield },
         { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
         { path: "/organization", label: t("nav.organization"), icon: Users },
+        { path: "/support/people", label: t("nav.supportPeople"), icon: Users },
       ]
     },
   ]
