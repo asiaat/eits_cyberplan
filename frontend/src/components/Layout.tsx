@@ -19,7 +19,8 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
-  Users,
+  Building2,
+  UserCog,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -61,8 +62,8 @@ function getNavSections(t: (key: string) => string): NavSection[] {
       items: [
         { path: "/audit", label: t("nav.auditView"), icon: Shield },
         { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
-        { path: "/organization", label: t("nav.organization"), icon: Users },
-        { path: "/support/people", label: t("nav.supportPeople"), icon: Users },
+        { path: "/organization", label: t("nav.organization"), icon: Building2 },
+        { path: "/support/people", label: t("nav.supportPeople"), icon: UserCog },
       ]
     },
   ]
