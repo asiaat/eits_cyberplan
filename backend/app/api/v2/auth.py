@@ -38,6 +38,7 @@ class UserResponse(BaseModel):
     tenant_id: str
     organizations: list[str] = []
     mfa_enabled: bool = False
+    roles: list[dict] = []
 
 
 class RegisterRequest(BaseModel):
@@ -249,13 +250,25 @@ def read_users_me_v2(db: DB, current_user: LocalUser = CurrentUserV2):
     memberships = db.query(Membership).filter(Membership.user_id == current_user.global_user_id).all()
     organizations = [str(m.tenant_id) for m in memberships if m.tenant_id]
     
+    # Get user's E-ITS roles
+    from app.models.local_user import EITSRole, UserRole
+    user_roles = db.query(UserRole).filter(UserRole.user_id == current_user.id).all()
+    role_ids = [ur.role_id for ur in user_roles]
+    roles = db.query(EITSRole).filter(EITSRole.id.in_(role_ids)).all() if role_ids else []
+    
+    roles_data = [
+        {"id": str(r.id), "role_name": r.role_name, "description": r.description}
+        for r in roles
+    ]
+    
     return UserResponse(
         id=str(current_user.id),
         email=global_user.email,
         full_name=current_user.full_name,
         tenant_id=str(current_user.tenant_id),
         organizations=organizations,
-        mfa_enabled=global_user.mfa_enabled or False
+        mfa_enabled=global_user.mfa_enabled or False,
+        roles=roles_data
     )
 
 

@@ -1,20 +1,25 @@
 import { useState, useEffect, useCallback } from "react"
 
 const TOKEN_KEY = "access_token"
+const TENANT_ID_KEY = "tenant_id"
 const ORG_ID_KEY = "current_org_id"
-const API_BASE = "http://localhost:8000/api/v1"
+const API_BASE = "http://localhost:8000/api/v2"
 
 export interface UserRole {
   id: string
   code: string
-  name: string
+  role_name: string
+  description?: string
 }
 
 export interface User {
   id: string
   email: string
   name: string
-  is_active: boolean
+  full_name: string
+  tenant_id: string
+  organizations: string[]
+  mfa_enabled: boolean
   roles: UserRole[]
   permissions: string[]
 }
@@ -29,30 +34,45 @@ export function useAuth() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [loading, setLoading] = useState(true)
   const [organizations, setOrganizations] = useState<Organization[]>([])
+  const [tenantId, setTenantId] = useState<string | null>(null)
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null)
 
-  const fetchUser = useCallback(async (token: string) => {
+  const fetchUser = useCallback(async (token: string, tenantIdForFetch?: string) => {
     try {
+      const tenantIdToUse = tenantIdForFetch || localStorage.getItem(TENANT_ID_KEY) || ""
       const res = await fetch(`${API_BASE}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Tenant-ID": tenantIdToUse,
+        },
       })
       if (!res.ok) throw new Error("Unauthorized")
       const data = await res.json()
-      setUser(data)
+      
+      const enrichedData = {
+        ...data,
+        name: data.full_name,
+        permissions: data.roles?.map((r: UserRole) => r.role_name) || [],
+      }
+      
+      setUser(enrichedData)
       setIsAuthenticated(true)
-      localStorage.setItem("user_permissions", JSON.stringify(data.permissions || []))
+      localStorage.setItem("user_email", data.email || "")
+      localStorage.setItem("user_full_name", data.full_name || "")
       localStorage.setItem("user_roles", JSON.stringify(data.roles || []))
     } catch {
       localStorage.removeItem(TOKEN_KEY)
-      localStorage.removeItem("user_permissions")
-      localStorage.removeItem("user_roles")
+      localStorage.removeItem(TENANT_ID_KEY)
     }
   }, [])
 
-  const fetchOrganizations = useCallback(async (token: string) => {
+  const fetchOrganizations = useCallback(async (token: string, currentTenantId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/tenants/my-organizations`, {
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await fetch(`${API_BASE}/organizations`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Tenant-ID": currentTenantId,
+        },
       })
       if (res.ok) {
         const orgs = await res.json()
@@ -67,13 +87,14 @@ export function useAuth() {
 
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY)
-    if (token) {
-      fetchUser(token).then(() => {
-        fetchOrganizations(token).then((orgs) => {
-          const storedOrgId = localStorage.getItem(ORG_ID_KEY)
-          if (storedOrgId && orgs.some((o: Organization) => o.id === storedOrgId)) {
-            setSelectedOrgId(storedOrgId)
-          }
+    const storedTenantId = localStorage.getItem(TENANT_ID_KEY)
+    const storedOrgId = localStorage.getItem(ORG_ID_KEY)
+    
+    if (token && storedTenantId) {
+      setTenantId(storedTenantId)
+      setSelectedOrgId(storedOrgId)
+      fetchUser(token, storedTenantId).then(() => {
+        fetchOrganizations(token, storedTenantId).then(() => {
           setLoading(false)
         })
       })
@@ -111,17 +132,59 @@ export function useAuth() {
     }
 
     const userData = await userRes.json()
-    setUser(userData)
+    
+    localStorage.setItem(TENANT_ID_KEY, userData.tenant_id)
+    setTenantId(userData.tenant_id)
+    
+    const enrichedUserData = {
+      ...userData,
+      name: userData.full_name,
+      permissions: userData.roles?.map((r: UserRole) => r.role_name) || [],
+    }
+    
+    setUser(enrichedUserData)
     setIsAuthenticated(true)
-    localStorage.setItem("user_permissions", JSON.stringify(userData.permissions || []))
+    localStorage.setItem("user_email", userData.email || "")
+    localStorage.setItem("user_full_name", userData.full_name || "")
     localStorage.setItem("user_roles", JSON.stringify(userData.roles || []))
 
-    const orgs = await fetchOrganizations(token)
-    if (orgs.length > 0) {
-      if (orgs.length === 1) {
+    const orgRes = await fetch(`${API_BASE}/organizations`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Tenant-ID": userData.tenant_id,
+      },
+    })
+    if (orgRes.ok) {
+      const orgs = await orgRes.json()
+      setOrganizations(orgs)
+      if (orgs.length > 0) {
         localStorage.setItem(ORG_ID_KEY, orgs[0].id)
         setSelectedOrgId(orgs[0].id)
       }
+    }
+  }
+
+  const logout = async () => {
+    try {
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: "POST",
+        headers: { 
+          Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}`,
+          "X-Tenant-ID": localStorage.getItem(TENANT_ID_KEY) || "",
+        },
+      })
+    } finally {
+      localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(TENANT_ID_KEY)
+      localStorage.removeItem(ORG_ID_KEY)
+      localStorage.removeItem("user_email")
+      localStorage.removeItem("user_full_name")
+      localStorage.removeItem("user_roles")
+      setUser(null)
+      setIsAuthenticated(false)
+      setOrganizations([])
+      setTenantId(null)
+      setSelectedOrgId(null)
     }
   }
 
@@ -130,23 +193,44 @@ export function useAuth() {
     setSelectedOrgId(orgId)
   }, [])
 
-  const logout = async () => {
-    try {
-      await fetch(`${API_BASE}/auth/logout`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}` },
-      })
-    } finally {
-      localStorage.removeItem(TOKEN_KEY)
-      localStorage.removeItem(ORG_ID_KEY)
-      localStorage.removeItem("user_permissions")
-      localStorage.removeItem("user_roles")
-      setUser(null)
-      setIsAuthenticated(false)
-      setOrganizations([])
-      setSelectedOrgId(null)
-    }
-  }
+  const switchTenant = useCallback(async (newTenantId: string) => {
+    const token = localStorage.getItem(TOKEN_KEY)
+    if (!token) return
 
-  return { user, isAuthenticated, loading, login, logout, organizations, selectedOrgId, selectOrg }
+    localStorage.setItem(TENANT_ID_KEY, newTenantId)
+    setTenantId(newTenantId)
+
+    const userRes = await fetch(`${API_BASE}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Tenant-ID": newTenantId,
+      },
+    })
+    
+    if (userRes.ok) {
+      const userData = await userRes.json()
+      const enrichedUserData = {
+        ...userData,
+        name: userData.full_name,
+        permissions: userData.roles?.map((r: UserRole) => r.role_name) || [],
+      }
+      setUser(enrichedUserData)
+      localStorage.setItem("user_roles", JSON.stringify(userData.roles || []))
+    }
+
+    await fetchOrganizations(token, newTenantId)
+  }, [fetchOrganizations])
+
+  return { 
+    user, 
+    isAuthenticated, 
+    loading, 
+    login, 
+    logout, 
+    organizations, 
+    tenantId,
+    selectedOrgId,
+    selectOrg,
+    switchTenant 
+  }
 }

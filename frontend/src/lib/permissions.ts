@@ -4,47 +4,53 @@ export function hasRole(requiredRole: string): boolean {
   const userRoles = JSON.parse(localStorage.getItem("user_roles") || "[]")
   if (!userRoles || userRoles.length === 0) return false
 
-  const roleCodes = userRoles.map((r: { code: string }) => r.code)
+  const roleNames = userRoles.map((r: { role_name: string }) => r.role_name)
   
-  if (requiredRole === "admin") {
-    return roleCodes.includes("admin")
+  if (requiredRole === "admin" || requiredRole === "Juhtkond") {
+    return roleNames.includes("Juhtkond") || roleNames.includes("Infoturbejuht")
   }
   
-  return roleCodes.includes("admin") || roleCodes.includes("ism") || roleCodes.includes(requiredRole)
+  return roleNames.includes("Juhtkond") || roleNames.includes("Infoturbejuht") || roleNames.includes("IT-talitus")
 }
 
 export function hasPermission(permissionCode: string): boolean {
-  const userPermissions = JSON.parse(localStorage.getItem("user_permissions") || "[]")
   const userRoles = JSON.parse(localStorage.getItem("user_roles") || "[]")
   
   if (!userRoles || userRoles.length === 0) return false
   
-  const roleCodes = userRoles.map((r: { code: string }) => r.code)
+  const roleNames = userRoles.map((r: { role_name: string }) => r.role_name)
   
-  // Admin always has all permissions
-  if (roleCodes.includes("admin")) return true
+  if (roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")) return true
   
-  return userPermissions.includes(permissionCode)
+  const rolePermissions: Record<string, string[]> = {
+    "IT-talitus": ["evidence.upload", "assets.manage"],
+  }
+  
+  for (const role of roleNames) {
+    if (rolePermissions[role]?.includes(permissionCode)) return true
+  }
+  
+  return false
 }
 
 export function canEdit(): boolean {
-  return hasRole("admin") || hasRole("ism")
+  return hasRole("Infoturbejuht") || hasRole("Juhtkond")
 }
 
 export function canManageUsers(): boolean {
-  return hasRole("admin")
+  return hasRole("Infoturbejuht") || hasRole("Juhtkond")
 }
 
 export function canManageRoles(): boolean {
-  return hasRole("admin")
+  return hasRole("Infoturbejuht") || hasRole("Juhtkond")
 }
 
 export function canImportCatalog(): boolean {
-  return hasRole("admin")
+  return hasRole("Infoturbejuht") || hasRole("Juhtkond")
 }
 
 export function canManageRisks(): boolean {
-  return hasRole("admin") || hasRole("ism")
+  return hasRole("Infoturbejuht") || hasRole("Juhtkond")
 }
 
 export function canUploadEvidence(): boolean {
@@ -54,23 +60,22 @@ export function canUploadEvidence(): boolean {
 export function usePermissions() {
   const { user } = useAuth()
   
-  const permissions = user?.permissions || []
-  const roles = user?.roles?.map(r => r.code) || []
+  const roles = user?.roles?.map(r => r.role_name) || []
   
   return {
-    hasPermission: (code: string) => {
-      if (roles.includes("admin")) return true
-      return permissions.includes(code)
+    hasPermission: (_code: string) => {
+      if (roles.includes("Infoturbejuht") || roles.includes("Juhtkond")) return true
+      return false
     },
-    hasAnyPermission: (codes: string[]) => {
-      if (roles.includes("admin")) return true
-      return codes.some(c => permissions.includes(c))
+    hasAnyPermission: (_codes: string[]) => {
+      if (roles.includes("Infoturbejuht") || roles.includes("Juhtkond")) return true
+      return false
     },
-    isAdmin: roles.includes("admin"),
-    isISM: roles.includes("ism") || roles.includes("admin"),
-    canManageUsers: roles.includes("admin"),
-    canManageRoles: roles.includes("admin"),
-    canUploadEvidence: permissions.includes("evidence.upload"),
-    canManageRisks: roles.includes("admin") || roles.includes("ism"),
+    isAdmin: roles.includes("Infoturbejuht") || roles.includes("Juhtkond"),
+    isISM: roles.includes("Infoturbejuht") || roles.includes("Juhtkond"),
+    canManageUsers: roles.includes("Infoturbejuht") || roles.includes("Juhtkond"),
+    canManageRoles: roles.includes("Infoturbejuht") || roles.includes("Juhtkond"),
+    canUploadEvidence: hasPermission("evidence.upload"),
+    canManageRisks: roles.includes("Infoturbejuht") || roles.includes("Juhtkond"),
   }
 }

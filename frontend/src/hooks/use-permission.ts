@@ -8,12 +8,10 @@ export function usePermission() {
     (permissionCode: string): boolean => {
       if (!user) return false
 
-      const roleCodes = user.roles?.map((r) => r.code) || []
-      if (roleCodes.includes("admin")) return true
+      const roleNames = user.roles?.map((r) => r.role_name) || []
+      if (roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")) return true
 
-      if (!user.permissions) return false
-
-      return user.permissions.includes(permissionCode)
+      return user.permissions?.includes(permissionCode) || false
     },
     [user]
   )
@@ -22,8 +20,8 @@ export function usePermission() {
     (permissionCodes: string[]): boolean => {
       if (!user) return false
 
-      const roleCodes = user.roles?.map((r) => r.code) || []
-      if (roleCodes.includes("admin")) return true
+      const roleNames = user.roles?.map((r) => r.role_name) || []
+      if (roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")) return true
 
       if (!user.permissions) return false
 
@@ -36,8 +34,8 @@ export function usePermission() {
     (permissionCodes: string[]): boolean => {
       if (!user) return false
 
-      const roleCodes = user.roles?.map((r) => r.code) || []
-      if (roleCodes.includes("admin")) return true
+      const roleNames = user.roles?.map((r) => r.role_name) || []
+      if (roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")) return true
 
       if (!user.permissions) return false
 
@@ -48,14 +46,14 @@ export function usePermission() {
 
   const isAdmin = useCallback((): boolean => {
     if (!user) return false
-    const roleCodes = user.roles?.map((r) => r.code) || []
-    return roleCodes.includes("admin")
+    const roleNames = user.roles?.map((r) => r.role_name) || []
+    return roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")
   }, [user])
 
   const isISM = useCallback((): boolean => {
     if (!user) return false
-    const roleCodes = user.roles?.map((r) => r.code) || []
-    return roleCodes.includes("ism") || roleCodes.includes("admin")
+    const roleNames = user.roles?.map((r) => r.role_name) || []
+    return roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")
   }, [user])
 
   return {
