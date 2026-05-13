@@ -4,6 +4,7 @@ A web-based compliance management system for E-ITS (Estonian Information Securit
 
 ## Tech Stack
 
+
 | Layer | Technology |
 |---|---|
 | Frontend | React 18 + TypeScript, Vite, Tailwind CSS, Radix UI, Vitest |
