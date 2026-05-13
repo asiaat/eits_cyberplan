@@ -28,12 +28,20 @@ class AlertResponse(BaseModel):
 def list_alerts(db: DB, current_user = CurrentUserV2):
     """List active alerts for current user."""
     from app.models.alert import Alert
+    from app.models.local_user import EITSRole, UserRole
     
-    role_filter = current_user.roles[0].role_name if current_user.roles else "all"
+    user_roles = db.query(UserRole).filter(UserRole.user_id == current_user.id).all()
+    role_ids = [ur.role_id for ur in user_roles]
+    roles = db.query(EITSRole).filter(EITSRole.id.in_(role_ids)).all() if role_ids else []
+    role_names = [r.role_name for r in roles]
+    
+    target_roles = ["all"]
+    if any(r in ["Infoturbejuht", "Juhtkond", "admin"] for r in role_names):
+        target_roles.extend(["admin", "ism"])
     
     alerts = db.query(Alert).filter(
         Alert.is_active == True,
-        Alert.target_role.in_(["all", "admin", "ism"]),
+        Alert.target_role.in_(target_roles),
     ).order_by(Alert.created_at.desc()).limit(50).all()
     
     return [

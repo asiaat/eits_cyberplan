@@ -39,6 +39,7 @@ class UserResponse(BaseModel):
     organizations: list[str] = []
     mfa_enabled: bool = False
     roles: list[dict] = []
+    permissions: list[str] = []
 
 
 class RegisterRequest(BaseModel):
@@ -261,6 +262,16 @@ def read_users_me_v2(db: DB, current_user: LocalUser = CurrentUserV2):
         for r in roles
     ]
     
+    # Get permissions from role_permissions table
+    from app.models.role_permission import RolePermission
+    from app.models.permission import Permission
+    
+    role_codes = [str(r.id) for r in roles]  # E-ITS role UUIDs
+    role_perms = db.query(RolePermission).filter(RolePermission.role_id.in_(role_codes)).all() if role_codes else []
+    perm_ids = [rp.permission_id for rp in role_perms]
+    permissions = db.query(Permission).filter(Permission.id.in_(perm_ids)).all() if perm_ids else []
+    permission_codes = [p.code for p in permissions]
+    
     return UserResponse(
         id=str(current_user.id),
         email=global_user.email,
@@ -268,7 +279,8 @@ def read_users_me_v2(db: DB, current_user: LocalUser = CurrentUserV2):
         tenant_id=str(current_user.tenant_id),
         organizations=organizations,
         mfa_enabled=global_user.mfa_enabled or False,
-        roles=roles_data
+        roles=roles_data,
+        permissions=permission_codes
     )
 
 

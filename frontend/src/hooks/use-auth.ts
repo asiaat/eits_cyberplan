@@ -57,7 +57,7 @@ export function useAuth() {
       const enrichedData = {
         ...data,
         name: data.full_name,
-        permissions: data.roles?.map((r: UserRole) => r.role_name) || [],
+        permissions: data.permissions || [],
       }
       
       setUser(enrichedData)
@@ -65,6 +65,7 @@ export function useAuth() {
       localStorage.setItem("user_email", data.email || "")
       localStorage.setItem("user_full_name", data.full_name || "")
       localStorage.setItem("user_roles", JSON.stringify(data.roles || []))
+      localStorage.setItem("user_permissions", JSON.stringify(data.permissions || []))
       return enrichedData
     } catch (error) {
       console.error("fetchUser error:", error)
@@ -147,7 +148,7 @@ export function useAuth() {
     const enrichedUserData = {
       ...userData,
       name: userData.full_name,
-      permissions: userData.roles?.map((r: UserRole) => r.role_name) || [],
+      permissions: userData.permissions || [],
     }
     
     setUser(enrichedUserData)
@@ -155,6 +156,7 @@ export function useAuth() {
     localStorage.setItem("user_email", userData.email || "")
     localStorage.setItem("user_full_name", userData.full_name || "")
     localStorage.setItem("user_roles", JSON.stringify(userData.roles || []))
+    localStorage.setItem("user_permissions", JSON.stringify(userData.permissions || []))
 
     const orgRes = await fetch(`${API_BASE}/tenants/my-organizations`, {
       headers: {
@@ -220,10 +222,11 @@ export function useAuth() {
       const enrichedUserData = {
         ...userData,
         name: userData.full_name,
-        permissions: userData.roles?.map((r: UserRole) => r.role_name) || [],
+        permissions: userData.permissions || [],
       }
       setUser(enrichedUserData)
       localStorage.setItem("user_roles", JSON.stringify(userData.roles || []))
+      localStorage.setItem("user_permissions", JSON.stringify(userData.permissions || []))
     }
 
     await fetchOrganizations(token, newTenantId)
