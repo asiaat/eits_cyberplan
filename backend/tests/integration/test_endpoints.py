@@ -44,6 +44,7 @@ class TestAuthProtection:
     """
 
     @pytest.mark.parametrize("endpoint,method,description", [
+        # V1 endpoints
         ("/api/v1/users/", "GET", "List all users"),
         ("/api/v1/users/", "POST", "Create new user"),
         ("/api/v1/roles/", "GET", "List all roles"),
@@ -64,6 +65,13 @@ class TestAuthProtection:
         ("/api/v1/dashboard/summary", "GET", "Get dashboard summary"),
         ("/api/v1/reports/audit-readiness", "GET", "Get audit readiness report"),
         ("/api/v1/organization/users", "GET", "List organization users"),
+        # V2 endpoints - IAM
+        ("/api/v2/auth/me", "GET", "Get current user v2"),
+        ("/api/v2/auth/mfa/setup", "POST", "Setup MFA v2"),
+        ("/api/v2/users/", "GET", "List v2 users"),
+        ("/api/v2/users/roles", "GET", "List E-ITS roles"),
+        ("/api/v2/tenants/", "GET", "List tenants"),
+        ("/api/v2/organizations/", "GET", "List organizations"),
     ])
     def test_endpoint_requires_auth(self, endpoint, method, description):
         """
@@ -198,6 +206,92 @@ class TestLoginEndpoint:
         pass
 
 
+class TestV2Auth:
+    """
+    =============================================================
+    TEST CLASS: V2 Authentication (IAM) Tests
+    =============================================================
+    
+    Purpose: Test new v2 auth endpoints for Tier A/B multi-tenancy.
+    """
+
+    @pytest.mark.skip(reason="Requires database with real user data")
+    def test_register_v2_creates_user(self):
+        """
+        =============================================================
+        TEST: V2 Register Creates User
+        =============================================================
+        
+        Test that register endpoint creates both GlobalUser and LocalUser.
+        """
+        pass
+
+    @pytest.mark.skip(reason="Requires database with real user data")
+    def test_login_v2_returns_jwt_with_tenant(self):
+        """
+        =============================================================
+        TEST: V2 Login Returns JWT with Tenant
+        =============================================================
+        
+        Test that login returns JWT with tenant context in payload.
+        """
+        pass
+
+    @pytest.mark.skip(reason="Requires database with real user data")
+    def test_mfa_setup_v2(self):
+        """
+        =============================================================
+        TEST: V2 MFA Setup
+        =============================================================
+        
+        Test that MFA setup returns TOTP secret and otpauth_url.
+        """
+        pass
+
+
+class TestV2UsersAndRoles:
+    """
+    =============================================================
+    TEST CLASS: V2 Users & E-ITS Roles Tests
+    =============================================================
+    
+    Purpose: Test v2 user management and E-ITS role endpoints.
+    """
+
+    @pytest.mark.skip(reason="Requires database with real user data")
+    def test_list_users_v2(self):
+        """
+        =============================================================
+        TEST: List V2 Users
+        =============================================================
+        
+        Test that users endpoint returns local users for tenant.
+        """
+        pass
+
+    @pytest.mark.skip(reason="Requires database with real user data")
+    def test_list_eits_roles(self):
+        """
+        =============================================================
+        TEST: List E-ITS Roles
+        =============================================================
+        
+        Test that roles endpoint returns E-ITS roles (infoturbejuht, etc).
+        """
+        pass
+
+    @pytest.mark.skip(reason="Requires database with real user data")
+    def test_assign_eits_role(self):
+        """
+        =============================================================
+        TEST: Assign E-ITS Role to User
+        =============================================================
+        
+        Test assigning an E-ITS role to a user.
+        """
+        pass
+
+
 # =============================================================
 # TEST SUMMARY
 # =============================================================
@@ -205,11 +299,13 @@ def test_summary():
     """
     This test suite verifies:
     
-    ✓ 20 protected API endpoints require authentication
+    ✓ 26 protected API endpoints require authentication (v1 + v2)
     ✓ 3 open endpoints are publicly accessible
     ✓ Login endpoint validates credentials
+    ✓ V2 auth flow tests defined (skipped - require DB)
+    ✓ V2 users & roles tests defined (skipped - require DB)
     
-    Total: 24 passing tests
+    Total: 29 passing tests + 8 skipped
     
     To run this test suite:
         pytest -v                    # Verbose output

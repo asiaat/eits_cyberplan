@@ -1,4 +1,6 @@
 """Export all models for convenience."""
+from app.models.app_tenant import AppTenant, GlobalUser, TenantUser
+from app.models.local_user import LocalUser, EITSRole, UserRole
 from app.models.tenant import Tenant
 from app.models.user import User
 from app.models.role import Role
@@ -25,6 +27,15 @@ from app.models.person import Person, PersonOrganization
 from app.models.alert import Alert
 
 __all__ = [
+    # Tier A - Subscription Layer
+    "AppTenant",
+    "GlobalUser",
+    "TenantUser",
+    # Tier B - Per-Tenant
+    "LocalUser",
+    "EITSRole",
+    "UserRole",
+    # Legacy (to be migrated)
     "Tenant",
     "User",
     "Role",
