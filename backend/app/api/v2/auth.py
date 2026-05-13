@@ -262,12 +262,12 @@ def read_users_me_v2(db: DB, current_user: LocalUser = CurrentUserV2):
         for r in roles
     ]
     
-    # Get permissions from role_permissions table
-    from app.models.role_permission import RolePermission
+    # Get permissions from e_its_role_permissions table
+    from app.models.e_its_role_permission import EITSRolePermission
     from app.models.permission import Permission
     
-    role_codes = [str(r.id) for r in roles]  # E-ITS role UUIDs
-    role_perms = db.query(RolePermission).filter(RolePermission.role_id.in_(role_codes)).all() if role_codes else []
+    role_ids = [r.id for r in roles]  # E-ITS role UUIDs
+    role_perms = db.query(EITSRolePermission).filter(EITSRolePermission.role_id.in_(role_ids)).all() if role_ids else []
     perm_ids = [rp.permission_id for rp in role_perms]
     permissions = db.query(Permission).filter(Permission.id.in_(perm_ids)).all() if perm_ids else []
     permission_codes = [p.code for p in permissions]

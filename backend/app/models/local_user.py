@@ -40,6 +40,7 @@ class EITSRole(Base):
 
     tenant = relationship("AppTenant", back_populates="e_its_roles")
     user_roles = relationship("UserRole", back_populates="e_its_role")
+    role_permissions = relationship("EITSRolePermission", back_populates="role")
 
 
 class UserRole(Base):
