@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useTranslation } from "@/lib/i18n"
 import { usePermission } from "@/hooks/use-permission"
 import { apiClient } from "@/lib/api-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,6 +35,7 @@ interface PendingChanges {
 }
 
 export default function AdminPage() {
+  const { t } = useTranslation()
   const { isAdmin } = usePermission()
   const [activeTab, setActiveTab] = useState("roles")
   
@@ -228,7 +230,7 @@ export default function AdminPage() {
     <div className="p-4 space-y-4">
       <div className="flex items-center gap-2">
         <Crown className="h-5 w-5" />
-        <h1 className="text-2xl font-bold">Admin</h1>
+        <h1 className="text-2xl font-bold">{t("admin.title")}</h1>
       </div>
 
       <div className="flex gap-2 border-b">
@@ -236,19 +238,19 @@ export default function AdminPage() {
           className={`px-4 py-2 ${activeTab === "roles" ? "border-b-2 border-primary" : ""}`}
           onClick={() => setActiveTab("roles")}
         >
-          E-ITS Roles
+          {t("admin.rolesTab")}
         </button>
         <button
           className={`px-4 py-2 ${activeTab === "permissions" ? "border-b-2 border-primary" : ""}`}
           onClick={() => setActiveTab("permissions")}
         >
-          Permissions
+          {t("admin.permissionsTab")}
         </button>
         <button
           className={`px-4 py-2 ${activeTab === "users" ? "border-b-2 border-primary" : ""}`}
           onClick={() => setActiveTab("users")}
         >
-          Users
+          {t("admin.usersTab")}
         </button>
       </div>
 
@@ -279,26 +281,26 @@ export default function AdminPage() {
             {showCreateRole ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Create New Role</CardTitle>
+                  <CardTitle className="text-lg">{t("admin.createNewRole")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <input
                     type="text"
-                    placeholder="Role Name (e.g., Auditor)"
+                    placeholder={t("admin.roleName")}
                     value={newRoleName}
                     onChange={e => setNewRoleName(e.target.value)}
                     className="w-full border rounded px-3 py-2"
                   />
                   <textarea
-                    placeholder="Description (optional)"
+                    placeholder={t("admin.description")}
                     value={newRoleDesc}
                     onChange={e => setNewRoleDesc(e.target.value)}
                     className="w-full border rounded px-3 py-2"
                     rows={2}
                   />
                   <div className="flex gap-2">
-                    <Button onClick={createRole} size="sm">Create</Button>
-                    <Button variant="outline" onClick={() => setShowCreateRole(false)} size="sm">Cancel</Button>
+                    <Button onClick={createRole} size="sm">{t("admin.createRole")}</Button>
+                    <Button variant="outline" onClick={() => setShowCreateRole(false)} size="sm">{t("admin.cancel")}</Button>
                   </div>
                 </CardContent>
               </Card>
@@ -309,7 +311,7 @@ export default function AdminPage() {
                   className="w-full p-4 border-2 border-dashed rounded-lg text-muted-foreground hover:text-foreground hover:border-primary transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus className="h-5 w-5" />
-                  Create New Role
+                  {t("admin.createNewRole")}
                 </button>
               )
             )}

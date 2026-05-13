@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import { useTranslation } from "@/lib/i18n"
 import { ChevronDown, ChevronRight, Edit2, Trash2, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
@@ -44,6 +45,7 @@ export default function RoleAccordion({
   onDelete,
   hasPermissionChanges,
 }: RoleAccordionProps) {
+  const { t } = useTranslation()
   const [editName, setEditName] = useState(role.role_name)
   const [editDesc, setEditDesc] = useState(role.description || "")
   const [localAssigned, setLocalAssigned] = useState<string[]>(assignedPermissions)
@@ -100,7 +102,7 @@ export default function RoleAccordion({
   }
 
   const handleDelete = () => {
-    if (confirm(`Delete role "${role.role_name}"? This cannot be undone.`)) {
+    if (confirm(t("admin.deleteConfirm"))) {
       onDelete()
     }
   }
@@ -127,14 +129,14 @@ export default function RoleAccordion({
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
                   className="w-full font-semibold text-lg border rounded px-2 py-1"
-                  placeholder="Role name"
+                  placeholder={t("admin.roleName")}
                 />
                 <textarea
                   value={editDesc}
                   onChange={e => setEditDesc(e.target.value)}
                   className="w-full text-sm border rounded px-2 py-1"
                   rows={2}
-                  placeholder="Description (optional)"
+                  placeholder={t("admin.description")}
                 />
               </div>
             ) : (
@@ -160,7 +162,7 @@ export default function RoleAccordion({
             <div className="flex gap-1">
               <Button variant="ghost" size="sm" onClick={onStartEdit}>
                 <Edit2 className="h-4 w-4 mr-1" />
-                Edit
+                {t("admin.edit")}
               </Button>
               <Button variant="ghost" size="sm" onClick={handleDelete} className="text-destructive hover:text-destructive">
                 <Trash2 className="h-4 w-4" />
@@ -173,11 +175,11 @@ export default function RoleAccordion({
             <div className="flex gap-1">
               <Button variant="default" size="sm" onClick={handleSave}>
                 <Save className="h-4 w-4 mr-1" />
-                Save
+                {t("admin.save")}
               </Button>
               <Button variant="outline" size="sm" onClick={handleCancel}>
                 <X className="h-4 w-4 mr-1" />
-                Cancel
+                {t("admin.cancel")}
               </Button>
             </div>
           )}
@@ -189,10 +191,10 @@ export default function RoleAccordion({
         <div className="px-4 pb-4 border-t bg-background">
           <div className="pt-4">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-sm text-muted-foreground uppercase">Permissions</h4>
+              <h4 className="font-medium text-sm text-muted-foreground uppercase">{t("admin.permissions")}</h4>
               {hasPermissionChanges && !isEditing && (
                 <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                  Unsaved changes
+                  {t("admin.unsavedChanges")}
                 </span>
               )}
             </div>
