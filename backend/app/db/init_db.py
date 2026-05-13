@@ -69,6 +69,12 @@ DEFAULT_PERMISSIONS = [
     # Organizations
     {"id": "organizations.view", "code": "organizations.view", "name": "View Organizations", "description": "View all organizations", "category": "organizations"},
     {"id": "organizations.create", "code": "organizations.create", "name": "Create Organizations", "description": "Create new organizations", "category": "organizations"},
+
+    # People
+    {"id": "people.view", "code": "people.view", "name": "View People", "description": "View people directory", "category": "people"},
+    {"id": "people.create", "code": "people.create", "name": "Create People", "description": "Create new people in directory", "category": "people"},
+    {"id": "people.edit", "code": "people.edit", "name": "Edit People", "description": "Edit people in directory", "category": "people"},
+    {"id": "people.delete", "code": "people.delete", "name": "Delete People", "description": "Delete people from directory", "category": "people"},
 ]
 
 ROLE_PERMISSIONS = {
@@ -84,6 +90,7 @@ ROLE_PERMISSIONS = {
         "catalog.view", "mappings.view", "mappings.manage",
         "audit.view",
         "organizations.view", "organizations.create",
+        "people.view", "people.create", "people.edit", "people.delete",
     ],
     "ism": [
         "processes.view", "processes.create", "processes.edit", "processes.delete",
@@ -95,6 +102,7 @@ ROLE_PERMISSIONS = {
         "catalog.view", "mappings.view", "mappings.manage",
         "audit.view",
         "organizations.view", "organizations.create",
+        "people.view", "people.create", "people.edit", "people.delete",
     ],
     "process_owner": [
         "processes.view", "processes.edit",

@@ -33,6 +33,8 @@ interface PersonAsset {
   owner_user_id: string | null
   has_user_account: boolean
   user_roles: { id: string; code: string; name: string; is_default?: string }[]
+  person_id: string | null
+  linked: boolean
 }
 
 interface UserWithRoles {
@@ -60,13 +62,14 @@ export default function OrganizationPage() {
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null)
   const [tenant, setTenant] = useState<TenantDetails | null>(null)
   const [people, setPeople] = useState<PersonAsset[]>([])
+  const [availablePersons, setAvailablePersons] = useState<any[]>([])
   const [users, setUsers] = useState<UserWithRoles[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
 
   const canManageUsers = hasPermission("users.create")
   const canCreateOrg = hasPermission("organizations.create")
-  const canCreatePerson = hasPermission("assets.create")
+  const canLinkPerson = hasPermission("people.view")
 
   // Form states
   const [activeSection, setActiveSection] = useState<"details" | "people" | "users">("details")
@@ -74,9 +77,6 @@ export default function OrganizationPage() {
   const [orgRegistryCode, setOrgRegistryCode] = useState("")
   const [newDivisionName, setNewDivisionName] = useState("")
   const [savingOrg, setSavingOrg] = useState(false)
-
-  const [newPersonName, setNewPersonName] = useState("")
-  const [newPersonEmail, setNewPersonEmail] = useState("")
 
   const [newUserName, setNewUserName] = useState("")
   const [newUserEmail, setNewUserEmail] = useState("")
@@ -144,23 +144,25 @@ export default function OrganizationPage() {
       setOrgRegistryCode(tenantRes.data.registry_code || "")
       
       // Load people and users for this org
-      await loadPeopleAndUsers(orgId)
+      await loadPeopleAndUsers()
     } catch (error) {
       console.error("Failed to load org data:", error)
     }
     setLoading(false)
   }
 
-  const loadPeopleAndUsers = async (orgId: string) => {
+  const loadPeopleAndUsers = async (_tenantId?: string) => {
     try {
-      const [peopleRes, usersRes, rolesRes] = await Promise.all([
-        apiClient.get(`/organization/people?tenant_id=${orgId}`),
-        apiClient.get(`/organization/users?tenant_id=${orgId}`),
+      const [peopleRes, usersRes, rolesRes, availRes] = await Promise.all([
+        apiClient.get("/organization/people"),
+        apiClient.get("/organization/users"),
         apiClient.get("/roles/"),
+        apiClient.get("/organization/people/available"),
       ])
       setPeople(peopleRes.data)
       setUsers(usersRes.data)
       setRoles(rolesRes.data)
+      setAvailablePersons(availRes.data)
     } catch (error) {
       console.error("Failed to load people/users:", error)
     }
@@ -207,19 +209,31 @@ export default function OrganizationPage() {
     })
   }
 
-  const createPerson = async () => {
-    if (!newPersonName || !tenant) return
+  const [selectedPersonId, setSelectedPersonId] = useState("")
+  const [linkRole, setLinkRole] = useState("")
+
+  const linkPersonAsWorker = async () => {
+    if (!selectedPersonId || !tenant) return
     try {
       await apiClient.post("/organization/people", {
-        name: newPersonName,
-        email: newPersonEmail || null,
-        tenant_id: tenant.id
+        person_id: selectedPersonId,
+        role: linkRole || null,
       })
-      setNewPersonName("")
-      setNewPersonEmail("")
-      loadPeopleAndUsers(tenant.id)
+      setSelectedPersonId("")
+      setLinkRole("")
+      loadPeopleAndUsers()
     } catch (error) {
-      console.error("Failed to create person:", error)
+      console.error("Failed to link person:", error)
+    }
+  }
+
+  const unlinkWorker = async (assetId: string) => {
+    if (!confirm("Unlink this worker from organization?")) return
+    try {
+      await apiClient.delete(`/organization/people/${assetId}`)
+      loadPeopleAndUsers()
+    } catch (error) {
+      console.error("Failed to unlink worker:", error)
     }
   }
 
@@ -348,7 +362,7 @@ export default function OrganizationPage() {
       
       {/* Org Selector */}
       <div className="flex items-center gap-4 mb-6 p-4 bg-card border rounded">
-        <label className="text-sm font-medium">{t("organization.selectOrg") || "Select Organization:"}</label>
+        <label className="text-sm font-medium">{t("organization.selectOrg.label") || "Select Organization:"}</label>
         <select 
           className="bg-background text-foreground border-input rounded px-3 py-2 min-w-[200px]"
           value={currentOrgId || ""}
@@ -375,10 +389,10 @@ export default function OrganizationPage() {
               {t("organization.details") || "Details"}
             </Button>
             <Button variant={activeSection === "people" ? "default" : "outline"} onClick={() => setActiveSection("people")}>
-              {t("organization.people")}
+              {t("organization.workersTab")}
             </Button>
             <Button variant={activeSection === "users" ? "default" : "outline"} onClick={() => setActiveSection("users")}>
-              {t("organization.cyberplanUsers")}
+              {t("organization.cyberplanUsersTab")}
             </Button>
           </div>
 
@@ -438,19 +452,40 @@ export default function OrganizationPage() {
             </div>
           )}
 
-          {/* People Section */}
+          {/* Workers Section */}
           {activeSection === "people" && tenant && (
             <div className="space-y-4">
-              {canCreatePerson && (
+              {canLinkPerson && availablePersons.length > 0 && (
                 <Card>
                   <CardHeader>
-                    <CardTitle>{t("organization.addPerson")}</CardTitle>
+                    <CardTitle>{t("organization.addWorker")}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="flex gap-2">
-                      <Input placeholder={t("organization.personName")} value={newPersonName} onChange={e => setNewPersonName(e.target.value)} />
-                      <Input placeholder={t("organization.email")} value={newPersonEmail} onChange={e => setNewPersonEmail(e.target.value)} />
-                      <Button onClick={createPerson}>{t("common.add")}</Button>
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <label className="text-sm font-medium">{t("workers.title")}</label>
+                        <select
+                          className="w-full mt-1 bg-background text-foreground border-input rounded px-3 py-2"
+                          value={selectedPersonId}
+                          onChange={e => setSelectedPersonId(e.target.value)}
+                        >
+                          <option value="">{t("workers.selectOrg")}</option>
+                          {availablePersons.map(p => (
+                            <option key={p.id} value={p.id}>{p.name} ({p.national_id || p.email || "—"})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="w-48">
+                        <label className="text-sm font-medium">{t("workers.role")}</label>
+                        <Input
+                          placeholder={t("workers.rolePlaceholder")}
+                          value={linkRole}
+                          onChange={e => setLinkRole(e.target.value)}
+                        />
+                      </div>
+                      <Button onClick={linkPersonAsWorker} disabled={!selectedPersonId}>
+                        {t("common.add")}
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -458,7 +493,7 @@ export default function OrganizationPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>{t("organization.peopleList")}</CardTitle>
+                  <CardTitle>{t("organization.workersList")}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -467,6 +502,11 @@ export default function OrganizationPage() {
                         <div>
                           <div className="font-medium">{person.name}</div>
                           {person.email && <div className="text-sm text-muted-foreground">{person.email}</div>}
+                          {person.person_id && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {t("organization.linkedTo")}: {availablePersons.find(p => p.id === person.person_id)?.national_id || person.person_id}
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           {person.has_user_account ? (
@@ -486,11 +526,16 @@ export default function OrganizationPage() {
                               )}
                             </>
                           )}
+                          {canLinkPerson && (
+                            <Button size="sm" variant="ghost" onClick={() => unlinkWorker(person.id)} className="text-red-500">
+                              {t("common.delete")}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     ))}
                     {people.length === 0 && (
-                      <p className="text-muted-foreground text-center py-4">{t("organization.noPeople")}</p>
+                      <p className="text-muted-foreground text-center py-4">{t("organization.noWorkers")}</p>
                     )}
                   </div>
                 </CardContent>

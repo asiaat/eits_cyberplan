@@ -54,15 +54,35 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 def require_role(role_code: str):
-    """Dependency to require a specific role."""
     def role_checker(current_user: CurrentUser, db: DB):
         membership = current_user.memberships.first()
-        if not membership or membership.role.code != role_code:
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tenant membership",
+            )
+        if membership.role.code != role_code:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=f"Role '{role_code}' required",
             )
         return current_user
+    return role_checker
+
+
+def require_admin(current_user: CurrentUser):
+    membership = current_user.memberships.first()
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tenant membership",
+        )
+    if membership.role.code != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required",
+        )
+    return current_user
     return role_checker
 
 

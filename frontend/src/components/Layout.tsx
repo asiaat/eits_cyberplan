@@ -4,6 +4,8 @@ import { useTranslation } from "@/lib/i18n"
 import LanguageSelector from "@/lib/i18n/LanguageSelector"
 import ThemeToggle from "@/components/ThemeToggle"
 import UserMenu from "@/components/UserMenu"
+import OrgSelector from "@/components/OrgSelector"
+import AlertBell from "@/components/AlertBell"
 import {
   LayoutDashboard,
   FolderKanban,
@@ -17,7 +19,8 @@ import {
   BookOpen,
   ChevronLeft,
   ChevronRight,
-  Users,
+  Building2,
+  UserCog,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -59,7 +62,8 @@ function getNavSections(t: (key: string) => string): NavSection[] {
       items: [
         { path: "/audit", label: t("nav.auditView"), icon: Shield },
         { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
-        { path: "/organization", label: t("nav.organization"), icon: Users },
+        { path: "/organization", label: t("nav.organization"), icon: Building2 },
+        { path: "/support/people", label: t("nav.supportPeople"), icon: UserCog },
       ]
     },
   ]
@@ -163,8 +167,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <div className="flex-1 flex flex-col">
-        <header className="border-b p-4 flex items-center justify-end gap-4">
-          <UserMenu />
+        <header className="border-b p-4 flex items-center justify-between gap-4">
+          <div className="flex-1" />
+          <div className="flex items-center gap-3">
+            <AlertBell />
+            <OrgSelector />
+            <UserMenu />
+          </div>
         </header>
         <main className={cn(
           "p-8 transition-all duration-500",

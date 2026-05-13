@@ -4,20 +4,40 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.deps import DB, CurrentUser
 from app.models.user import User
 from app.models.asset import Asset
 from app.models.membership import Membership
 from app.models.role import Role
+from app.models.person import Person, PersonOrganization
 from app.core.security import get_password_hash
+from app.core.permissions import has_permission
 
 router = APIRouter()
 
 
 class PersonAssetResponse(BaseModel):
     id: str
+    name: str
+    email: Optional[str] = None
+    description: Optional[str] = None
+    owner_user_id: Optional[str] = None
+    has_user_account: bool = False
+    user_roles: List[dict] = []
+    person_id: Optional[str] = None
+    linked: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class CreateWorkerRequest(BaseModel):
+    person_id: str
+    role: Optional[str] = None
+
+
+class CreatePersonAssetRequest(BaseModel):
     name: str
     email: Optional[str] = None
     description: Optional[str] = None
@@ -55,74 +75,234 @@ class UserWithRolesResponse(BaseModel):
 
 
 @router.get("/people", response_model=List[PersonAssetResponse])
-def list_people(db: DB, current_user: CurrentUser, include_all: bool = False):
+def list_people(db: DB, current_user: CurrentUser, include_all: bool = False, tenant_id: Optional[str] = None):
     """
     List all person-type assets (people) in the organization.
     Optionally include non-person assets if include_all=true.
+    Only returns people from the authenticated user's tenant unless tenant_id is specified and authorized.
     """
-    query = db.query(Asset)
+    user_membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not user_membership:
+        raise HTTPException(status_code=403, detail="No tenant membership")
+
+    user_tenant_id = user_membership.tenant_id
+
+    if tenant_id and str(tenant_id) != str(user_tenant_id):
+        raise HTTPException(status_code=403, detail="Access denied to this tenant")
+
+    filter_tenant_id = tenant_id or user_tenant_id
+
+    query = db.query(Asset).options(
+        selectinload(Asset.owner_user),
+        selectinload(Asset.tenant),
+    ).filter(Asset.tenant_id == filter_tenant_id)
+
     if not include_all:
-        query = query.filter(Asset.asset_type == "person")
-    
+        query = query.filter(Asset.asset_type == "worker")
+
     assets = query.order_by(Asset.name).all()
-    
+
+    person_ids = [a.person_id for a in assets if a.person_id]
+    person_org_links = {}
+    if person_ids:
+        links = db.query(PersonOrganization).filter(
+            PersonOrganization.person_id.in_(person_ids),
+            PersonOrganization.tenant_id == filter_tenant_id
+        ).all()
+        person_org_links = {str(link.person_id): link.role for link in links}
+
+    owner_user_ids = {a.owner_user_id for a in assets if a.owner_user_id}
+    memberships_by_owner = {}
+    if owner_user_ids:
+        memberships = db.query(Membership).options(
+            selectinload(Membership.role)
+        ).filter(Membership.user_id.in_(owner_user_ids)).all()
+        for m in memberships:
+            memberships_by_owner.setdefault(m.user_id, []).append(m)
+
     result = []
     for asset in assets:
         user_roles = []
         has_user = False
-        
+
         if asset.owner_user_id:
-            user = db.query(User).filter(User.id == asset.owner_user_id).first()
+            user = asset.owner_user
             if user:
                 has_user = True
-                memberships = db.query(Membership).filter(Membership.user_id == user.id).all()
-                for m in memberships:
-                    role = db.query(Role).filter(Role.id == m.role_id).first()
-                    if role:
-                        user_roles.append({"id": role.id, "code": role.code, "name": role.name, "is_default": role.is_default})
-        
+                for m in memberships_by_owner.get(asset.owner_user_id, []):
+                    if m.role:
+                        user_roles.append({
+                            "id": m.role.id,
+                            "code": m.role.code,
+                            "name": m.role.name,
+                            "is_default": m.role.is_default,
+                        })
+
         result.append(PersonAssetResponse(
             id=str(asset.id),
             name=asset.name,
-            email=asset.description,  # Using description for email
+            email=asset.description,
             description=asset.description,
             owner_user_id=str(asset.owner_user_id) if asset.owner_user_id else None,
             has_user_account=has_user,
-            user_roles=user_roles
+            user_roles=user_roles,
+            person_id=str(asset.person_id) if asset.person_id else None,
+            linked=asset.person_id is not None and str(asset.person_id) in person_org_links,
         ))
-    
+
     return result
 
 
 @router.post("/people", response_model=PersonAssetResponse)
-def create_person(db: DB, current_user: CurrentUser, data: CreatePersonAssetRequest):
-    """Create a new person asset."""
+def create_worker(db: DB, current_user: CurrentUser, data: CreateWorkerRequest):
+    """Create a worker by linking an existing Person to the current organization."""
+    if not has_permission(db, current_user, "people.view"):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
     from uuid import uuid4
-    
-    # Get tenant from user
+
     membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
     if not membership:
         raise HTTPException(status_code=400, detail="No tenant found for user")
-    
+
+    person = db.query(Person).filter(Person.id == UUID(data.person_id)).first()
+    if not person:
+        raise HTTPException(status_code=404, detail="Person not found")
+
+    existing = db.query(Asset).filter(
+        Asset.tenant_id == membership.tenant_id,
+        Asset.person_id == person.id,
+        Asset.asset_type == "worker"
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Worker already exists for this person")
+
     asset = Asset(
         id=uuid4(),
         tenant_id=membership.tenant_id,
-        name=data.name,
-        asset_type="person",
-        description=data.email,  # Store email in description
+        name=person.name,
+        asset_type="worker",
+        description=person.email,
+        person_id=person.id,
     )
     db.add(asset)
+
+    if data.role:
+        person_org = db.query(PersonOrganization).filter(
+            PersonOrganization.person_id == person.id,
+            PersonOrganization.tenant_id == membership.tenant_id
+        ).first()
+        if person_org:
+            person_org.role = data.role
+        else:
+            po = PersonOrganization(
+                id=uuid4(),
+                person_id=person.id,
+                tenant_id=membership.tenant_id,
+                role=data.role
+            )
+            db.add(po)
+
     db.commit()
     db.refresh(asset)
-    
+
     return PersonAssetResponse(
         id=str(asset.id),
         name=asset.name,
-        email=data.email,
-        description=asset.description,
+        email=person.email,
+        description=person.email,
+        owner_user_id=None,
         has_user_account=False,
-        user_roles=[]
+        user_roles=[],
+        person_id=str(person.id),
+        linked=True,
     )
+
+
+@router.get("/people/available", response_model=List[dict])
+def list_available_persons(db: DB, current_user: CurrentUser):
+    """List all persons in the current user's tenant who are not yet workers in this org."""
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        return []
+
+    tenant_id = membership.tenant_id
+
+    worker_person_ids = {
+        r[0] for r in db.query(Asset.person_id).filter(
+            Asset.tenant_id == tenant_id,
+            Asset.asset_type == "worker",
+            Asset.person_id.isnot(None)
+        ).all()
+    }
+
+    query = db.query(Person)
+    if worker_person_ids:
+        query = query.filter(Person.id.notin_(worker_person_ids))
+
+    persons = query.order_by(Person.last_name, Person.first_name).all()
+
+    return [
+        {
+            "id": str(p.id),
+            "name": p.name,
+            "national_id": p.national_id,
+            "email": p.email,
+            "phone": p.phone,
+            "first_name": p.first_name,
+            "last_name": p.last_name,
+        }
+        for p in persons
+    ]
+
+
+@router.get("/workers", response_model=List[dict])
+def list_workers(db: DB, current_user: CurrentUser):
+    """List all workers (person assets) in the current organization."""
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=403, detail="No tenant membership")
+
+    assets = db.query(Asset).options(
+        selectinload(Asset.person),
+    ).filter(
+        Asset.tenant_id == membership.tenant_id,
+        Asset.asset_type == "worker"
+    ).order_by(Asset.name).all()
+
+    return [
+        {
+            "id": str(a.id),
+            "name": a.name,
+            "email": a.description,
+            "person_id": str(a.person_id) if a.person_id else None,
+            "owner_user_id": str(a.owner_user_id) if a.owner_user_id else None,
+            "has_user_account": a.owner_user_id is not None,
+        }
+        for a in assets
+    ]
+
+
+@router.delete("/people/{asset_id}")
+def delete_worker(db: DB, current_user: CurrentUser, asset_id: str):
+    """Delete a worker (unlink person from organization). Does not delete the Person record."""
+    membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not membership:
+        raise HTTPException(status_code=403, detail="No tenant membership")
+
+    asset = db.query(Asset).filter(
+        Asset.id == UUID(asset_id),
+        Asset.tenant_id == membership.tenant_id,
+        Asset.asset_type == "worker"
+    ).first()
+
+    if not asset:
+        raise HTTPException(status_code=404, detail="Worker not found")
+
+    db.delete(asset)
+    db.commit()
+
+    return {"message": "Worker unlinked"}
 
 
 @router.post("/people/{asset_id}/create-user", response_model=UserWithRolesResponse)
@@ -134,8 +314,8 @@ def create_user_from_person(db: DB, current_user: CurrentUser, asset_id: str, da
     if not asset:
         raise HTTPException(status_code=404, detail="Person asset not found")
     
-    if asset.asset_type != "person":
-        raise HTTPException(status_code=400, detail="Asset is not a person type")
+    if not asset.person_id:
+        raise HTTPException(status_code=400, detail="Asset is not linked to a person")
     
     if asset.owner_user_id:
         raise HTTPException(status_code=400, detail="Person already has a user account")
@@ -181,38 +361,70 @@ def create_user_from_person(db: DB, current_user: CurrentUser, asset_id: str, da
 
 
 @router.get("/users", response_model=List[UserWithRolesResponse])
-def list_organization_users(db: DB, current_user: CurrentUser, with_asset_only: bool = False):
+def list_organization_users(db: DB, current_user: CurrentUser, with_asset_only: bool = False, tenant_id: Optional[str] = None):
     """List all CyberPlan users in the organization."""
-    users = db.query(User).order_by(User.name).all()
-    
+    user_membership = db.query(Membership).filter(Membership.user_id == current_user.id).first()
+    if not user_membership:
+        raise HTTPException(status_code=403, detail="No tenant membership")
+
+    user_tenant_id = user_membership.tenant_id
+
+    if tenant_id and str(tenant_id) != str(user_tenant_id):
+        raise HTTPException(status_code=403, detail="Access denied to this tenant")
+
+    filter_tenant_id = tenant_id or user_tenant_id
+
+    user_ids_in_tenant = set(
+        r[0] for r in db.query(Membership.user_id).filter(Membership.tenant_id == filter_tenant_id).distinct().all()
+    )
+
+    query = db.query(User).filter(User.id.in_(user_ids_in_tenant))
+
     if with_asset_only:
-        # Filter to only users who are linked to an asset
-        users = [u for u in users if u.owned_assets]
-    
+        query = query.filter(User.owned_assets.any(Asset.asset_type == "worker"))
+
+    users = query.order_by(User.name).all()
+
+    memberships = db.query(Membership).options(
+        selectinload(Membership.role)
+    ).filter(
+        Membership.user_id.in_([u.id for u in users])
+    ).all()
+
+    memberships_by_user = {}
+    for m in memberships:
+        memberships_by_user.setdefault(m.user_id, []).append(m)
+
+    assets_by_owner = {}
+    if user_ids_in_tenant:
+        owned_assets = db.query(Asset).filter(
+            Asset.owner_user_id.in_(user_ids_in_tenant),
+            Asset.asset_type == "worker"
+        ).all()
+        for a in owned_assets:
+            assets_by_owner[a.owner_user_id] = str(a.id)
+
     result = []
     for user in users:
-        memberships = db.query(Membership).filter(Membership.user_id == user.id).all()
         roles = []
-        for m in memberships:
-            role = db.query(Role).filter(Role.id == m.role_id).first()
-            if role:
-                roles.append({"id": role.id, "code": role.code, "name": role.name, "is_default": role.is_default})
-        
-        # Find linked asset
-        linked_asset = None
-        owned_assets = db.query(Asset).filter(Asset.owner_user_id == user.id, Asset.asset_type == "person").first()
-        if owned_assets:
-            linked_asset = str(owned_assets.id)
-        
+        for m in memberships_by_user.get(user.id, []):
+            if m.role:
+                roles.append({
+                    "id": m.role.id,
+                    "code": m.role.code,
+                    "name": m.role.name,
+                    "is_default": m.role.is_default,
+                })
+
         result.append(UserWithRolesResponse(
             id=str(user.id),
             email=user.email,
             name=user.name,
             is_active=user.is_active,
             roles=roles,
-            linked_asset_id=linked_asset
+            linked_asset_id=assets_by_owner.get(user.id)
         ))
-    
+
     return result
 
 
