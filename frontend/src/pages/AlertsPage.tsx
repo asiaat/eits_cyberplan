@@ -37,17 +37,17 @@ export default function AlertsPage() {
     }
   }, [tab, isAdmin, fetchHistory])
 
-  const activeAlerts = alerts.filter((a: Alert) => a.is_active !== "false")
+  const activeAlerts = alerts.filter((a: Alert) => a.is_active)
 
   const filteredAlerts = filter === "unread"
-    ? activeAlerts.filter((a: Alert) => a.is_read === "false")
+    ? activeAlerts.filter((a: Alert) => !a.is_read)
     : activeAlerts
 
   const handleAlertClick = (alert: typeof alerts[0]) => {
     if (alert.link) {
       navigate(alert.link)
     }
-    if (alert.is_read === "false") {
+    if (!alert.is_read) {
       markAsRead(alert.id)
     }
   }
@@ -180,8 +180,8 @@ export default function AlertsPage() {
                 key={alert.id}
                 className={cn(
                   "cursor-pointer hover:bg-accent/50 transition-colors",
-                  alert.is_read === "false" && "border-l-4",
-                  alert.is_read === "false" && config.border
+                  !alert.is_read && "border-l-4",
+                  !alert.is_read && config.border
                 )}
                 onClick={() => handleAlertClick(alert)}
               >
@@ -192,10 +192,10 @@ export default function AlertsPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <h3 className={cn("font-medium", alert.is_read === "false" && "font-semibold")}>
+                        <h3 className={cn("font-medium", !alert.is_read && "font-semibold")}>
                           {alert.title}
                         </h3>
-                        {alert.is_read === "false" && (
+                        {!alert.is_read && (
                           <span className="bg-primary text-primary-foreground text-xs px-1.5 py-0.5 rounded">
                             {t("alerts.new")}
                           </span>
@@ -211,7 +211,7 @@ export default function AlertsPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1">
-                      {alert.is_read === "false" && (
+                      {!alert.is_read && (
                         <Button
                           variant="ghost"
                           size="sm"

@@ -47,6 +47,28 @@ def list_tenants(db: DB, current_user = CurrentUserV2):
     ]
 
 
+@router.get("/my-organizations", response_model=List[TenantResponse])
+def get_my_organizations(db: DB, current_user = CurrentUserV2):
+    """Get user's organizations (tenants)."""
+    tenant_users = db.query(TenantUser).filter(
+        TenantUser.user_id == current_user.global_user_id
+    ).all()
+    
+    tenant_ids = [tu.tenant_id for tu in tenant_users]
+    tenants = db.query(AppTenant).filter(AppTenant.id.in_(tenant_ids)).all()
+    
+    return [
+        TenantResponse(
+            id=str(t.id),
+            name=t.name,
+            status=t.status,
+            plan=t.plan,
+            created_at=str(t.created_at)
+        )
+        for t in tenants
+    ]
+
+
 @router.get("/{tenant_id}", response_model=TenantResponse)
 def get_tenant(tenant_id: UUID, db: DB, current_user = CurrentUserV2):
     """Get tenant details."""

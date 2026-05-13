@@ -54,7 +54,7 @@ export default function AlertBell() {
 
   const activeAlerts = alerts.filter((a: any) => a.is_active !== "false")
   const recentAlerts = activeAlerts.slice(0, 5)
-  const unreadAlerts = activeAlerts.filter((a: any) => a.is_read === "false")
+  const unreadAlerts = activeAlerts.filter((a: any) => !a.is_read)
   const unreadCount = unreadAlerts.length
   
   const highestPriority = unreadAlerts
@@ -69,7 +69,7 @@ export default function AlertBell() {
     if (alert.link) {
       navigate(alert.link)
     }
-    if (alert.is_read === "false") {
+    if (!alert.is_read) {
       markAsRead(alert.id)
     }
     setIsOpen(false)
@@ -123,14 +123,14 @@ export default function AlertBell() {
                     key={alert.id}
                     className={cn(
                       "p-3 border-b last:border-b-0 hover:bg-accent cursor-pointer",
-                      alert.is_read === "false" && "bg-accent/50"
+                      !alert.is_read && "bg-accent/50"
                     )}
                     onClick={() => handleAlertClick(alert)}
                   >
                     <div className="flex items-start gap-2">
                       <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", config.color)} />
                       <div className="flex-1 min-w-0">
-                        <p className={cn("font-medium text-sm", alert.is_read === "false" && "font-semibold")}>
+                        <p className={cn("font-medium text-sm", !alert.is_read && "font-semibold")}>
                           {alert.title}
                         </p>
                         {alert.message && (

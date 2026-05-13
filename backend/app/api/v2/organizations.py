@@ -86,3 +86,23 @@ def create_organization(db: DB, request: OrganizationCreate, current_user = Curr
         legal_form=org.legal_form,
         status=org.status or "active"
     )
+
+
+@router.get("/{tenant_id}", response_model=OrganizationResponse)
+def get_organization_details(tenant_id: UUID, db: DB, current_user = CurrentUserV2):
+    """Get organization details."""
+    org = db.query(Tenant).filter(Tenant.id == tenant_id).first()
+    
+    if not org:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Organization not found",
+        )
+    
+    return OrganizationResponse(
+        id=str(org.id),
+        name=org.name,
+        registry_code=org.registry_code,
+        legal_form=org.legal_form,
+        status=org.status or "active"
+    )

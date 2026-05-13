@@ -46,7 +46,12 @@ export function useAuth() {
           "X-Tenant-ID": tenantIdToUse,
         },
       })
-      if (!res.ok) throw new Error("Unauthorized")
+      if (!res.ok) {
+        if (res.status === 401) {
+          return null
+        }
+        throw new Error("Unauthorized")
+      }
       const data = await res.json()
       
       const enrichedData = {
@@ -60,15 +65,16 @@ export function useAuth() {
       localStorage.setItem("user_email", data.email || "")
       localStorage.setItem("user_full_name", data.full_name || "")
       localStorage.setItem("user_roles", JSON.stringify(data.roles || []))
-    } catch {
-      localStorage.removeItem(TOKEN_KEY)
-      localStorage.removeItem(TENANT_ID_KEY)
+      return enrichedData
+    } catch (error) {
+      console.error("fetchUser error:", error)
+      return null
     }
   }, [])
 
   const fetchOrganizations = useCallback(async (token: string, currentTenantId: string) => {
     try {
-      const res = await fetch(`${API_BASE}/organizations`, {
+      const res = await fetch(`${API_BASE}/tenants/my-organizations`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "X-Tenant-ID": currentTenantId,
@@ -94,9 +100,11 @@ export function useAuth() {
       setTenantId(storedTenantId)
       setSelectedOrgId(storedOrgId)
       fetchUser(token, storedTenantId).then(() => {
-        fetchOrganizations(token, storedTenantId).then(() => {
+        fetchOrganizations(token, storedTenantId).finally(() => {
           setLoading(false)
         })
+      }).catch(() => {
+        setLoading(false)
       })
     } else {
       setLoading(false)
@@ -148,7 +156,7 @@ export function useAuth() {
     localStorage.setItem("user_full_name", userData.full_name || "")
     localStorage.setItem("user_roles", JSON.stringify(userData.roles || []))
 
-    const orgRes = await fetch(`${API_BASE}/organizations`, {
+    const orgRes = await fetch(`${API_BASE}/tenants/my-organizations`, {
       headers: {
         Authorization: `Bearer ${token}`,
         "X-Tenant-ID": userData.tenant_id,
