@@ -154,7 +154,7 @@ export default function RoleAccordion({
         <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
           {/* Permission count badge */}
           <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
-            {localAssigned.length} permissions
+            {localAssigned.length} {t("admin.permissions")}
           </span>
 
           {/* Edit/Delete buttons (only when expanded and can edit) */}

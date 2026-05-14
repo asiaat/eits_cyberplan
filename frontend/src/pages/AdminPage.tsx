@@ -322,7 +322,7 @@ export default function AdminPage() {
       {activeTab === "permissions" && (
         <Card>
           <CardHeader>
-            <CardTitle>All Permissions</CardTitle>
+            <CardTitle>{t("admin.permissionsTab")}</CardTitle>
           </CardHeader>
           <CardContent>
             {(() => {
@@ -354,7 +354,7 @@ export default function AdminPage() {
       {activeTab === "users" && (
         <Card>
           <CardHeader>
-            <CardTitle>Users in Organization</CardTitle>
+            <CardTitle>{t("admin.usersInOrg") || t("admin.usersTab")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
