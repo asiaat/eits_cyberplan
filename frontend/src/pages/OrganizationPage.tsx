@@ -315,7 +315,10 @@ export default function OrganizationPage() {
   }
 
   const createOrganization = async () => {
-    if (!newOrgName || !newOrgRegistryCode || !newOrgAdminName || !newOrgAdminEmail || !newOrgAdminPassword) return
+    if (!newOrgName || !newOrgRegistryCode || !newOrgAdminName || !newOrgAdminEmail || !newOrgAdminPassword) {
+      alert("Please fill in all required fields (marked with *)")
+      return
+    }
     setCreatingOrg(true)
     try {
       await apiClient.post("/tenants/", {
@@ -696,7 +699,12 @@ export default function OrganizationPage() {
               </div>
               
               <div className="flex gap-2">
-                <Button onClick={createOrganization} disabled={creatingOrg}>{creatingOrg ? t("common.saving") : t("common.save")}</Button>
+                <Button 
+                  onClick={createOrganization} 
+                  disabled={creatingOrg || !newOrgName || !newOrgRegistryCode || !newOrgAdminName || !newOrgAdminEmail || !newOrgAdminPassword}
+                >
+                  {creatingOrg ? t("common.saving") : t("common.save")}
+                </Button>
                 <Button variant="outline" onClick={() => setShowCreateOrg(false)}>{t("common.cancel")}</Button>
               </div>
             </CardContent>

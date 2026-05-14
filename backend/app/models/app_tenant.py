@@ -17,6 +17,11 @@ class AppTenant(Base):
     status = Column(String(50), default="active")
     plan = Column(String(50))  # free, standard, enterprise
     created_at = Column(DateTime, server_default="now()")
+    registry_code = Column(String(50), nullable=True)
+    legal_form = Column(String(255), nullable=True)
+    registered_address = Column(String(500), nullable=True)
+    phone = Column(String(50), nullable=True)
+    email = Column(String(255), nullable=True)
 
     tenant_users = relationship("TenantUser", back_populates="tenant", foreign_keys="TenantUser.tenant_id")
     local_users = relationship("LocalUser", back_populates="tenant")
