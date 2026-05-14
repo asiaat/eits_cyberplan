@@ -15,3 +15,4 @@ class Permission(Base):
     category = Column(String(50))  # e.g., "users", "processes", "assets", "risks", "evidence", "dashboard", "audit"
 
     role_permissions = relationship("RolePermission", back_populates="permission")
+    e_its_role_permissions = relationship("EITSRolePermission", back_populates="permission")

@@ -315,7 +315,10 @@ export default function OrganizationPage() {
   }
 
   const createOrganization = async () => {
-    if (!newOrgName || !newOrgRegistryCode || !newOrgAdminName || !newOrgAdminEmail || !newOrgAdminPassword) return
+    if (!newOrgName || !newOrgRegistryCode || !newOrgAdminName || !newOrgAdminEmail || !newOrgAdminPassword) {
+      alert("Please fill in all required fields (marked with *)")
+      return
+    }
     setCreatingOrg(true)
     try {
       await apiClient.post("/tenants/", {
@@ -429,7 +432,7 @@ export default function OrganizationPage() {
                     <Input 
                       value={newDivisionName}
                       onChange={e => setNewDivisionName(e.target.value)}
-                      placeholder="New division name"
+                      placeholder={t("organization.newDivisionName")}
                       onKeyDown={e => e.key === "Enter" && addDivision()}
                     />
                     <Button onClick={addDivision}>{t("common.add")}</Button>
@@ -444,7 +447,7 @@ export default function OrganizationPage() {
                       </div>
                     ))}
                     {(tenant.divisions || []).length === 0 && (
-                      <p className="text-muted-foreground text-center py-2">No divisions</p>
+                      <p className="text-muted-foreground text-center py-2">{t("organization.noDivisions")}</p>
                     )}
                   </div>
                 </CardContent>
@@ -696,7 +699,12 @@ export default function OrganizationPage() {
               </div>
               
               <div className="flex gap-2">
-                <Button onClick={createOrganization} disabled={creatingOrg}>{creatingOrg ? t("common.saving") : t("common.save")}</Button>
+                <Button 
+                  onClick={createOrganization} 
+                  disabled={creatingOrg || !newOrgName || !newOrgRegistryCode || !newOrgAdminName || !newOrgAdminEmail || !newOrgAdminPassword}
+                >
+                  {creatingOrg ? t("common.saving") : t("common.save")}
+                </Button>
                 <Button variant="outline" onClick={() => setShowCreateOrg(false)}>{t("common.cancel")}</Button>
               </div>
             </CardContent>

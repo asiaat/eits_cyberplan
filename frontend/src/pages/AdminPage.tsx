@@ -4,52 +4,59 @@ import { usePermission } from "@/hooks/use-permission"
 import { apiClient } from "@/lib/api-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Crown } from "lucide-react"
-
-interface User {
-  id: string
-  email: string
-  name: string
-  is_active: boolean
-  roles: { id: string; code: string; name: string; is_default?: string }[]
-  organizations: { id: string; name: string }[]
-}
+import { Crown, Plus } from "lucide-react"
+import RoleAccordion from "@/components/RoleAccordion"
 
 interface Role {
   id: string
-  code: string
-  name: string
+  role_name: string
   description: string | null
-  is_default: string
 }
 
 interface Permission {
   id: string
   code: string
   name: string
-  description: string | null
-  category: string
+  category: string | null
+}
+
+interface User {
+  id: string
+  email: string
+  full_name: string
+  roles: string[]
+}
+
+interface PendingChanges {
+  [roleId: string]: {
+    toAdd: string[]
+    toRemove: string[]
+  }
 }
 
 export default function AdminPage() {
   const { t } = useTranslation()
-  const { hasPermission } = usePermission()
-  const [activeTab, setActiveTab] = useState("users")
+  const { isAdmin } = usePermission()
+  const [activeTab, setActiveTab] = useState("roles")
   
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [permissions, setPermissions] = useState<Permission[]>([])
+  const [rolePermissions, setRolePermissions] = useState<Record<string, string[]>>({})
   
-  const [newUserEmail, setNewUserEmail] = useState("")
-  const [newUserName, setNewUserName] = useState("")
-  const [newUserPassword, setNewUserPassword] = useState("")
-  const [newRoleCode, setNewRoleCode] = useState("")
+  // UI State
+  const [expandedRoleId, setExpandedRoleId] = useState<string | null>(null)
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null)
+  const [showCreateRole, setShowCreateRole] = useState(false)
+  
+  // Form State
   const [newRoleName, setNewRoleName] = useState("")
   const [newRoleDesc, setNewRoleDesc] = useState("")
-
-  const canManageUsers = hasPermission("users.create")
-  const canManageRoles = hasPermission("roles.manage")
+  
+  // Pending Changes State
+  const [pendingChanges, setPendingChanges] = useState<PendingChanges>({})
+  
+  const canManage = isAdmin()
 
   useEffect(() => {
     loadData()
@@ -65,316 +72,310 @@ export default function AdminPage() {
       setUsers(usersRes.data)
       setRoles(rolesRes.data)
       setPermissions(permsRes.data)
+      
+      await loadAllRolePermissions(rolesRes.data)
     } catch (error) {
       console.error("Failed to load admin data:", error)
     }
   }
 
-  const createUser = async () => {
-    if (!newUserEmail || !newUserName || !newUserPassword) return
+  const loadAllRolePermissions = async (rolesList: Role[]) => {
+    const perms: Record<string, string[]> = {}
+    for (const role of rolesList) {
+      try {
+        const res = await apiClient.get(`/roles/${role.id}/permissions`)
+        perms[role.id] = res.data.map((p: Permission) => p.id)
+      } catch {
+        perms[role.id] = []
+      }
+    }
+    setRolePermissions(perms)
+  }
+
+  const toggleExpand = (roleId: string) => {
+    if (expandedRoleId === roleId) {
+      setExpandedRoleId(null)
+    } else {
+      setExpandedRoleId(roleId)
+      // Clear pending changes when collapsing
+      if (expandedRoleId !== roleId) {
+        setPendingChanges(prev => {
+          const newChanges = { ...prev }
+          delete newChanges[roleId]
+          return newChanges
+        })
+      }
+    }
+  }
+
+  const startEdit = (roleId: string) => {
+    setExpandedRoleId(roleId) // Ensure expanded
+    setEditingRoleId(roleId)
+  }
+
+  const cancelEdit = () => {
+    // Clear pending changes
+    setPendingChanges({})
+    setEditingRoleId(null)
+  }
+
+  const saveRoleEdit = async (roleId: string, name: string, desc: string) => {
     try {
-      await apiClient.post("/users/", {
-        email: newUserEmail,
-        name: newUserName,
-        password: newUserPassword,
+      await apiClient.patch(`/roles/${roleId}`, {
+        role_name: name,
+        description: desc || null,
       })
-      setNewUserEmail("")
-      setNewUserName("")
-      setNewUserPassword("")
+      setEditingRoleId(null)
+      // Save permission changes too
+      await savePermissionChanges(roleId)
       loadData()
     } catch (error) {
-      console.error("Failed to create user:", error)
-    }
-  }
-
-  const createRole = async () => {
-    if (!newRoleCode || !newRoleName) return
-    try {
-      await apiClient.post("/roles/", {
-        code: newRoleCode,
-        name: newRoleName,
-        description: newRoleDesc || null,
-      })
-      setNewRoleCode("")
-      setNewRoleName("")
-      setNewRoleDesc("")
-      loadData()
-    } catch (error) {
-      console.error("Failed to create role:", error)
-    }
-  }
-
-  const assignRole = async (userId: string, roleId: string) => {
-    try {
-      await apiClient.post(`/users/${userId}/roles/`, { role_id: roleId })
-      loadData()
-    } catch (error) {
-      console.error("Failed to assign role:", error)
-    }
-  }
-
-  const removeRole = async (userId: string, roleId: string) => {
-    try {
-      await apiClient.delete(`/users/${userId}/roles/${roleId}`)
-      loadData()
-    } catch (error) {
-      console.error("Failed to remove role:", error)
+      console.error("Failed to update role:", error)
     }
   }
 
   const deleteRole = async (roleId: string) => {
     try {
       await apiClient.delete(`/roles/${roleId}`)
+      setExpandedRoleId(null)
+      setEditingRoleId(null)
+      loadData()
+    } catch (error: any) {
+      alert(error.response?.data?.detail || "Failed to delete role")
+    }
+  }
+
+  const togglePermission = (roleId: string, permId: string, wasAdded: boolean) => {
+    setPendingChanges(prev => {
+      const existing = prev[roleId] || { toAdd: [], toRemove: [] }
+      
+      let toAdd = [...existing.toAdd]
+      let toRemove = [...existing.toRemove]
+      
+      if (wasAdded) {
+        // Removing - add to toRemove if not already there
+        toRemove.push(permId)
+        toAdd = toAdd.filter(id => id !== permId)
+      } else {
+        // Adding - add to toAdd if not already there
+        toAdd.push(permId)
+        toRemove = toRemove.filter(id => id !== permId)
+      }
+      
+      return {
+        ...prev,
+        [roleId]: { toAdd, toRemove }
+      }
+    })
+  }
+
+  const savePermissionChanges = async (roleId: string) => {
+    const changes = pendingChanges[roleId]
+    if (!changes || (changes.toAdd.length === 0 && changes.toRemove.length === 0)) {
+      return
+    }
+
+    try {
+      // Add permissions
+      for (const permId of changes.toAdd) {
+        await apiClient.post(`/roles/${roleId}/permissions`, {
+          permission_id: permId,
+        })
+      }
+      
+      // Remove permissions
+      for (const permId of changes.toRemove) {
+        await apiClient.delete(`/roles/${roleId}/permissions/${permId}`)
+      }
+      
+      // Clear pending changes for this role
+      setPendingChanges(prev => {
+        const newChanges = { ...prev }
+        delete newChanges[roleId]
+        return newChanges
+      })
+      
       loadData()
     } catch (error) {
-      console.error("Failed to delete role:", error)
+      console.error("Failed to save permissions:", error)
     }
   }
 
-  const getRolePermissions = async (roleId: string) => {
-    try {
-      const res = await apiClient.get(`/roles/${roleId}/permissions`)
-      return res.data
-    } catch (error) {
-      console.error("Failed to get role permissions:", error)
-      return []
-    }
+  const saveAll = async (roleId: string, name: string, desc: string) => {
+    await saveRoleEdit(roleId, name, desc)
   }
 
-  const updateRolePermissions = async (roleId: string, permissionIds: string[]) => {
+  const createRole = async () => {
+    if (!newRoleName) return
     try {
-      await apiClient.post(`/roles/${roleId}/permissions`, { permission_ids: permissionIds })
+      await apiClient.post("/roles/", {
+        role_name: newRoleName,
+        description: newRoleDesc || null,
+      })
+      setNewRoleName("")
+      setNewRoleDesc("")
+      setShowCreateRole(false)
       loadData()
     } catch (error) {
-      console.error("Failed to update role permissions:", error)
+      console.error("Failed to create role:", error)
     }
   }
 
-  if (!canManageUsers && !canManageRoles) {
-    return (
-      <div>
-        <div className="flex items-center gap-3 mb-6">
-          <Crown className="h-8 w-8" />
-          <h1 className="text-3xl font-bold">{t("admin.title")}</h1>
-        </div>
-        <p className="text-muted-foreground">You do not have permission to access this page.</p>
-      </div>
-    )
+  const hasPermissionChanges = (roleId: string) => {
+    const changes = pendingChanges[roleId]
+    return changes && (changes.toAdd.length > 0 || changes.toRemove.length > 0)
   }
-
-  const categories = [...new Set(permissions.map(p => p.category))]
 
   return (
-    <div>
-      <div className="flex items-center gap-3 mb-6">
-        <Crown className="h-8 w-8" />
-        <h1 className="text-3xl font-bold">{t("admin.title")}</h1>
-      </div>
-      
-      <div className="flex gap-2 mb-4">
-        <Button variant={activeTab === "users" ? "default" : "outline"} onClick={() => setActiveTab("users")}>{t("admin.usersTab")}</Button>
-        <Button variant={activeTab === "roles" ? "default" : "outline"} onClick={() => setActiveTab("roles")}>{t("admin.rolesTab")}</Button>
-        <Button variant={activeTab === "permissions" ? "default" : "outline"} onClick={() => setActiveTab("permissions")}>{t("admin.permissionsTab")}</Button>
+    <div className="p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <Crown className="h-5 w-5" />
+        <h1 className="text-2xl font-bold">{t("admin.title")}</h1>
       </div>
 
-      {activeTab === "users" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin.userManagement")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {canManageUsers && (
-              <div className="flex gap-2 mb-4">
-                <Input placeholder={t("admin.email")} value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} />
-                <Input placeholder={t("admin.name")} value={newUserName} onChange={e => setNewUserName(e.target.value)} />
-                <Input placeholder={t("admin.password")} type="password" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} />
-                <Button onClick={createUser}>{t("admin.addUser")}</Button>
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              {users.map(user => (
-                <div key={user.id} className="flex items-center justify-between p-2 border rounded">
-                  <div>
-                    <div className="font-medium">{user.name}</div>
-                    <div className="text-sm text-muted-foreground">{user.email}</div>
-                    {user.organizations && user.organizations.length > 0 && (
-                      <div className="flex gap-1 mt-1">
-                        {user.organizations.map(org => (
-                          <span key={org.id} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded">
-                            {org.name}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {user.roles?.map(role => (
-                      <span key={role.id} className="text-xs bg-secondary px-2 py-1 rounded">
-                        {t(`roles.${role.code}.name`)}
-                        {canManageRoles && role.is_default !== "true" && (
-                          <button onClick={() => removeRole(user.id, role.id)} className="ml-1 text-red-500">x</button>
-                        )}
-                      </span>
-                    ))}
-                    {canManageRoles && (
-                      <select 
-                        className="text-sm bg-background text-foreground border-input rounded px-2 py-1"
-                        onChange={e => e.target.value && assignRole(user.id, e.target.value)}
-                        value=""
-                      >
-                        <option value="">{t("admin.addRole")}</option>
-                        {roles.filter(r => !user.roles?.some(ur => ur.id === r.id)).map(role => (
-                          <option key={role.id} value={role.id}>{t(role.name)}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      <div className="flex gap-2 border-b">
+        <button
+          className={`px-4 py-2 ${activeTab === "roles" ? "border-b-2 border-primary" : ""}`}
+          onClick={() => setActiveTab("roles")}
+        >
+          {t("admin.rolesTab")}
+        </button>
+        <button
+          className={`px-4 py-2 ${activeTab === "permissions" ? "border-b-2 border-primary" : ""}`}
+          onClick={() => setActiveTab("permissions")}
+        >
+          {t("admin.permissionsTab")}
+        </button>
+        <button
+          className={`px-4 py-2 ${activeTab === "users" ? "border-b-2 border-primary" : ""}`}
+          onClick={() => setActiveTab("users")}
+        >
+          {t("admin.usersTab")}
+        </button>
+      </div>
 
       {activeTab === "roles" && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin.roleManagement")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {canManageRoles && (
-              <div className="flex gap-2 mb-4">
-                <Input placeholder={t("admin.roleCode")} value={newRoleCode} onChange={e => setNewRoleCode(e.target.value)} />
-                <Input placeholder={t("admin.roleName")} value={newRoleName} onChange={e => setNewRoleName(e.target.value)} />
-                <Input placeholder={t("admin.description")} value={newRoleDesc} onChange={e => setNewRoleDesc(e.target.value)} />
-                <Button onClick={createRole}>{t("admin.createRole")}</Button>
-              </div>
-            )}
-            
-            <div className="space-y-2">
-              {roles.map(role => (
-                <div key={role.id} className="flex items-center justify-between p-2 border rounded">
-                  <div>
-<div className="font-medium">{t(`roles.${role.code}.name`)}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {role.code} {role.is_default === "true" && <span className="bg-secondary px-1 rounded text-xs">{t("admin.eitsDefault")}</span>}
-                    </div>
-                    {role.description && <div className="text-sm text-muted-foreground">{t(role.description)}</div>}
+        <div className="space-y-3">
+          {/* Roles Accordions */}
+          {roles.map(role => (
+            <RoleAccordion
+              key={role.id}
+              role={role}
+              allPermissions={permissions}
+              assignedPermissions={rolePermissions[role.id] || []}
+              canEdit={canManage}
+              isExpanded={expandedRoleId === role.id}
+              onToggleExpand={() => toggleExpand(role.id)}
+              isEditing={editingRoleId === role.id}
+              onStartEdit={() => startEdit(role.id)}
+              onCancelEdit={cancelEdit}
+              onSave={(name, desc) => saveAll(role.id, name, desc)}
+              onTogglePermission={(permId, added) => togglePermission(role.id, permId, added)}
+              onDelete={() => deleteRole(role.id)}
+              hasPermissionChanges={hasPermissionChanges(role.id)}
+            />
+          ))}
+
+          {/* Create New Role Section */}
+          <div className="mt-4">
+            {showCreateRole ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">{t("admin.createNewRole")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder={t("admin.roleName")}
+                    value={newRoleName}
+                    onChange={e => setNewRoleName(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                  />
+                  <textarea
+                    placeholder={t("admin.description")}
+                    value={newRoleDesc}
+                    onChange={e => setNewRoleDesc(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                    rows={2}
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={createRole} size="sm">{t("admin.createRole")}</Button>
+                    <Button variant="outline" onClick={() => setShowCreateRole(false)} size="sm">{t("admin.cancel")}</Button>
                   </div>
-                  {canManageRoles && role.is_default === "false" && (
-                    <Button variant="destructive" size="sm" onClick={() => deleteRole(role.id)}>Delete</Button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
+            ) : (
+              canManage && (
+                <button
+                  onClick={() => setShowCreateRole(true)}
+                  className="w-full p-4 border-2 border-dashed rounded-lg text-muted-foreground hover:text-foreground hover:border-primary transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="h-5 w-5" />
+                  {t("admin.createNewRole")}
+                </button>
+              )
+            )}
+          </div>
+        </div>
       )}
 
       {activeTab === "permissions" && (
         <Card>
           <CardHeader>
-            <CardTitle>{t("admin.permissionConfig")}</CardTitle>
+            <CardTitle>{t("admin.permissionsTab")}</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              {t("admin.permissionConfigDesc")}
-            </p>
-            
-            {roles.map(role => (
-              <RolePermissionEditor 
-                key={role.id}
-                role={role}
-                permissions={permissions}
-                categories={categories}
-                canEdit={canManageRoles}
-                getRolePermissions={getRolePermissions}
-                updateRolePermissions={updateRolePermissions}
-              />
-            ))}
+            {(() => {
+              const categories = [...new Set(permissions.map(p => p.category || "other"))].sort()
+              return (
+                <div className="space-y-4">
+                  {categories.map(cat => (
+                    <div key={cat}>
+                      <div className="font-medium text-sm mb-2 capitalize">{cat}</div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {permissions
+                          .filter(p => (p.category || "other") === cat)
+                          .map(perm => (
+                            <div key={perm.id} className="border rounded p-2">
+                              <div className="font-medium text-sm">{perm.name}</div>
+                              <div className="text-xs text-muted-foreground font-mono">{perm.code}</div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
           </CardContent>
         </Card>
       )}
-    </div>
-  )
-}
 
-function RolePermissionEditor({
-  role,
-  permissions,
-  categories,
-  canEdit,
-  getRolePermissions,
-  updateRolePermissions,
-}: {
-  role: Role
-  permissions: Permission[]
-  categories: string[]
-  canEdit: boolean
-  getRolePermissions: (roleId: string) => Promise<Permission[]>
-  updateRolePermissions: (roleId: string, permIds: string[]) => void
-}) {
-  const { t } = useTranslation()
-  const [isOpen, setIsOpen] = useState(false)
-  const [rolePermissions, setRolePermissions] = useState<string[]>([])
-  const [loading, setLoading] = useState(false)
-
-  const togglePermission = (permId: string) => {
-    if (!canEdit) return
-    const newPerms = rolePermissions.includes(permId)
-      ? rolePermissions.filter(id => id !== permId)
-      : [...rolePermissions, permId]
-    setRolePermissions(newPerms)
-    updateRolePermissions(role.id, newPerms)
-  }
-
-  const openEditor = async () => {
-    if (!isOpen) {
-      setLoading(true)
-      const perms = await getRolePermissions(role.id)
-      setRolePermissions(perms.map(p => p.id))
-      setLoading(false)
-    }
-    setIsOpen(!isOpen)
-  }
-
-  return (
-    <div className="border rounded mb-2">
-      <div className="flex items-center justify-between p-2 cursor-pointer hover:bg-accent" onClick={openEditor}>
-        <div className="font-medium">{t(role.name)}</div>
-        <div className="text-sm text-muted-foreground">{role.code}</div>
-      </div>
-      
-      {isOpen && (
-        <div className="p-4 border-t">
-          {loading ? (
-            <div>Loading permissions...</div>
-          ) : (
-            <div className="space-y-4">
-              {categories.map(cat => (
-                <div key={cat}>
-                  <div className="font-medium text-sm mb-2 capitalize">{cat}</div>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                    {permissions
-                      .filter(p => p.category === cat)
-                      .map(perm => (
-                        <label key={perm.id} className="flex items-center gap-2 text-sm">
-                          <input
-                            type="checkbox"
-                            checked={rolePermissions.includes(perm.id)}
-                            onChange={() => togglePermission(perm.id)}
-                            disabled={!canEdit}
-                          />
-                          <span>{perm.name}</span>
-                        </label>
-                      ))}
+      {activeTab === "users" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("admin.usersInOrg") || t("admin.usersTab")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {users.map(user => (
+                <div key={user.id} className="flex items-center justify-between p-2 border rounded">
+                  <div>
+                    <div className="font-medium">{user.full_name}</div>
+                    <div className="text-sm text-muted-foreground">{user.email}</div>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {user.roles?.map((roleName, idx) => (
+                      <span key={idx} className="text-xs bg-secondary px-2 py-1 rounded">
+                        {roleName}
+                      </span>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   )

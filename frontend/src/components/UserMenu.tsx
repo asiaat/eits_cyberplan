@@ -16,9 +16,10 @@ export default function UserMenu() {
     navigate("/login")
   }
 
-  const userName = user?.name || "User"
+  const userName = user?.full_name || user?.name || "User"
   const userEmail = user?.email || ""
-  const isAdmin = user?.roles?.some((role) => role.code === "admin") || false
+  const roleNames = user?.roles?.map((r) => r.role_name) || []
+  const isAdmin = roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond") || roleNames.includes("admin")
   const initials = userName
     .split(" ")
     .map((n) => n[0])
