@@ -429,7 +429,7 @@ export default function OrganizationPage() {
                     <Input 
                       value={newDivisionName}
                       onChange={e => setNewDivisionName(e.target.value)}
-                      placeholder="New division name"
+                      placeholder={t("organization.newDivisionName")}
                       onKeyDown={e => e.key === "Enter" && addDivision()}
                     />
                     <Button onClick={addDivision}>{t("common.add")}</Button>
@@ -444,7 +444,7 @@ export default function OrganizationPage() {
                       </div>
                     ))}
                     {(tenant.divisions || []).length === 0 && (
-                      <p className="text-muted-foreground text-center py-2">No divisions</p>
+                      <p className="text-muted-foreground text-center py-2">{t("organization.noDivisions")}</p>
                     )}
                   </div>
                 </CardContent>
