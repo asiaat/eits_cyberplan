@@ -67,6 +67,7 @@ def list_business_processes_v2(
 
         item = BusinessProcessListItem(
             id=bp.id,
+            tenant_id=bp.tenant_id,
             name=bp.name,
             status=bp.status,
             confidentiality_need=bp.confidentiality_need,

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api-client"
+import { useAuth } from "@/hooks/use-auth"
 
 interface OwnerInfo {
   id: string
@@ -19,6 +20,7 @@ interface Division {
 
 interface ProcessListItem {
   id: string
+  tenant_id: string
   name: string
   status: string
   confidentiality_need: string
@@ -60,6 +62,7 @@ const statusColors: Record<string, string> = {
 
 export default function BusinessProcessesPage() {
   const { t } = useTranslation()
+  const { organizations, selectedOrgId } = useAuth()
   const [processes, setProcesses] = useState<ProcessListItem[]>([])
   const [divisions, setDivisions] = useState<Division[]>([])
   const [loading, setLoading] = useState(true)
@@ -210,7 +213,14 @@ export default function BusinessProcessesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">{t("businessProcesses.title")}</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold">{t("businessProcesses.title")}</h1>
+          {selectedOrgId && (
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-base px-3 py-1">
+              {organizations.find(o => o.id === selectedOrgId)?.name || "Unknown Org"}
+            </Badge>
+          )}
+        </div>
         <Button onClick={handleCreate}>{t("common.add")}</Button>
       </div>
 
@@ -281,6 +291,9 @@ export default function BusinessProcessesPage() {
                         {getDivisionName(process.division_id)}
                       </Badge>
                     )}
+                    <Badge variant="outline" className="bg-gray-50">
+                      {organizations.find(o => o.id === process.tenant_id)?.name || process.tenant_id}
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge

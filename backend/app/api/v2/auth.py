@@ -65,41 +65,53 @@ def get_current_user_v2(
             detail="Missing or invalid authorization header",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     token = authorization.replace("Bearer ", "")
     payload = decode_token(token)
     global_user_id: str = payload.get("sub")
-    tenant_id: str = payload.get("tenant")
-    
-    if not global_user_id or not tenant_id:
+    jwt_tenant_id: str = payload.get("tenant")
+
+    if not global_user_id or not jwt_tenant_id:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # Get local user for this tenant
+
+    effective_tenant_id = x_tenant_id if x_tenant_id else jwt_tenant_id
+
+    if x_tenant_id and x_tenant_id != jwt_tenant_id:
+        from app.models.app_tenant import TenantUser
+        membership = db.query(TenantUser).filter(
+            TenantUser.user_id == global_user_id,
+            TenantUser.tenant_id == x_tenant_id
+        ).first()
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied to this organization",
+            )
+
     local_user = db.query(LocalUser).filter(
         LocalUser.global_user_id == global_user_id,
-        LocalUser.tenant_id == tenant_id
+        LocalUser.tenant_id == effective_tenant_id
     ).first()
-    
+
     if not local_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found in this tenant",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     if not local_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user",
         )
-    
-    # Store tenant context
-    local_user._current_tenant_id = tenant_id
-    
+
+    local_user._current_tenant_id = effective_tenant_id
+
     return local_user
 
 

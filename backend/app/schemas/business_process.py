@@ -100,6 +100,7 @@ class BusinessProcessResponse(BusinessProcessBase):
 class BusinessProcessListItem(BaseModel):
     """Simplified business process for list views."""
     id: UUID
+    tenant_id: UUID
     name: str
     status: BusinessProcessStatus
     confidentiality_need: ProtectionNeedLevel
