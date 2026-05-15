@@ -1,14 +1,15 @@
-"""Business Processes API endpoints."""
+"""Business Processes API v2 - uses LocalUser/GlobalUser auth."""
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session
 
-from app.api.deps import DB, CurrentUser
-from app.models.business_process import BusinessProcess
+from app.api.deps import DB
+from app.api.v2.auth import get_current_user_v2, CurrentUserV2, LocalUser
 from app.models.asset import Asset
 from app.models.process_asset import ProcessAsset
+from app.models.business_process import BusinessProcess
 from app.models.user import User
 from app.schemas.business_process import (
     BusinessProcessCreate,
@@ -16,7 +17,6 @@ from app.schemas.business_process import (
     BusinessProcessResponse,
     BusinessProcessListItem,
     ProcessAssetLinkCreate,
-    ProcessAssetLinkUpdate,
 )
 from app.core.audit import log_audit as audit_log
 
@@ -24,9 +24,9 @@ router = APIRouter()
 
 
 @router.get("/", response_model=list[BusinessProcessListItem])
-def list_business_processes(
+def list_business_processes_v2(
     db: DB,
-    current_user: CurrentUser,
+    current_user: LocalUser = CurrentUserV2,
     status_filter: Optional[str] = Query(None, alias="status"),
     owner_id: Optional[UUID] = Query(None, alias="owner_id"),
     division_id: Optional[str] = Query(None, alias="division_id"),
@@ -51,9 +51,15 @@ def list_business_processes(
     for bp in processes:
         owner = None
         if bp.owner_user_id:
+            # Try old User model first
             user = db.query(User).filter(User.id == bp.owner_user_id).first()
             if user:
-                owner = {"id": user.id, "name": user.name, "email": user.email}
+                owner = {"id": user.id, "name": user.name, "email": getattr(user, 'email', '') or getattr(user, 'name', '')}
+            else:
+                # Fall back to LocalUser
+                local_user = db.query(LocalUser).filter(LocalUser.id == bp.owner_user_id).first()
+                if local_user:
+                    owner = {"id": str(local_user.id), "name": local_user.full_name, "email": ""}
 
         asset_count = db.query(ProcessAsset).filter(
             ProcessAsset.business_process_id == bp.id
@@ -77,12 +83,15 @@ def list_business_processes(
 
 
 @router.post("/", response_model=BusinessProcessResponse, status_code=status.HTTP_201_CREATED)
-def create_business_process(
+def create_business_process_v2(
     db: DB,
-    current_user: CurrentUser,
-    data: BusinessProcessCreate,
+    current_user: LocalUser = CurrentUserV2,
+    data: BusinessProcessCreate = None,
 ):
     """Create a new business process."""
+    if data is None:
+        raise HTTPException(status_code=400, detail="Request body required")
+    
     bp = BusinessProcess(
         tenant_id=current_user.tenant_id,
         name=data.name,
@@ -90,10 +99,10 @@ def create_business_process(
         purpose=data.purpose,
         inputs=data.inputs,
         outputs=data.outputs,
-        status=data.status.value,
-        confidentiality_need=data.confidentiality_need.value,
-        integrity_need=data.integrity_need.value,
-        availability_need=data.availability_need.value,
+        status=data.status.value if hasattr(data.status, 'value') else data.status,
+        confidentiality_need=data.confidentiality_need.value if hasattr(data.confidentiality_need, 'value') else data.confidentiality_need,
+        integrity_need=data.integrity_need.value if hasattr(data.integrity_need, 'value') else data.integrity_need,
+        availability_need=data.availability_need.value if hasattr(data.availability_need, 'value') else data.availability_need,
         division_id=data.division_id,
         owner_user_id=data.owner_user_id,
     )
@@ -118,10 +127,11 @@ def create_business_process(
     db.commit()
     db.refresh(bp)
 
+    import json
     audit_log(
         db=db,
-        tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.id),
+        tenant_id=current_user.tenant_id,
+        actor_user_id=current_user.global_user_id,
         action="create",
         entity_type="business_process",
         entity_id=bp.id,
@@ -132,12 +142,14 @@ def create_business_process(
 
 
 @router.get("/{process_id}", response_model=BusinessProcessResponse)
-def get_business_process(
+def get_business_process_v2(
     db: DB,
-    current_user: CurrentUser,
-    process_id: UUID,
+    current_user: LocalUser = CurrentUserV2,
+    process_id: UUID = None,
 ):
     """Get a business process by ID."""
+    if process_id is None or (isinstance(process_id, str) and process_id == "undefined"):
+        raise HTTPException(status_code=400, detail="process_id is required")
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
         BusinessProcess.tenant_id == current_user.tenant_id,
@@ -150,13 +162,18 @@ def get_business_process(
 
 
 @router.patch("/{process_id}", response_model=BusinessProcessResponse)
-def update_business_process(
+def update_business_process_v2(
     db: DB,
-    current_user: CurrentUser,
-    process_id: UUID,
-    data: BusinessProcessUpdate,
+    current_user: LocalUser = CurrentUserV2,
+    process_id: UUID = None,
+    data: BusinessProcessUpdate = None,
 ):
     """Update a business process."""
+    if process_id is None:
+        raise HTTPException(status_code=400, detail="process_id is required")
+    if data is None:
+        raise HTTPException(status_code=400, detail="Request body required")
+    
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
         BusinessProcess.tenant_id == current_user.tenant_id,
@@ -183,7 +200,7 @@ def update_business_process(
                 setattr(bp, field, value)
         elif field == "owner_user_id":
             setattr(bp, field, value)
-        elif field != "asset_ids":
+        elif field not in ("asset_ids",):
             setattr(bp, field, value)
 
     db.commit()
@@ -192,7 +209,7 @@ def update_business_process(
     audit_log(
         db=db,
         tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.id),
+        actor_user_id=str(current_user.global_user_id),
         action="update",
         entity_type="business_process",
         entity_id=bp.id,
@@ -204,12 +221,15 @@ def update_business_process(
 
 
 @router.delete("/{process_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_business_process(
+def delete_business_process_v2(
     db: DB,
-    current_user: CurrentUser,
-    process_id: UUID,
+    current_user: LocalUser = CurrentUserV2,
+    process_id: UUID = None,
 ):
     """Delete a business process."""
+    if process_id is None:
+        raise HTTPException(status_code=400, detail="process_id is required")
+    
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
         BusinessProcess.tenant_id == current_user.tenant_id,
@@ -225,7 +245,7 @@ def delete_business_process(
     audit_log(
         db=db,
         tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.id),
+        actor_user_id=str(current_user.global_user_id),
         action="delete",
         entity_type="business_process",
         entity_id=bp.id,
@@ -237,13 +257,18 @@ def delete_business_process(
 
 
 @router.post("/{process_id}/assets", status_code=status.HTTP_201_CREATED)
-def add_process_asset(
+def add_process_asset_v2(
     db: DB,
-    current_user: CurrentUser,
-    process_id: UUID,
-    data: ProcessAssetLinkCreate,
+    current_user: LocalUser = CurrentUserV2,
+    process_id: UUID = None,
+    data: ProcessAssetLinkCreate = None,
 ):
     """Link an asset to a business process."""
+    if process_id is None:
+        raise HTTPException(status_code=400, detail="process_id is required")
+    if data is None:
+        raise HTTPException(status_code=400, detail="Request body required")
+    
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
         BusinessProcess.tenant_id == current_user.tenant_id,
@@ -280,7 +305,7 @@ def add_process_asset(
     audit_log(
         db=db,
         tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.id),
+        actor_user_id=str(current_user.global_user_id),
         action="link_asset",
         entity_type="business_process",
         entity_id=process_id,
@@ -291,13 +316,16 @@ def add_process_asset(
 
 
 @router.delete("/{process_id}/assets/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
-def remove_process_asset(
+def remove_process_asset_v2(
     db: DB,
-    current_user: CurrentUser,
-    process_id: UUID,
-    asset_id: UUID,
+    current_user: LocalUser = CurrentUserV2,
+    process_id: UUID = None,
+    asset_id: UUID = None,
 ):
     """Unlink an asset from a business process."""
+    if process_id is None or asset_id is None:
+        raise HTTPException(status_code=400, detail="process_id and asset_id are required")
+    
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
         BusinessProcess.tenant_id == current_user.tenant_id,
@@ -320,7 +348,7 @@ def remove_process_asset(
     audit_log(
         db=db,
         tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.id),
+        actor_user_id=str(current_user.global_user_id),
         action="unlink_asset",
         entity_type="business_process",
         entity_id=process_id,
@@ -334,7 +362,11 @@ def _build_response(db: Session, bp: BusinessProcess) -> BusinessProcessResponse
     if bp.owner_user_id:
         user = db.query(User).filter(User.id == bp.owner_user_id).first()
         if user:
-            owner = {"id": user.id, "name": user.name, "email": user.email}
+            owner = {"id": str(user.id), "name": getattr(user, 'name', '') or getattr(user, 'full_name', ''), "email": getattr(user, 'email', '') or ''}
+        else:
+            local_user = db.query(LocalUser).filter(LocalUser.id == bp.owner_user_id).first()
+            if local_user:
+                owner = {"id": str(local_user.id), "name": local_user.full_name, "email": ""}
 
     asset_links = db.query(ProcessAsset).filter(
         ProcessAsset.business_process_id == bp.id

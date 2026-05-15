@@ -1,4 +1,5 @@
-from datetime import datetime
+"""Audit Log helper."""
+import json
 from typing import Any, Optional
 
 from sqlalchemy.orm import Session
@@ -22,8 +23,8 @@ def log_audit(
         action=action,
         entity_type=entity_type,
         entity_id=entity_id,
-        before_json=before_json,
-        after_json=after_json,
+        before_json=json.dumps(before_json) if before_json else None,
+        after_json=json.dumps(after_json) if after_json else None,
     )
     db.add(entry)
     db.commit()

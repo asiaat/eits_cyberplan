@@ -2,6 +2,7 @@
 from fastapi import APIRouter
 
 from app.api.v2 import auth, tenants, users, organizations, alerts, roles, persons, organization
+from app.api.v2 import business_processes
 
 api_router = APIRouter()
 
@@ -13,3 +14,4 @@ api_router.include_router(persons.router, prefix="/persons", tags=["v2-persons"]
 api_router.include_router(organization.router, prefix="/organization", tags=["v2-organization"])
 api_router.include_router(alerts.router, prefix="/alerts", tags=["v2-alerts"])
 api_router.include_router(roles.router, prefix="/roles", tags=["v2-roles"])
+api_router.include_router(business_processes.router, prefix="/business-processes", tags=["v2-business-processes"])

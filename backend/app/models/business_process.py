@@ -14,6 +14,7 @@ class BusinessProcess(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
     owner_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    division_id = Column(UUID(as_uuid=True), nullable=True)
     name = Column(String(255), nullable=False)
     description = Column(Text)
     purpose = Column(Text)
