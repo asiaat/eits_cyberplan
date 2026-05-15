@@ -92,13 +92,12 @@ export default function BusinessProcessesPage() {
   useEffect(() => {
     fetchDivisions()
     fetchProcesses()
-  }, [])
+  }, [selectedOrgId])
 
   const fetchDivisions = async () => {
+    if (!selectedOrgId) return
     try {
-      const orgId = localStorage.getItem("current_org_id")
-      if (!orgId) return
-      const response = await apiClient.get(`/organization/${orgId}`)
+      const response = await apiClient.get(`/organization/${selectedOrgId}`)
       if (response.data?.divisions) {
         setDivisions(response.data.divisions)
       }

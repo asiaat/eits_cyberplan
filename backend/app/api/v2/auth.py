@@ -98,11 +98,28 @@ def get_current_user_v2(
     ).first()
 
     if not local_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found in this tenant",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        membership = db.query(TenantUser).filter(
+            TenantUser.user_id == global_user_id,
+            TenantUser.tenant_id == effective_tenant_id
+        ).first()
+
+        if membership:
+            global_user = db.query(GlobalUser).filter(GlobalUser.id == global_user_id).first()
+            local_user = LocalUser(
+                global_user_id=global_user_id,
+                tenant_id=effective_tenant_id,
+                full_name=global_user.email if global_user else "User",
+                is_active=True
+            )
+            db.add(local_user)
+            db.commit()
+            db.refresh(local_user)
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found in this tenant",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
 
     if not local_user.is_active:
         raise HTTPException(
