@@ -476,6 +476,8 @@ logout: "Logi välja",
         confirmDelete: "Kustuta see isik? Seda ei saa tagasi võtta. Isikul ei tohi olla lingitud töötajaid.",
         cannotDelete: "Ei saa kustutada: isikul on lingitud töötajad. Eemalda need kõigepealt.",
         detailTitle: "Isiku andmed",
+        deleteConfirmTitle: "Kustuta isik",
+        deleteConfirmSubtitle: "Isik kustutatakse püsivalt. Seda ei saa tagasi võtta.",
       },
     },
 organization: {

@@ -220,7 +220,7 @@ export default function BusinessProcessesPage() {
   const getDivisionName = (divisionId: string | null) => {
     if (!divisionId) return null
     const division = divisions.find(d => d.id === divisionId)
-    return division?.name || divisionId
+    return division?.name || null
   }
 
   const filteredProcesses = processes.filter((p) =>
@@ -311,14 +311,11 @@ export default function BusinessProcessesPage() {
                         {t("roles.process_owner.name")}: {process.owner.name}
                       </p>
                     )}
-                    {process.division_id && (
+                    {process.division_id && getDivisionName(process.division_id) && (
                       <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900 dark:text-purple-200 text-base">
                         {getDivisionName(process.division_id)}
                       </Badge>
                     )}
-                    <Badge variant="outline" className="bg-gray-50 dark:bg-gray-800 dark:text-gray-200 text-base">
-                      {organizations.find(o => o.id === process.tenant_id)?.name || process.tenant_id}
-                    </Badge>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge

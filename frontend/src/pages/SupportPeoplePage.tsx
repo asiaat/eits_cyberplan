@@ -7,8 +7,16 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Plus, Search, Building2, Mail, Phone, Edit, Trash2, User,
-  X, ChevronRight, Users as UsersIcon,
+  X, ChevronRight, Users as UsersIcon, AlertTriangle,
 } from "lucide-react"
 
 interface OrgInfo {
@@ -63,6 +71,7 @@ export default function SupportPeoplePage() {
   const [activeTab, setActiveTab] = useState<"people" | "workers">("people")
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
   const [search, setSearch] = useState("")
+  const [deletingPersonId, setDeletingPersonId] = useState<string | null>(null)
 
   const [showCreate, setShowCreate] = useState(false)
   const [newPerson, setNewPerson] = useState({
@@ -166,6 +175,7 @@ export default function SupportPeoplePage() {
   const currentOrgName = organizations.find(o => o.id === currentOrgId)?.name || ""
 
   return (
+    <>
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">{t("support.people.title")}</h1>
@@ -420,7 +430,7 @@ export default function SupportPeoplePage() {
                           <Button
                             variant="destructive"
                             size="sm"
-                            onClick={() => deletePerson(selectedPerson.id)}
+                            onClick={() => confirmDeletePerson(selectedPerson.id)}
                           >
                             <Trash2 className="h-4 w-4 mr-1" />
                             {t("common.delete")}
@@ -723,6 +733,32 @@ export default function SupportPeoplePage() {
         </div>
       )}
     </div>
+
+    <Dialog open={!!deletingPersonId} onOpenChange={(open) => !open && handleDeleteCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center">
+            <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
+            {t("support.people.deleteConfirmTitle") || "Kustuta isik"}
+          </DialogTitle>
+          <DialogDescription>
+            <span className="font-semibold block mb-1">
+              {t("support.people.deleteConfirmSubtitle") || "Isik kustutatakse püsivalt"}
+            </span>
+            {t("support.people.confirmDelete")}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={handleDeleteCancel}>
+            {t("common.cancel")}
+          </Button>
+          <Button variant="destructive" onClick={() => deletingPersonId && deletePerson(deletingPersonId)}>
+            {t("common.delete")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   )
 
   function createPerson() {
@@ -758,9 +794,17 @@ export default function SupportPeoplePage() {
     }).catch(console.error)
   }
 
+  function confirmDeletePerson(personId: string) {
+    setDeletingPersonId(personId)
+  }
+
+  function handleDeleteCancel() {
+    setDeletingPersonId(null)
+  }
+
   function deletePerson(personId: string) {
-    if (!confirm(t("support.people.confirmDelete"))) return
     apiClient.delete(`/persons/${personId}`).then(() => {
+      setDeletingPersonId(null)
       setSelectedPerson(null)
       loadData()
     }).catch((err: any) => {
@@ -808,7 +852,7 @@ export default function SupportPeoplePage() {
     }).catch(console.error)
   }
 
-  function unlinkWorker(assetId: string) {
+function unlinkWorker(assetId: string) {
     if (!confirm(t("support.people.confirmUnlink"))) return
     apiClient.delete(`/organization/people/${assetId}`).then(() => {
       loadData()
