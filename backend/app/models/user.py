@@ -20,9 +20,6 @@ class User(Base):
     created_at = Column(DateTime, server_default="now()")
 
     memberships = relationship("Membership", back_populates="user")
-    owned_business_processes = relationship(
-        "BusinessProcess", back_populates="owner_user", foreign_keys="BusinessProcess.owner_user_id"
-    )
     owned_assets = relationship("Asset", back_populates="owner_user", foreign_keys="Asset.owner_user_id")
     owned_implementation_items = relationship(
         "ImplementationPlanItem", back_populates="owner_user"

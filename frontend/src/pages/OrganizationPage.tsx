@@ -5,6 +5,8 @@ import { apiClient } from "@/lib/api-client"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { AlertTriangle } from "lucide-react"
 
 interface OrgInfo {
   id: string
@@ -77,6 +79,7 @@ export default function OrganizationPage() {
   const [orgRegistryCode, setOrgRegistryCode] = useState("")
   const [newDivisionName, setNewDivisionName] = useState("")
   const [savingOrg, setSavingOrg] = useState(false)
+  const [deletingDivisionId, setDeletingDivisionId] = useState<string | null>(null)
 
   const [newUserName, setNewUserName] = useState("")
   const [newUserEmail, setNewUserEmail] = useState("")
@@ -185,28 +188,59 @@ export default function OrganizationPage() {
     setSavingOrg(false)
   }
 
-  const addDivision = () => {
+  const addDivision = async () => {
     if (!newDivisionName.trim() || !tenant) return
     const newDivision = { id: crypto.randomUUID(), name: newDivisionName.trim() }
     const updatedDivisions = [...(tenant.divisions || []), newDivision]
     setTenant({ ...tenant, divisions: updatedDivisions })
     setNewDivisionName("")
-    apiClient.patch(`/tenants/${tenant.id}`, {
-      name: orgName,
-      registry_code: orgRegistryCode || null,
-      divisions: updatedDivisions
-    })
+    try {
+      const res = await apiClient.patch(`/tenants/${tenant.id}`, {
+        name: orgName,
+        registry_code: orgRegistryCode || null,
+        divisions: updatedDivisions
+      })
+      console.log("Division saved:", res.data)
+    } catch (error: any) {
+      console.error("Failed to save division:", error.response?.data || error.message)
+      alert("Failed to save division: " + (error.response?.data?.detail || error.message))
+    }
   }
 
-  const removeDivision = (divisionId: string) => {
-    if (!tenant) return
-    const updatedDivisions = (tenant.divisions || []).filter((d: any) => d.id !== divisionId)
+  const checkDivisionInUse = async (divisionId: string) => {
+    try {
+      const response = await apiClient.get("/business-processes", {
+        params: { division_id: divisionId }
+      })
+      return (response.data as any[]).length > 0
+    } catch {
+      return false
+    }
+  }
+
+  const handleDivisionDeleteClick = async (divisionId: string) => {
+    const inUse = await checkDivisionInUse(divisionId)
+    if (inUse) {
+      alert(t("organization.divisionInUse"))
+      return
+    }
+    setDeletingDivisionId(divisionId)
+  }
+
+  const confirmDeleteDivision = async () => {
+    if (!deletingDivisionId || !tenant) return
+    const updatedDivisions = (tenant.divisions || []).filter((d: any) => d.id !== deletingDivisionId)
     setTenant({ ...tenant, divisions: updatedDivisions })
-    apiClient.patch(`/tenants/${tenant.id}`, {
-      name: orgName,
-      registry_code: orgRegistryCode || null,
-      divisions: updatedDivisions
-    })
+    try {
+      await apiClient.patch(`/tenants/${tenant.id}`, {
+        name: orgName,
+        registry_code: orgRegistryCode || null,
+        divisions: updatedDivisions
+      })
+    } catch (error: any) {
+      console.error("Failed to remove division:", error.response?.data || error.message)
+    }
+    setDeletingDivisionId(null)
   }
 
   const [selectedPersonId, setSelectedPersonId] = useState("")
@@ -441,7 +475,7 @@ export default function OrganizationPage() {
                     {(tenant.divisions || []).map((division: any) => (
                       <div key={division.id} className="flex items-center justify-between p-2 border rounded">
                         <span>{division.name}</span>
-                        <Button size="sm" variant="ghost" onClick={() => removeDivision(division.id)} className="text-red-500">
+                        <Button size="sm" variant="ghost" onClick={() => handleDivisionDeleteClick(division.id)} className="text-red-500">
                           {t("common.delete")}
                         </Button>
                       </div>
@@ -711,6 +745,29 @@ export default function OrganizationPage() {
           </Card>
         </div>
       )}
+
+      <Dialog open={!!deletingDivisionId} onOpenChange={() => setDeletingDivisionId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              {t("organization.deleteConfirmTitle")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("organization.deleteConfirmSubtitle")}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {t("organization.deleteConfirmDesc")}
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletingDivisionId(null)}>{t("common.cancel")}</Button>
+            <Button variant="destructive" onClick={confirmDeleteDivision}>
+              {t("common.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

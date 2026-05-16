@@ -198,11 +198,6 @@ export function useAuth() {
     }
   }
 
-  const selectOrg = useCallback((orgId: string) => {
-    localStorage.setItem(ORG_ID_KEY, orgId)
-    setSelectedOrgId(orgId)
-  }, [])
-
   const switchTenant = useCallback(async (newTenantId: string) => {
     const token = localStorage.getItem(TOKEN_KEY)
     if (!token) return
@@ -216,7 +211,7 @@ export function useAuth() {
         "X-Tenant-ID": newTenantId,
       },
     })
-    
+
     if (userRes.ok) {
       const userData = await userRes.json()
       const enrichedUserData = {
@@ -231,6 +226,15 @@ export function useAuth() {
 
     await fetchOrganizations(token, newTenantId)
   }, [fetchOrganizations])
+
+  const selectOrg = useCallback(async (orgId: string) => {
+    const token = localStorage.getItem(TOKEN_KEY)
+    if (token) {
+      await switchTenant(orgId)
+    }
+    localStorage.setItem(ORG_ID_KEY, orgId)
+    setSelectedOrgId(orgId)
+  }, [switchTenant])
 
   return { 
     user, 

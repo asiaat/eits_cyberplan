@@ -20,6 +20,25 @@ The solution must be a practical working tool for the information security manag
 - Audit log: append-only event log in the database
 - Deployment: Docker Compose for MVP, later Kubernetes or managed PaaS
 
+## 2.1. Internationalization (i18n) Requirements
+
+The system must support multiple languages to serve Estonian organizations:
+
+- **Supported Languages**: English (default), Estonian
+- **Implementation**: All user-facing text must use translation keys with fallback text
+- **Translation Pattern**: `{section}.{subsection}.{key}` (e.g., `businessProcesses.deleteConfirmTitle`)
+- **Fallback**: All translations must have default fallback values in English
+- **UI Components**: All buttons, labels, dialogs, forms, and messages must be translatable
+- **Data Labels**: System-generated labels (statuses, protection needs) must use translation keys
+
+## 2.2. UI/UX Requirements
+
+- **Dark Mode**: All pages must support dark mode with proper contrast ratios
+- **Readability**: Minimum font sizes must ensure readability in both light and dark modes
+- **Accessibility**: Color contrast must meet WCAG AA standards
+- **Responsive Design**: UI must work on desktop and tablet resolutions
+- **Confirmation Dialogs**: Delete and destructive actions must show confirmation modals with warning icons
+
 ## 3. Product Vision
 
 The system is an E-ITS workspace where a user can:
@@ -199,9 +218,10 @@ The purpose of the MVP is to create a working system that enables one organizati
 ### business_processes
 
 - id
-- tenant_id
+- tenant_id (FK to app_tenants)
 - name
-- owner_user_id
+- owner_user_id (FK to local_users)
+- division_id (FK to app_tenants.divisions - optional, links process to org division)
 - description
 - purpose
 - inputs
@@ -212,6 +232,39 @@ The purpose of the MVP is to create a working system that enables one organizati
 - availability_need
 - created_at
 - updated_at
+
+### app_tenants (Organizations)
+
+- id
+- name
+- status
+- plan
+- created_at
+- registry_code
+- legal_form
+- registered_address
+- phone
+- email
+- divisions (JSON array of {id, name} objects - each org can have 0 or many divisions)
+
+### global_users
+
+- id
+- email
+- password_hash
+- mfa_enabled
+- mfa_secret
+- created_at
+
+### local_users
+
+- id
+- global_user_id (FK to global_users)
+- tenant_id (FK to app_tenants)
+- full_name
+- department
+- is_active
+- created_at
 
 ### assets
 
@@ -729,7 +782,18 @@ Acceptance criteria:
 
 - the process has an owner;
 - C/I/A protection needs can be assigned to the process;
-- assets can be added to the process.
+- assets can be added to the process;
+- the process can be optionally assigned to an organizational division (0 or 1 division per process);
+- divisions are created at organization level and appear in the organization's settings page.
+
+US-4.1: As an information security manager, I want to create organizational divisions so that business processes can be grouped by organizational unit.
+
+Acceptance criteria:
+
+- organizations can have 0 or many divisions;
+- each division has a unique ID and name;
+- divisions can be added and removed via the organization settings UI;
+- business processes can be filtered by division.
 
 US-5: As an asset owner, I want to add an asset and its relationships so that it is clear what must be protected.
 
