@@ -167,6 +167,8 @@ export default function BusinessProcessesPage() {
   const handleSubmit = async () => {
     try {
       setSaving(true)
+      console.log("DEBUG handleSubmit formData:", formData)
+      console.log("DEBUG division_id value:", formData.division_id)
       if (editingId) {
         await apiClient.patch(`/business-processes/${editingId}`, formData)
       } else {
@@ -175,6 +177,7 @@ export default function BusinessProcessesPage() {
       setShowForm(false)
       fetchProcesses()
     } catch (err: any) {
+      console.error("DEBUG handleSubmit error:", err.response?.data || err)
       alert(err.response?.data?.detail || "Failed to save")
     } finally {
       setSaving(false)

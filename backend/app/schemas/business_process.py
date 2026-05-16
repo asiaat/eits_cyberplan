@@ -81,6 +81,7 @@ class BusinessProcessUpdate(BaseModel):
     integrity_need: Optional[ProtectionNeedLevel] = None
     availability_need: Optional[ProtectionNeedLevel] = None
     owner_user_id: Optional[UUID] = None
+    division_id: Optional[UUID] = None
 
 
 class BusinessProcessResponse(BusinessProcessBase):

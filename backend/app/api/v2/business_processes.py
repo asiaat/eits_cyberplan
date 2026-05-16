@@ -93,6 +93,8 @@ def create_business_process_v2(
     if data is None:
         raise HTTPException(status_code=400, detail="Request body required")
     
+    print(f"DEBUG create_bp: division_id received = {data.division_id}, type = {type(data.division_id)}")
+    
     bp = BusinessProcess(
         tenant_id=current_user.tenant_id,
         name=data.name,
