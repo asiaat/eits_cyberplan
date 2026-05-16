@@ -22,10 +22,13 @@ class AppTenant(Base):
     registered_address = Column(String(500), nullable=True)
     phone = Column(String(50), nullable=True)
     email = Column(String(255), nullable=True)
+    divisions = Column(String(5000), nullable=True)
 
     tenant_users = relationship("TenantUser", back_populates="tenant", foreign_keys="TenantUser.tenant_id")
     local_users = relationship("LocalUser", back_populates="tenant")
     e_its_roles = relationship("EITSRole", back_populates="tenant")
+    audit_logs = relationship("AuditLog", back_populates="tenant")
+    business_processes = relationship("BusinessProcess", back_populates="tenant")
 
 
 class GlobalUser(Base):

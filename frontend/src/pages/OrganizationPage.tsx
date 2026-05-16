@@ -185,28 +185,38 @@ export default function OrganizationPage() {
     setSavingOrg(false)
   }
 
-  const addDivision = () => {
+  const addDivision = async () => {
     if (!newDivisionName.trim() || !tenant) return
     const newDivision = { id: crypto.randomUUID(), name: newDivisionName.trim() }
     const updatedDivisions = [...(tenant.divisions || []), newDivision]
     setTenant({ ...tenant, divisions: updatedDivisions })
     setNewDivisionName("")
-    apiClient.patch(`/tenants/${tenant.id}`, {
-      name: orgName,
-      registry_code: orgRegistryCode || null,
-      divisions: updatedDivisions
-    })
+    try {
+      const res = await apiClient.patch(`/tenants/${tenant.id}`, {
+        name: orgName,
+        registry_code: orgRegistryCode || null,
+        divisions: updatedDivisions
+      })
+      console.log("Division saved:", res.data)
+    } catch (error: any) {
+      console.error("Failed to save division:", error.response?.data || error.message)
+      alert("Failed to save division: " + (error.response?.data?.detail || error.message))
+    }
   }
 
-  const removeDivision = (divisionId: string) => {
+  const removeDivision = async (divisionId: string) => {
     if (!tenant) return
     const updatedDivisions = (tenant.divisions || []).filter((d: any) => d.id !== divisionId)
     setTenant({ ...tenant, divisions: updatedDivisions })
-    apiClient.patch(`/tenants/${tenant.id}`, {
-      name: orgName,
-      registry_code: orgRegistryCode || null,
-      divisions: updatedDivisions
-    })
+    try {
+      await apiClient.patch(`/tenants/${tenant.id}`, {
+        name: orgName,
+        registry_code: orgRegistryCode || null,
+        divisions: updatedDivisions
+      })
+    } catch (error: any) {
+      console.error("Failed to remove division:", error.response?.data || error.message)
+    }
   }
 
   const [selectedPersonId, setSelectedPersonId] = useState("")

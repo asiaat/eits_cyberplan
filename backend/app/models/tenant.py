@@ -32,7 +32,6 @@ class Tenant(Base):
     updated_at = Column(DateTime, server_default="now()", onupdate="now()")
 
     users = relationship("Membership", back_populates="tenant")
-    business_processes = relationship("BusinessProcess", back_populates="tenant")
     assets = relationship("Asset", back_populates="tenant")
     asset_relations = relationship("AssetRelation", back_populates="tenant")
     process_assets = relationship("ProcessAsset", back_populates="tenant")
@@ -41,7 +40,6 @@ class Tenant(Base):
     risks = relationship("Risk", back_populates="tenant")
     evidences = relationship("Evidence", back_populates="tenant")
     evidence_links = relationship("EvidenceLink", back_populates="tenant")
-    audit_logs = relationship("AuditLog", back_populates="tenant")
     comments = relationship("Comment", back_populates="tenant")
     child_tenants = relationship("Tenant", backref="parent", remote_side=[id])
     person_organizations = relationship("PersonOrganization", back_populates="tenant")

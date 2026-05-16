@@ -131,11 +131,11 @@ def create_business_process_v2(
     import json
     audit_log(
         db=db,
-        tenant_id=current_user.tenant_id,
-        actor_user_id=current_user.global_user_id,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
         action="create",
         entity_type="business_process",
-        entity_id=bp.id,
+        entity_id=str(bp.id),
         after_json={"business_process": bp.name},
     )
 
@@ -213,7 +213,7 @@ def update_business_process_v2(
         actor_user_id=str(current_user.global_user_id),
         action="update",
         entity_type="business_process",
-        entity_id=bp.id,
+        entity_id=str(bp.id),
         before_json=before,
         after_json={"business_process": bp.name},
     )
@@ -249,7 +249,7 @@ def delete_business_process_v2(
         actor_user_id=str(current_user.global_user_id),
         action="delete",
         entity_type="business_process",
-        entity_id=bp.id,
+        entity_id=str(bp.id),
         before_json={"business_process": bp.name},
     )
 
@@ -309,7 +309,7 @@ def add_process_asset_v2(
         actor_user_id=str(current_user.global_user_id),
         action="link_asset",
         entity_type="business_process",
-        entity_id=process_id,
+        entity_id=str(process_id),
         after_json={"asset_id": str(data.asset_id)},
     )
 
@@ -352,7 +352,7 @@ def remove_process_asset_v2(
         actor_user_id=str(current_user.global_user_id),
         action="unlink_asset",
         entity_type="business_process",
-        entity_id=process_id,
+        entity_id=str(process_id),
         after_json={"asset_id": str(asset_id)},
     )
 

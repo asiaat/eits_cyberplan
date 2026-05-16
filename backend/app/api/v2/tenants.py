@@ -1,4 +1,5 @@
 """Tenants API v2 - Subscription management."""
+import json
 from typing import List, Optional
 from uuid import UUID
 
@@ -25,6 +26,7 @@ class TenantResponse(BaseModel):
     registered_address: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
+    divisions: Optional[List[dict]] = []
 
 
 class TenantCreate(BaseModel):
@@ -98,7 +100,8 @@ def get_my_organizations(db: DB, current_user = CurrentUserV2):
             legal_form=t.legal_form,
             registered_address=t.registered_address,
             phone=t.phone,
-            email=t.email
+            email=t.email,
+            divisions=json.loads(t.divisions) if t.divisions else []
         )
         for t in tenants
     ]
@@ -126,6 +129,13 @@ def get_tenant(tenant_id: UUID, db: DB, current_user = CurrentUserV2):
             detail="Tenant not found",
         )
     
+    divisions = []
+    if tenant.divisions:
+        try:
+            divisions = json.loads(tenant.divisions)
+        except (json.JSONDecodeError, TypeError):
+            divisions = []
+    
     return TenantResponse(
         id=str(tenant.id),
         name=tenant.name,
@@ -136,7 +146,8 @@ def get_tenant(tenant_id: UUID, db: DB, current_user = CurrentUserV2):
         legal_form=tenant.legal_form,
         registered_address=tenant.registered_address,
         phone=tenant.phone,
-        email=tenant.email
+        email=tenant.email,
+        divisions=divisions
     )
 
 
@@ -173,9 +184,21 @@ def update_tenant(tenant_id: UUID, db: DB, request: TenantUpdate, current_user =
         tenant.phone = request.phone
     if request.email is not None:
         tenant.email = request.email
+    if request.divisions is not None:
+        print(f"DEBUG: Saving divisions: {request.divisions}")
+        tenant.divisions = json.dumps(request.divisions)
+        print(f"DEBUG: Tenant divisions set to: {tenant.divisions}")
     
     db.commit()
     db.refresh(tenant)
+    print(f"DEBUG: After commit, tenant.divisions = {tenant.divisions}")
+    
+    divisions = []
+    if tenant.divisions:
+        try:
+            divisions = json.loads(tenant.divisions)
+        except (json.JSONDecodeError, TypeError):
+            divisions = []
     
     return TenantResponse(
         id=str(tenant.id),
@@ -187,7 +210,8 @@ def update_tenant(tenant_id: UUID, db: DB, request: TenantUpdate, current_user =
         legal_form=tenant.legal_form,
         registered_address=tenant.registered_address,
         phone=tenant.phone,
-        email=tenant.email
+        email=tenant.email,
+        divisions=divisions
     )
 
 

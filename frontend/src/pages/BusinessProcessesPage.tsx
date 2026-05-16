@@ -97,7 +97,7 @@ export default function BusinessProcessesPage() {
   const fetchDivisions = async () => {
     if (!selectedOrgId) return
     try {
-      const response = await apiClient.get(`/organization/${selectedOrgId}`)
+      const response = await apiClient.get(`/tenants/${selectedOrgId}`)
       if (response.data?.divisions) {
         setDivisions(response.data.divisions)
       }
