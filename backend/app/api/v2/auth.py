@@ -59,7 +59,6 @@ def get_current_user_v2(
     x_tenant_id: str | None = Header(None, alias="X-Tenant-ID"),
     db: Session = Depends(get_db),
 ) -> LocalUser:
-    print(f"[AUTH] Headers received - authorization: {repr(authorization)}, x_tenant_id: {repr(x_tenant_id)}")
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -98,8 +98,6 @@ export function useAuth() {
     const storedTenantId = localStorage.getItem(TENANT_ID_KEY)
     const storedOrgId = localStorage.getItem(ORG_ID_KEY)
 
-    console.log("Auth init:", { token: token ? 'yes' : 'no', storedTenantId, storedOrgId })
-
     if (token && storedTenantId) {
       setTenantId(storedTenantId)
       setSelectedOrgId(storedOrgId)
@@ -113,7 +111,7 @@ export function useAuth() {
     } else {
       setLoading(false)
     }
-  }, [fetchUser, fetchOrganizations])
+  }, [])
 
   const login = async (email: string, password: string) => {
     const formData = new URLSearchParams()

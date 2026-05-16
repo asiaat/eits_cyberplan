@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useTranslation } from "@/lib/i18n"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -72,6 +72,7 @@ const statusColors: Record<string, string> = {
 export default function BusinessProcessesPage() {
   const { t } = useTranslation()
   const { organizations, selectedOrgId } = useAuth()
+  const selectedOrgIdRef = useRef(selectedOrgId)
   const [processes, setProcesses] = useState<ProcessListItem[]>([])
   const [divisions, setDivisions] = useState<Division[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,17 +99,22 @@ export default function BusinessProcessesPage() {
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
+  useEffect(() => { selectedOrgIdRef.current = selectedOrgId }, [selectedOrgId])
+
   useEffect(() => {
-    if (!selectedOrgId) return
+    const token = localStorage.getItem("access_token")
+    if (!selectedOrgIdRef.current || !token) return
     fetchDivisions()
     fetchProcesses()
   }, [selectedOrgId])
 
   const fetchDivisions = async () => {
-    if (!selectedOrgId) return
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
     try {
-      console.log("Fetching divisions with selectedOrgId:", selectedOrgId)
-      const response = await apiClient.get(`/tenants/${selectedOrgId}`)
+      console.log("Fetching divisions with selectedOrgId:", selectedOrgIdRef.current)
+      const response = await apiClient.get(`/tenants/${selectedOrgIdRef.current}`)
       if (response.data?.divisions) {
         setDivisions(response.data.divisions)
       }
@@ -118,13 +124,15 @@ export default function BusinessProcessesPage() {
   }
 
   const fetchProcesses = async () => {
-    if (!selectedOrgId) return
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
     try {
       setLoading(true)
       setError(null)
       const params: Record<string, string> = {}
       if (statusFilter) params.status = statusFilter
-      console.log("Fetching processes with selectedOrgId:", selectedOrgId)
+      console.log("Fetching processes with selectedOrgId:", selectedOrgIdRef.current)
       const response = await apiClient.get("/business-processes/", { params })
       setProcesses(response.data)
     } catch (err: any) {

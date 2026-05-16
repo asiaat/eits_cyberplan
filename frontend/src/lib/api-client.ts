@@ -19,16 +19,10 @@ apiClient.interceptors.request.use((config) => {
     config.headers["X-Tenant-ID"] = tenantId
   }
 
-  console.log("API Request:", config.method?.toUpperCase(), config.url, "token:", token ? "yes" : "NO", "tenant:", tenantId)
   return config
 })
 
 apiClient.interceptors.response.use(
-  (response) => {
-    return response
-  },
-  (error) => {
-    console.error("API Error:", error.response?.status, error.config?.url, error.response?.data)
-    return Promise.reject(error)
-  }
+  (response) => response,
+  (error) => Promise.reject(error)
 )

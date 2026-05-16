@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useTranslation } from "@/lib/i18n"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -101,6 +101,7 @@ const statusColors: Record<string, string> = {
 export default function AssetsPage() {
   const { t } = useTranslation()
   const { selectedOrgId } = useAuth()
+  const selectedOrgIdRef = useRef(selectedOrgId)
   const [assets, setAssets] = useState<AssetListItem[]>([])
   const [users, setUsers] = useState<User[]>([])
   const [persons, setPersons] = useState<Person[]>([])
@@ -126,25 +127,29 @@ export default function AssetsPage() {
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<string | null>(null)
-
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
-  const [showAddProcess, setShowAddProcess] = useState(false)
-  const [unlinkedProcesses, setUnlinkedProcesses] = useState<BusinessProcessOption[]>([])
-  const [selectedProcess, setSelectedProcess] = useState<string>("")
-  const [loadingProcesses, setLoadingProcesses] = useState(false)
   const [linkingProcess, setLinkingProcess] = useState(false)
+  const [showAddProcess, setShowAddProcess] = useState(false)
+  const [selectedProcess, setSelectedProcess] = useState<string | null>(null)
+  const [loadingProcesses, setLoadingProcesses] = useState(false)
+  const [unlinkedProcesses, setUnlinkedProcesses] = useState<BusinessProcessOption[]>([])
+
+  useEffect(() => { selectedOrgIdRef.current = selectedOrgId }, [selectedOrgId])
 
   useEffect(() => {
-    if (selectedOrgId) {
-      fetchUsers()
-      fetchPersons()
-      fetchAssets()
-    }
+    const token = localStorage.getItem("access_token")
+    if (!selectedOrgIdRef.current || !token) return
+    fetchUsers()
+    fetchPersons()
+    fetchAssets()
   }, [selectedOrgId, typeFilter, statusFilter, search])
 
   const fetchUsers = async () => {
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
     try {
-      const response = await apiClient.get("/users")
+      const response = await apiClient.get("/users/")
       const usersData = response.data?.users || response.data || []
       setUsers(Array.isArray(usersData) ? usersData : [])
     } catch (err) {
@@ -154,8 +159,11 @@ export default function AssetsPage() {
   }
 
   const fetchPersons = async () => {
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
     try {
-      const response = await apiClient.get("/persons")
+      const response = await apiClient.get("/persons/")
       const personsData = response.data || []
       setPersons(Array.isArray(personsData) ? personsData : [])
     } catch (err) {
@@ -165,6 +173,9 @@ export default function AssetsPage() {
   }
 
   const fetchAssets = async () => {
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
     try {
       setLoading(true)
       setError(null)
@@ -172,7 +183,7 @@ export default function AssetsPage() {
       if (typeFilter) params.type = typeFilter
       if (statusFilter) params.status = statusFilter
       if (search) params.search = search
-      const response = await apiClient.get("/assets", { params })
+      const response = await apiClient.get("/assets/", { params })
       setAssets(response.data || [])
     } catch (err: any) {
       setError(err.response?.data?.detail || "Failed to load assets")
@@ -180,10 +191,6 @@ export default function AssetsPage() {
       setLoading(false)
     }
   }
-
-  useEffect(() => {
-    fetchAssets()
-  }, [typeFilter, statusFilter, search])
 
   const toggleExpanded = (assetId: string) => {
     setExpandedCards(prev => ({
@@ -227,6 +234,9 @@ export default function AssetsPage() {
   }
 
   const handleSubmit = async () => {
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
     try {
       setSaving(true)
       const payload = {
@@ -235,9 +245,9 @@ export default function AssetsPage() {
         person_id: formData.person_id || null,
       }
       if (editingId) {
-        await apiClient.patch(`/assets/${editingId}`, payload)
+        await apiClient.patch(`/assets/${editingId}/`, payload)
       } else {
-        await apiClient.post("/assets", payload)
+        await apiClient.post("/assets/", payload)
       }
       setShowForm(false)
       fetchAssets()
@@ -250,8 +260,11 @@ export default function AssetsPage() {
   }
 
   const handleDelete = async (id: string) => {
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
     try {
-      await apiClient.delete(`/assets/${id}`)
+      await apiClient.delete(`/assets/${id}/`)
       setDeletingId(null)
       setDeleteError(null)
       fetchAssets()
@@ -272,6 +285,9 @@ export default function AssetsPage() {
   }
 
   const fetchUnlinkedProcesses = async (assetId: string) => {
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
     try {
       setLoadingProcesses(true)
       const response = await apiClient.get(`/assets/${assetId}/unlinked-processes`)
@@ -286,6 +302,9 @@ export default function AssetsPage() {
   }
 
   const handleLinkProcess = async (assetId: string) => {
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
     if (!selectedProcess) return
     try {
       setLinkingProcess(true)
@@ -302,6 +321,9 @@ export default function AssetsPage() {
   }
 
   const handleUnlinkProcess = async (assetId: string, processId: string) => {
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
     try {
       await apiClient.delete(`/assets/${assetId}/processes/${processId}`)
       fetchAssets()
@@ -812,7 +834,7 @@ export default function AssetsPage() {
           <div className="space-y-4">
             <select
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              value={selectedProcess}
+              value={selectedProcess ?? ""}
               onChange={(e) => setSelectedProcess(e.target.value)}
               disabled={loadingProcesses || unlinkedProcesses.length === 0}
             >
