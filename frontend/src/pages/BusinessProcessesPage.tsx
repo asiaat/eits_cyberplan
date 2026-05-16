@@ -99,6 +99,7 @@ export default function BusinessProcessesPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!selectedOrgId) return
     fetchDivisions()
     fetchProcesses()
   }, [selectedOrgId])
@@ -106,6 +107,7 @@ export default function BusinessProcessesPage() {
   const fetchDivisions = async () => {
     if (!selectedOrgId) return
     try {
+      console.log("Fetching divisions with selectedOrgId:", selectedOrgId)
       const response = await apiClient.get(`/tenants/${selectedOrgId}`)
       if (response.data?.divisions) {
         setDivisions(response.data.divisions)
@@ -116,15 +118,17 @@ export default function BusinessProcessesPage() {
   }
 
   const fetchProcesses = async () => {
+    if (!selectedOrgId) return
     try {
       setLoading(true)
       setError(null)
       const params: Record<string, string> = {}
       if (statusFilter) params.status = statusFilter
-      if (divisionFilter) params.division_id = divisionFilter
-      const response = await apiClient.get("/business-processes", { params })
+      console.log("Fetching processes with selectedOrgId:", selectedOrgId)
+      const response = await apiClient.get("/business-processes/", { params })
       setProcesses(response.data)
     } catch (err: any) {
+      console.error("fetchProcesses error:", err)
       setError(err.response?.data?.detail || "Failed to load business processes")
     } finally {
       setLoading(false)
@@ -133,7 +137,7 @@ export default function BusinessProcessesPage() {
 
   useEffect(() => {
     fetchProcesses()
-  }, [statusFilter, divisionFilter])
+  }, [selectedOrgId, statusFilter, divisionFilter])
 
   const handleCreate = () => {
     setEditingId(null)

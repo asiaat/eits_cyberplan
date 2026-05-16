@@ -86,13 +86,14 @@ def sample_asset():
         "id": "asset-001",
         "tenant_id": "test-tenant-001",
         "name": "Test Asset",
-        "asset_type": "information_system",
+        "asset_type": "information_asset",
         "description": "A test asset",
         "owner_user_id": "user-001",
-        "criticality": "medium",
+        "criticality": "normal",
         "confidentiality_need": "normal",
         "integrity_need": "normal",
         "availability_need": "normal",
+        "lifecycle_status": "active",
     }
 
 
