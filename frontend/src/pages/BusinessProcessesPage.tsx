@@ -325,10 +325,10 @@ export default function BusinessProcessesPage() {
                       variant="outline"
                       className={`${statusColors[process.status] || statusColors.unknown} text-base`}
                     >
-                      {process.status}
+                      {t(`common.${process.status}`) || process.status}
                     </Badge>
                     <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900 dark:text-blue-200 text-base">
-                      {process.asset_count} assets
+                      {process.asset_count} {t("nav.assets")}
                     </Badge>
                   </div>
                 </div>
@@ -341,7 +341,7 @@ export default function BusinessProcessesPage() {
                       variant="outline"
                       className={`${protectionNeedColors[process.confidentiality_need]} text-base`}
                     >
-                      {process.confidentiality_need}
+                      {t(`protectionNeed.${process.confidentiality_need}`) || process.confidentiality_need}
                     </Badge>
                   </div>
                   <div className="text-base">
@@ -350,7 +350,7 @@ export default function BusinessProcessesPage() {
                       variant="outline"
                       className={`${protectionNeedColors[process.integrity_need]} text-base`}
                     >
-                      {process.integrity_need}
+                      {t(`protectionNeed.${process.integrity_need}`) || process.integrity_need}
                     </Badge>
                   </div>
                   <div className="text-base">
@@ -359,7 +359,7 @@ export default function BusinessProcessesPage() {
                       variant="outline"
                       className={`${protectionNeedColors[process.availability_need]} text-base`}
                     >
-                      {process.availability_need}
+                      {t(`protectionNeed.${process.availability_need}`) || process.availability_need}
                     </Badge>
                   </div>
                 </div>
@@ -390,57 +390,60 @@ export default function BusinessProcessesPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium">Name *</label>
+                <label className="text-sm font-medium">{t("common.name")} *</label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Process name"
+                  placeholder="Enter process name"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">Description</label>
-                <textarea
-                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Description"
-                />
+                <label className="text-sm font-medium">{t("common.description")}</label>
+<textarea
+                    value={formData.description}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Describe the business process"
+                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
               </div>
               <div>
-                <label className="text-sm font-medium">Purpose</label>
+                <label className="text-sm font-medium">{t("common.purpose")}</label>
                 <textarea
-                  className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={formData.purpose}
                   onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
-                  placeholder="Purpose of the process"
+                  placeholder="What is the purpose of this process?"
+                  className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Inputs</label>
-                  <Input
+                  <label className="text-sm font-medium">{t("common.inputs")}</label>
+                  <textarea
                     value={formData.inputs}
                     onChange={(e) => setFormData({ ...formData, inputs: e.target.value })}
-                    placeholder="Process inputs"
+                    placeholder="What inputs does this process need?"
+                    className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Outputs</label>
-                  <Input
+                  <label className="text-sm font-medium">{t("common.outputs")}</label>
+                  <textarea
                     value={formData.outputs}
                     onChange={(e) => setFormData({ ...formData, outputs: e.target.value })}
-                    placeholder="Process outputs"
+                    placeholder="What outputs does this process produce?"
+                    className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium">Division</label>
+                <label className="text-sm font-medium">{t("common.division")}</label>
                 <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={formData.division_id || ""}
                   onChange={(e) =>
                     setFormData({ ...formData, division_id: e.target.value || null })
                   }
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
                   <option value="">No division</option>
                   {divisions.map((div) => (
@@ -451,62 +454,62 @@ export default function BusinessProcessesPage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm font-medium">Status</label>
+                <label className="text-sm font-medium">{t("common.status")}</label>
                 <select
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="archived">Archived</option>
+                  <option value="active">{t("common.active")}</option>
+                  <option value="inactive">{t("common.inactive")}</option>
+                  <option value="archived">{t("common.archived")}</option>
                 </select>
               </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Confidentiality</label>
+                  <label className="text-sm font-medium">{t("common.confidentiality")}</label>
                   <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={formData.confidentiality_need}
                     onChange={(e) =>
                       setFormData({ ...formData, confidentiality_need: e.target.value })
                     }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="normal">Normal</option>
-                    <option value="high">High</option>
-                    <option value="very_high">Very High</option>
-                    <option value="unknown">Unknown</option>
+                    <option value="normal">{t("protectionNeed.normal") || "Normal"}</option>
+                    <option value="high">{t("protectionNeed.high") || "High"}</option>
+                    <option value="very_high">{t("protectionNeed.very_high") || "Very High"}</option>
+                    <option value="unknown">{t("protectionNeed.unknown") || "Unknown"}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Integrity</label>
+                  <label className="text-sm font-medium">{t("common.integrity")}</label>
                   <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={formData.integrity_need}
                     onChange={(e) =>
                       setFormData({ ...formData, integrity_need: e.target.value })
                     }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="normal">Normal</option>
-                    <option value="high">High</option>
-                    <option value="very_high">Very High</option>
-                    <option value="unknown">Unknown</option>
+                    <option value="normal">{t("protectionNeed.normal") || "Normal"}</option>
+                    <option value="high">{t("protectionNeed.high") || "High"}</option>
+                    <option value="very_high">{t("protectionNeed.very_high") || "Very High"}</option>
+                    <option value="unknown">{t("protectionNeed.unknown") || "Unknown"}</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Availability</label>
+                  <label className="text-sm font-medium">{t("common.availability")}</label>
                   <select
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                     value={formData.availability_need}
                     onChange={(e) =>
                       setFormData({ ...formData, availability_need: e.target.value })
                     }
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   >
-                    <option value="normal">Normal</option>
-                    <option value="high">High</option>
-                    <option value="very_high">Very High</option>
-                    <option value="unknown">Unknown</option>
-                  </select>
+                    <option value="normal">{t("protectionNeed.normal") || "Normal"}</option>
+                    <option value="high">{t("protectionNeed.high") || "High"}</option>
+                    <option value="very_high">{t("protectionNeed.very_high") || "Very High"}</option>
+                    <option value="unknown">{t("protectionNeed.unknown") || "Unknown"}</option>
+</select>
                 </div>
               </div>
               <div className="flex items-center justify-end gap-2 pt-4">
