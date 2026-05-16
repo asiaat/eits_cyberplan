@@ -6,6 +6,15 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
+import { AlertTriangle } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 interface OwnerInfo {
   id: string
@@ -87,7 +96,7 @@ export default function BusinessProcessesPage() {
     asset_ids: [],
   })
   const [saving, setSaving] = useState(false)
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchDivisions()
@@ -187,11 +196,25 @@ export default function BusinessProcessesPage() {
   const handleDelete = async (id: string) => {
     try {
       await apiClient.delete(`/business-processes/${id}`)
-      setDeleteConfirm(null)
+      setDeletingId(null)
       fetchProcesses()
     } catch (err: any) {
       alert(err.response?.data?.detail || "Failed to delete")
     }
+  }
+
+  const confirmDelete = (processId: string) => {
+    setDeletingId(processId)
+  }
+
+  const handleDeleteConfirm = () => {
+    if (deletingId) {
+      handleDelete(deletingId)
+    }
+  }
+
+  const handleDeleteCancel = () => {
+    setDeletingId(null)
   }
 
   const getDivisionName = (divisionId: string | null) => {
@@ -344,29 +367,14 @@ export default function BusinessProcessesPage() {
                   <Button variant="outline" size="sm" onClick={() => handleEdit(process)}>
                     {t("common.edit")}
                   </Button>
-                  {deleteConfirm === process.id ? (
-                    <>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(process.id)}
-                      >
-                        {t("common.delete")}
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => setDeleteConfirm(null)}>
-                        {t("common.cancel")}
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeleteConfirm(process.id)}
-                      className="text-destructive"
-                    >
-                      {t("common.delete")}
-                    </Button>
-                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => confirmDelete(process.id)}
+                    className="text-destructive"
+                  >
+                    {t("common.delete")}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -513,6 +521,31 @@ export default function BusinessProcessesPage() {
           </Card>
         </div>
       )}
+
+      <Dialog open={!!deletingId} onOpenChange={(open) => !open && handleDeleteCancel()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
+              {t("businessProcesses.deleteConfirmTitle") || "Warning!"}
+            </DialogTitle>
+            <DialogDescription>
+              <span className="font-semibold block mb-1">
+                {t("businessProcesses.deleteConfirmSubtitle") || "Delete Business Process"}
+              </span>
+              {t("businessProcesses.deleteConfirmDesc") || "Are you sure you want to delete this business process? This action cannot be undone."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleDeleteCancel}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              {t("common.delete")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

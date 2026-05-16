@@ -259,6 +259,9 @@ organization: {
     businessProcesses: {
       title: "Business Processes",
       noData: "No business processes yet.",
+      deleteConfirmTitle: "Warning!",
+      deleteConfirmSubtitle: "Delete Business Process",
+      deleteConfirmDesc: "Are you sure you want to delete this business process? This action cannot be undone.",
     },
     assets: {
       title: "Assets",
@@ -600,6 +603,9 @@ admin: {
     businessProcesses: {
       title: "Äriprotsessid",
       noData: "Äriprotsesse veel ei ole.",
+      deleteConfirmTitle: "Ettevaatust!",
+      deleteConfirmSubtitle: "Kustuta äriprotsess",
+      deleteConfirmDesc: "Kas olete kindel, et soovite selle äriprotsessi kustutada? Seda toimingut ei saa tagasi võtta.",
     },
     assets: {
       title: "Vara",
