@@ -57,16 +57,16 @@ interface BusinessProcessFormData {
 }
 
 const protectionNeedColors: Record<string, string> = {
-  normal: "bg-green-100 text-green-800 border-green-200",
-  high: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  very_high: "bg-red-100 text-red-800 border-red-200",
-  unknown: "bg-gray-100 text-gray-800 border-gray-200",
+  normal: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-800",
+  high: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-200 dark:border-yellow-800",
+  very_high: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-200 dark:border-red-800",
+  unknown: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700",
 }
 
 const statusColors: Record<string, string> = {
-  active: "bg-green-100 text-green-800 border-green-200",
-  inactive: "bg-gray-100 text-gray-800 border-gray-200",
-  archived: "bg-blue-100 text-blue-800 border-blue-200",
+  active: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-800",
+  inactive: "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-700",
+  archived: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900 dark:text-blue-200 dark:border-blue-800",
 }
 
 export default function BusinessProcessesPage() {
@@ -305,29 +305,29 @@ export default function BusinessProcessesPage() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1">
-                    <CardTitle className="text-xl">{process.name}</CardTitle>
+                    <CardTitle className="text-2xl">{process.name}</CardTitle>
                     {process.owner && (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-base text-muted-foreground">
                         {t("roles.process_owner.name")}: {process.owner.name}
                       </p>
                     )}
                     {process.division_id && (
-                      <Badge variant="outline" className="bg-purple-50">
+                      <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900 dark:text-purple-200 text-base">
                         {getDivisionName(process.division_id)}
                       </Badge>
                     )}
-                    <Badge variant="outline" className="bg-gray-50">
+                    <Badge variant="outline" className="bg-gray-50 dark:bg-gray-800 dark:text-gray-200 text-base">
                       {organizations.find(o => o.id === process.tenant_id)?.name || process.tenant_id}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge
                       variant="outline"
-                      className={statusColors[process.status] || statusColors.unknown}
+                      className={`${statusColors[process.status] || statusColors.unknown} text-base`}
                     >
                       {process.status}
                     </Badge>
-                    <Badge variant="outline" className="bg-blue-50">
+                    <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900 dark:text-blue-200 text-base">
                       {process.asset_count} assets
                     </Badge>
                   </div>
@@ -335,29 +335,29 @@ export default function BusinessProcessesPage() {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-4 mb-4">
-                  <div className="text-sm">
+                  <div className="text-base">
                     <span className="text-muted-foreground">C: </span>
                     <Badge
                       variant="outline"
-                      className={protectionNeedColors[process.confidentiality_need]}
+                      className={`${protectionNeedColors[process.confidentiality_need]} text-base`}
                     >
                       {process.confidentiality_need}
                     </Badge>
                   </div>
-                  <div className="text-sm">
+                  <div className="text-base">
                     <span className="text-muted-foreground">I: </span>
                     <Badge
                       variant="outline"
-                      className={protectionNeedColors[process.integrity_need]}
+                      className={`${protectionNeedColors[process.integrity_need]} text-base`}
                     >
                       {process.integrity_need}
                     </Badge>
                   </div>
-                  <div className="text-sm">
+                  <div className="text-base">
                     <span className="text-muted-foreground">A: </span>
                     <Badge
                       variant="outline"
-                      className={protectionNeedColors[process.availability_need]}
+                      className={`${protectionNeedColors[process.availability_need]} text-base`}
                     >
                       {process.availability_need}
                     </Badge>
