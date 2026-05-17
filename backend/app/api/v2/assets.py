@@ -127,6 +127,8 @@ def list_assets_v2(
     owner_id: Optional[UUID] = Query(None, alias="owner_id"),
     person_id: Optional[UUID] = Query(None, alias="person_id"),
     search: Optional[str] = Query(None, description="Search by name"),
+    sort: Optional[str] = Query(None, description="Sort field: name, asset_type, lifecycle_status, criticality, created_at"),
+    dir: Optional[str] = Query("desc", description="Sort direction: asc or desc"),
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
 ):
@@ -146,7 +148,26 @@ def list_assets_v2(
     if search:
         query = query.filter(Asset.name.ilike(f"%{search}%"))
 
-    assets = query.order_by(Asset.created_at.desc()).offset(skip).limit(limit).all()
+    # Apply sorting
+    sort_field = sort or "created_at"
+    sort_direction = dir.lower() if dir else "desc"
+    
+    # Map sort field to column
+    sort_column_map = {
+        "name": Asset.name,
+        "asset_type": Asset.asset_type,
+        "lifecycle_status": Asset.lifecycle_status,
+        "criticality": Asset.criticality,
+        "created_at": Asset.created_at,
+    }
+    sort_col = sort_column_map.get(sort_field, Asset.created_at)
+    
+    if sort_direction == "asc":
+        query = query.order_by(sort_col.asc())
+    else:
+        query = query.order_by(sort_col.desc())
+
+    assets = query.offset(skip).limit(limit).all()
 
     result = []
     for asset in assets:

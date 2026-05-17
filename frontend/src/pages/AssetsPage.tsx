@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useTranslation } from "@/lib/i18n"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,7 +14,13 @@ import {
 } from "@/components/ui/dialog"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
-import { AlertTriangle, Search, ChevronDown, ChevronRight, Unlink, Link2 } from "lucide-react"
+import { AlertTriangle, Search, ChevronDown, ChevronRight, Unlink, Link2, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type SortingState,
+} from "@tanstack/react-table"
 
 interface OwnerInfo {
   id: string
@@ -110,6 +116,8 @@ export default function AssetsPage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("")
   const [statusFilter, setStatusFilter] = useState<string>("")
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards")
+  const [sorting, setSorting] = useState<SortingState>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formData, setFormData] = useState<AssetFormData>({
@@ -138,6 +146,170 @@ export default function AssetsPage() {
   const [processesExpanded, setProcessesExpanded] = useState(false)
   const [processSearch, setProcessSearch] = useState("")
 
+  const table = useReactTable({
+    data: assets,
+    columns: useMemo(() => [
+      {
+        accessorKey: "name",
+        header: ({ column }: any) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-4 h-8"
+          >
+            {t("common.name")}
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }: any) => <span className="font-medium">{row.getValue("name")}</span>,
+      },
+      {
+        accessorKey: "asset_type",
+        header: ({ column }: any) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-4 h-8"
+          >
+            {t("assets.type")}
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }: any) => (
+          <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900 dark:text-purple-200">
+            {t(`assets.types.${row.getValue("asset_type")}`) || row.getValue("asset_type")}
+          </Badge>
+        ),
+      },
+      {
+        accessorKey: "lifecycle_status",
+        header: ({ column }: any) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-4 h-8"
+          >
+            {t("common.status")}
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }: any) => {
+          const status = row.getValue("lifecycle_status") as string
+          return (
+            <Badge variant="outline" className={statusColors[status] || statusColors.inactive}>
+              {t(`assets.statusLevels.${status}`) || status}
+            </Badge>
+          )
+        },
+      },
+      {
+        accessorKey: "criticality",
+        header: ({ column }: any) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-4 h-8"
+          >
+            {t("assets.criticality")}
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
+        cell: ({ row }: any) => {
+          const crit = row.getValue("criticality") as string
+          return (
+            <Badge variant="outline" className={criticalityColors[crit] || criticalityColors.normal}>
+              {t(`assets.criticalityLevels.${crit}`) || crit}
+            </Badge>
+          )
+        },
+      },
+      {
+        id: "protection",
+        header: t("assets.protection"),
+        cell: ({ row }: any) => {
+          const asset = row.original
+          return (
+            <div className="flex gap-1">
+              <Badge variant="outline" className={`${protectionNeedColors[asset.confidentiality_need]} text-xs`}>
+                C:{t(`protectionNeed.${asset.confidentiality_need}`)?.charAt(0) || asset.confidentiality_need?.charAt(0)}
+              </Badge>
+              <Badge variant="outline" className={`${protectionNeedColors[asset.integrity_need]} text-xs`}>
+                I:{t(`protectionNeed.${asset.integrity_need}`)?.charAt(0) || asset.integrity_need?.charAt(0)}
+              </Badge>
+              <Badge variant="outline" className={`${protectionNeedColors[asset.availability_need]} text-xs`}>
+                A:{t(`protectionNeed.${asset.availability_need}`)?.charAt(0) || asset.availability_need?.charAt(0)}
+              </Badge>
+            </div>
+          )
+        },
+      },
+      {
+        accessorKey: "owner",
+        header: t("assets.owner"),
+        cell: ({ row }: any) => {
+          const owner = row.getValue("owner") as OwnerInfo | null
+          return owner?.name || "-"
+        },
+      },
+      {
+        accessorKey: "linked_process_count",
+        header: t("assets.linkedProcesses"),
+        cell: ({ row }: any) => {
+          const count = row.getValue("linked_process_count") as number
+          return (
+            <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900 dark:text-blue-200">
+              {count}
+            </Badge>
+          )
+        },
+      },
+      {
+        id: "actions",
+        header: t("common.actions"),
+        cell: ({ row }: any) => {
+          const asset = row.original
+          return (
+            <div className="flex gap-1">
+              <Button variant="ghost" size="sm" onClick={() => handleEdit(asset)}>
+                {t("common.edit")}
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => confirmDelete(asset.id)} className="text-destructive hover:text-destructive">
+                {t("common.delete")}
+              </Button>
+            </div>
+          )
+        },
+      },
+    ], [t]),
+    getCoreRowModel: getCoreRowModel(),
+    state: { sorting },
+    onSortingChange: setSorting,
+  })
+
   useEffect(() => { selectedOrgIdRef.current = selectedOrgId }, [selectedOrgId])
 
   useEffect(() => {
@@ -147,7 +319,7 @@ export default function AssetsPage() {
     fetchPersons()
     fetchAllProcesses()
     fetchAssets()
-  }, [selectedOrgId, typeFilter, statusFilter, search])
+  }, [selectedOrgId, typeFilter, statusFilter, search, sorting])
 
   const fetchUsers = async () => {
     if (!selectedOrgIdRef.current) return
@@ -202,6 +374,10 @@ export default function AssetsPage() {
       if (typeFilter) params.type = typeFilter
       if (statusFilter) params.status = statusFilter
       if (search) params.search = search
+      if (sorting.length > 0) {
+        params.sort = sorting[0].id
+        params.dir = sorting[0].desc ? "desc" : "asc"
+      }
       const response = await apiClient.get("/assets/", { params })
       setAssets(response.data || [])
     } catch (err: any) {
@@ -496,6 +672,24 @@ export default function AssetsPage() {
             </option>
           ))}
         </select>
+        <div className="flex items-center border rounded-md">
+          <Button
+            variant={viewMode === "cards" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("cards")}
+            className="rounded-r-none"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+            className="rounded-l-none"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {filteredAssets.length === 0 && !error && (
@@ -506,7 +700,7 @@ export default function AssetsPage() {
         </Card>
       )}
 
-      {filteredAssets.length > 0 && (
+      {filteredAssets.length > 0 && viewMode === "cards" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAssets.map((asset) => (
             <Card key={asset.id} className="hover:shadow-md transition-shadow">
@@ -631,6 +825,37 @@ export default function AssetsPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {filteredAssets.length > 0 && viewMode === "list" && (
+        <div className="border rounded-md overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-muted">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th key={header.id} className="px-4 py-3 text-left text-sm font-medium">
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="border-t hover:bg-muted/50">
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3 text-sm">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
