@@ -66,16 +66,16 @@ export default function SettingsPage() {
           </div>
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">{t("common.roles") || "Roles"}:</span>
+            <span className="text-muted-foreground">{t("settings.roles") || "Roles"}:</span>
             <div className="flex flex-wrap gap-1">
               {userRoles && userRoles.length > 0 ? (
                 userRoles.map((role: any, index: number) => (
                   <span key={index} className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs rounded">
-                    {role.role_name}
+                    {t(`settings.roleNames.${role.role_name}`) || role.role_name}
                   </span>
                 ))
               ) : (
-                <span className="text-xs text-muted-foreground">No roles assigned</span>
+                <span className="text-xs text-muted-foreground">{t("settings.noRoles") || "No roles assigned"}</span>
               )}
             </div>
           </div>
