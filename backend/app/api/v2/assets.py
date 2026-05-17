@@ -26,22 +26,38 @@ router = APIRouter()
 
 def _can_manage_asset_links(db: Session, asset: Asset, current_user: LocalUser) -> bool:
     """Check if user can manage asset-process links (is owner or has infoturbejuht role)."""
+    # Asset owner can always manage links
     if asset.owner_user_id == current_user.id:
         return True
-
+    
+    # Check if user has infoturbejuht role in EITSRole table (per-tenant roles)
     user_roles = db.query(UserRole).filter(
         UserRole.user_id == current_user.id
     ).all()
-    role_ids = [ur.role_id for ur in user_roles]
-
+    
+    if not user_roles:
+        return False
+        
+    role_ids = [str(ur.role_id) for ur in user_roles]
+    
     if role_ids:
         infoturbejuht_role = db.query(EITSRole).filter(
             EITSRole.id.in_(role_ids),
-            EITSRole.role_name == "infoturbejuht"
+            EITSRole.role_name == "Infoturbejuht"  # Case sensitive!
         ).first()
         if infoturbejuht_role:
             return True
-
+    
+    # Check if user has any admin-type global role
+    from app.models.membership import Membership
+    memberships = db.query(Membership).filter(
+        Membership.user_id == current_user.id
+    ).all()
+    
+    for mem in memberships:
+        if mem.role_id in ['admin', 'administrator', 'superadmin']:
+            return True
+    
     return False
 
 
@@ -231,7 +247,7 @@ def get_asset_v2(
     return _build_response(db, asset, current_user)
 
 
-@router.patch("/{asset_id}", response_model=AssetResponse)
+@router.patch("/{asset_id}/", response_model=AssetResponse)
 def update_asset_v2(
     db: DB,
     current_user: LocalUser = CurrentUserV2,
@@ -284,7 +300,7 @@ def update_asset_v2(
     return _build_response(db, asset, current_user)
 
 
-@router.delete("/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{asset_id}/", status_code=status.HTTP_204_NO_CONTENT)
 def delete_asset_v2(
     db: DB,
     current_user: LocalUser = CurrentUserV2,

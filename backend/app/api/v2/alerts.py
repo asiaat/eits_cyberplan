@@ -40,7 +40,7 @@ def list_alerts(db: DB, current_user = CurrentUserV2):
         target_roles.extend(["admin", "ism"])
     
     alerts = db.query(Alert).filter(
-        Alert.is_active == True,
+        Alert.is_active == "true",
         Alert.target_role.in_(target_roles),
     ).order_by(Alert.created_at.desc()).limit(50).all()
     
@@ -52,10 +52,10 @@ def list_alerts(db: DB, current_user = CurrentUserV2):
             level=a.level,
             target_role=a.target_role,
             is_read=a.is_read or False,
-            read_at=a.read_at,
+            read_at=str(a.read_at) if a.read_at else None,
             created_at=str(a.created_at),
             link=a.link,
-            is_active=a.is_active or False
+            is_active=(a.is_active == "true")
         )
         for a in alerts
     ]
@@ -76,10 +76,10 @@ def list_alert_history(db: DB, current_user = CurrentUserV2):
             level=a.level,
             target_role=a.target_role,
             is_read=a.is_read or False,
-            read_at=a.read_at,
+            read_at=str(a.read_at) if a.read_at else None,
             created_at=str(a.created_at),
             link=a.link,
-            is_active=a.is_active or False
+            is_active=(a.is_active == "true")
         )
         for a in alerts
     ]

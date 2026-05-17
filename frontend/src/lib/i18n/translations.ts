@@ -24,6 +24,8 @@ export const translations = {
       confidentiality: "Confidentiality",
       integrity: "Integrity",
       availability: "Availability",
+      selectAll: "Select all",
+      selectNone: "Clear selection",
     },
     nav: {
       section: {
@@ -298,6 +300,7 @@ organization: {
       person: "Person",
       linkedProcesses: "Linked processes",
       linkedProcessesSection: "Linked business processes",
+      searchProcesses: "Search processes...",
       viewProcesses: "View processes",
       hideProcesses: "Hide processes",
       addToProcess: "Add to process",
@@ -394,6 +397,7 @@ organization: {
     },
     settings: {
       title: "Settings",
+      userInfo: "User Information",
       appearance: "Appearance",
       theme: "Theme",
       themeLight: "Light",
@@ -440,6 +444,8 @@ organization: {
       confidentiality: "Konfidentsiaalsus",
       integrity: "Terviklikkus",
       availability: "Kättesaadavus",
+      selectAll: "Vali kõik",
+      selectNone: "Tühista valik",
       none: "Puudub",
     },
     nav: {
@@ -712,6 +718,7 @@ inactive: "Mitteaktiivne",
       person: "Isik",
       linkedProcesses: "Lingitud protsessid",
       linkedProcessesSection: "Lingitud äriprotsessid",
+      searchProcesses: "Otsi protsesse...",
       viewProcesses: "Vaata protsesse",
       hideProcesses: "Peida protsessid",
       addToProcess: "Lisa äriprotsessile",

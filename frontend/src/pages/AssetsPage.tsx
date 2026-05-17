@@ -133,6 +133,10 @@ export default function AssetsPage() {
   const [selectedProcess, setSelectedProcess] = useState<string | null>(null)
   const [loadingProcesses, setLoadingProcesses] = useState(false)
   const [unlinkedProcesses, setUnlinkedProcesses] = useState<BusinessProcessOption[]>([])
+  const [newLinkedProcessIds, setNewLinkedProcessIds] = useState<string[]>([])
+  const [allProcesses, setAllProcesses] = useState<BusinessProcessOption[]>([])
+  const [processesExpanded, setProcessesExpanded] = useState(false)
+  const [processSearch, setProcessSearch] = useState("")
 
   useEffect(() => { selectedOrgIdRef.current = selectedOrgId }, [selectedOrgId])
 
@@ -141,6 +145,7 @@ export default function AssetsPage() {
     if (!selectedOrgIdRef.current || !token) return
     fetchUsers()
     fetchPersons()
+    fetchAllProcesses()
     fetchAssets()
   }, [selectedOrgId, typeFilter, statusFilter, search])
 
@@ -169,6 +174,20 @@ export default function AssetsPage() {
     } catch (err) {
       console.error("Failed to fetch persons:", err)
       setPersons([])
+    }
+  }
+
+  const fetchAllProcesses = async () => {
+    if (!selectedOrgIdRef.current) return
+    const token = localStorage.getItem("access_token")
+    if (!token) return
+    try {
+      const response = await apiClient.get("/business-processes/")
+      const processes = response.data?.results || response.data || []
+      setAllProcesses(Array.isArray(processes) ? processes : [])
+    } catch (err) {
+      console.error("Failed to fetch processes:", err)
+      setAllProcesses([])
     }
   }
 
@@ -213,11 +232,16 @@ export default function AssetsPage() {
       owner_user_id: null,
       person_id: null,
     })
+    setNewLinkedProcessIds([])
+    setProcessSearch("")
+    setProcessesExpanded(false)
     setShowForm(true)
   }
 
   const handleEdit = (asset: AssetListItem) => {
     setEditingId(asset.id)
+    setProcessSearch("")
+    setProcessesExpanded(false)
     setFormData({
       name: asset.name,
       asset_type: asset.asset_type,
@@ -247,7 +271,13 @@ export default function AssetsPage() {
       if (editingId) {
         await apiClient.patch(`/assets/${editingId}/`, payload)
       } else {
-        await apiClient.post("/assets/", payload)
+        const createResponse = await apiClient.post("/assets/", payload)
+        const newAssetId = createResponse.data?.id
+        if (newAssetId && newLinkedProcessIds.length > 0) {
+          for (const processId of newLinkedProcessIds) {
+            await apiClient.post(`/assets/${newAssetId}/link-process/`, { process_id: processId })
+          }
+        }
       }
       setShowForm(false)
       fetchAssets()
@@ -290,11 +320,13 @@ export default function AssetsPage() {
     if (!token) return
     try {
       setLoadingProcesses(true)
+      console.log("Fetching unlinked processes for asset:", assetId)
       const response = await apiClient.get(`/assets/${assetId}/unlinked-processes`)
+      console.log("Unlinked processes response:", response.data)
       setUnlinkedProcesses(response.data || [])
       setSelectedProcess("")
-    } catch (err) {
-      console.error("Failed to fetch unlinked processes:", err)
+    } catch (err: any) {
+      console.error("Failed to fetch unlinked processes:", err.response?.data || err)
       setUnlinkedProcesses([])
     } finally {
       setLoadingProcesses(false)
@@ -331,6 +363,26 @@ export default function AssetsPage() {
       alert(err.response?.data?.detail || "Failed to unlink process")
     }
   }
+
+  const toggleProcess = (processId: string) => {
+    if (newLinkedProcessIds.includes(processId)) {
+      setNewLinkedProcessIds(newLinkedProcessIds.filter(id => id !== processId))
+    } else {
+      setNewLinkedProcessIds([...newLinkedProcessIds, processId])
+    }
+  }
+
+  const toggleAllProcesses = (select: boolean) => {
+    if (select) {
+      setNewLinkedProcessIds(filteredProcesses.map(p => p.id))
+    } else {
+      setNewLinkedProcessIds([])
+    }
+  }
+
+  const filteredProcesses = allProcesses.filter(p => 
+    p.name.toLowerCase().includes(processSearch.toLowerCase())
+  )
 
   const openAddProcess = (assetId: string) => {
     fetchUnlinkedProcesses(assetId)
@@ -534,16 +586,26 @@ export default function AssetsPage() {
                       </button>
                       {expandedCards[asset.id] && (
                         <div className="mt-2 space-y-1 pl-5">
-                          {asset.linked_processes.map((proc) => (
-                            <div key={proc.id} className="flex items-center justify-between text-sm">
-                              <span className="flex items-center gap-1">
-                                {proc.name}
-                                <Badge variant="outline" className={`${statusColors[proc.status]} text-xs`}>
-                                  {t(`common.${proc.status}`) || proc.status}
-                                </Badge>
-                              </span>
-                            </div>
-                          ))}
+{asset.linked_processes.map((proc) => (
+                             <div key={proc.id} className="flex items-center justify-between text-sm">
+                               <span className="flex items-center gap-1">
+                                 {proc.name}
+                                 <Badge variant="outline" className={`${statusColors[proc.status]} text-xs`}>
+                                   {t(`common.${proc.status}`) || proc.status}
+                                 </Badge>
+                               </span>
+                               {asset.can_manage_links && (
+                               <Button
+                                 variant="ghost"
+                                 size="sm"
+                                 onClick={() => handleUnlinkProcess(asset.id, proc.id)}
+                                 className="text-destructive hover:text-destructive h-6 px-1"
+                               >
+                                 <Unlink className="h-3 w-3" />
+                               </Button>
+                               )}
+                             </div>
+                           ))}
                         </div>
                       )}
                     </div>
@@ -714,50 +776,128 @@ export default function AssetsPage() {
                 </select>
               </div>
 
-              {editingId && getEditingAsset() && (
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="text-sm font-medium mb-2">{t("assets.linkedProcessesSection")}</h4>
+              <div className="border rounded-md mt-4">
+                <button
+                  type="button"
+                  onClick={() => setProcessesExpanded(!processesExpanded)}
+                  className="flex items-center justify-between w-full p-3 bg-muted hover:bg-muted/80 transition-colors rounded-t-md"
+                >
+                  <span className="flex items-center gap-2">
+                    <Link2 className="h-4 w-4" />
+                    <span className="text-sm font-medium">{t("assets.linkedProcessesSection")}</span>
+                    {(editingId ? (getEditingAsset()?.linked_processes?.length || 0) : newLinkedProcessIds.length) > 0 && (
+                      <Badge variant="default" className="text-xs">
+                        {editingId ? (getEditingAsset()?.linked_processes?.length || 0) : newLinkedProcessIds.length}
+                      </Badge>
+                    )}
+                  </span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${processesExpanded ? "rotate-180" : ""} ${editingId ? "hidden" : ""}`} />
+                </button>
+                
+                {processesExpanded && (
+                  <div className="p-3 space-y-3">
+                    {!editingId ? (
+                      <>
+                        <Input
+                          placeholder={t("assets.searchProcesses") || "Search processes..."}
+                          value={processSearch}
+                          onChange={(e) => setProcessSearch(e.target.value)}
+                          className="h-9"
+                        />
+                        
+                        {filteredProcesses.length > 0 ? (
+                          <>
+                            <label className="flex items-center gap-2 cursor-pointer text-sm">
+                              <input
+                                type="checkbox"
+                                checked={filteredProcesses.length > 0 && newLinkedProcessIds.length === filteredProcesses.length}
+                                onChange={(e) => toggleAllProcesses(e.target.checked)}
+                                className="rounded border-input"
+                              />
+                              <span className="text-muted-foreground">
+                                {newLinkedProcessIds.length === 0 ? t("common.selectAll") : t("common.selectNone")}
+                              </span>
+                            </label>
+                            
+                            <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                              {filteredProcesses.map((proc) => (
+                                <div
+                                  key={proc.id}
+                                  onClick={() => toggleProcess(proc.id)}
+                                  className={`p-3 border rounded cursor-pointer transition-all ${
+                                    newLinkedProcessIds.includes(proc.id) 
+                                      ? "border-primary bg-primary/10 ring-1 ring-primary" 
+                                      : "hover:bg-secondary border-border"
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        checked={newLinkedProcessIds.includes(proc.id)}
+                                        onChange={() => toggleProcess(proc.id)}
+                                        className="rounded border-input pointer-events-none"
+                                      />
+                                      <span className="font-medium">{proc.name}</span>
+                                    </div>
+                                    <Badge variant="outline" className={`${statusColors[proc.status]} text-xs`}>
+                                      {t(`common.${proc.status}`) || proc.status}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-sm text-muted text-center py-4">{t("common.noData")}</p>
+                        )}
+                      </>
+                    ) : getEditingAsset() && (
+                      <>
+                        {getEditingAsset()!.linked_processes && getEditingAsset()!.linked_processes.length > 0 ? (
+                          <div className="space-y-2">
+                            {getEditingAsset()!.linked_processes.map((proc) => (
+                              <div key={proc.id} className="flex items-center justify-between p-3 border rounded bg-secondary">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium">{proc.name}</span>
+                                  <Badge variant="outline" className={`${statusColors[proc.status]} text-xs`}>
+                                    {t(`common.${proc.status}`) || proc.status}
+                                  </Badge>
+                                </div>
+                                {getEditingAsset()!.can_manage_links && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleUnlinkProcess(editingId, proc.id)}
+                                    className="text-destructive hover:text-destructive h-7"
+                                  >
+                                    <Unlink className="h-4 w-4 mr-1" />
+                                    {t("assets.unlink")}
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground text-center py-4">{t("assets.noLinkedProcesses")}</p>
+                        )}
 
-                  {getEditingAsset()!.linked_processes.length > 0 ? (
-                    <div className="space-y-2 mb-3">
-                      {getEditingAsset()!.linked_processes.map((proc) => (
-                        <div key={proc.id} className="flex items-center justify-between p-2 bg-secondary rounded">
-                          <span className="flex items-center gap-2">
-                            {proc.name}
-                            <Badge variant="outline" className={`${statusColors[proc.status]} text-xs`}>
-                              {t(`common.${proc.status}`) || proc.status}
-                            </Badge>
-                          </span>
-                          {getEditingAsset()!.can_manage_links && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleUnlinkProcess(editingId, proc.id)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Unlink className="h-4 w-4 mr-1" />
-                              {t("assets.unlink")}
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground mb-3">{t("assets.noLinkedProcesses")}</p>
-                  )}
-
-                  {getEditingAsset()!.can_manage_links && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => openAddProcess(editingId)}
-                    >
-                      <Link2 className="h-4 w-4 mr-1" />
-                      {t("assets.addToProcess")}
-                    </Button>
-                  )}
-                </div>
-              )}
+                        {getEditingAsset()!.can_manage_links && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openAddProcess(editingId)}
+                            className="w-full"
+                          >
+                            <Link2 className="h-4 w-4 mr-1" />
+                            {t("assets.addToProcess")}
+                          </Button>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={() => setShowForm(false)}>
