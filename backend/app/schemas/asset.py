@@ -60,6 +60,7 @@ class AssetBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
     asset_type: AssetType
     description: Optional[str] = None
+    remarks: Optional[str] = None
     criticality: Criticality = Criticality.NORMAL
     confidentiality_need: ProtectionNeedLevel = ProtectionNeedLevel.NORMAL
     integrity_need: ProtectionNeedLevel = ProtectionNeedLevel.NORMAL
@@ -79,6 +80,7 @@ class AssetUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=255)
     asset_type: Optional[AssetType] = None
     description: Optional[str] = None
+    remarks: Optional[str] = None
     criticality: Optional[Criticality] = None
     confidentiality_need: Optional[ProtectionNeedLevel] = None
     integrity_need: Optional[ProtectionNeedLevel] = None

@@ -51,12 +51,14 @@ interface AssetListItem {
   linked_processes: LinkedProcess[]
   can_manage_links: boolean
   created_at: string
+  remarks: string | null
 }
 
 interface AssetFormData {
   name: string
   asset_type: string
   description: string
+  remarks: string
   criticality: string
   confidentiality_need: string
   integrity_need: string
@@ -124,6 +126,7 @@ export default function AssetsPage() {
     name: "",
     asset_type: "information_asset",
     description: "",
+    remarks: "",
     criticality: "normal",
     confidentiality_need: "normal",
     integrity_need: "normal",
@@ -400,6 +403,7 @@ export default function AssetsPage() {
       name: "",
       asset_type: "information_asset",
       description: "",
+      remarks: "",
       criticality: "normal",
       confidentiality_need: "normal",
       integrity_need: "normal",
@@ -422,6 +426,7 @@ export default function AssetsPage() {
       name: asset.name,
       asset_type: asset.asset_type,
       description: "",
+      remarks: asset.remarks || "",
       criticality: asset.criticality,
       confidentiality_need: asset.confidentiality_need,
       integrity_need: asset.integrity_need,
@@ -895,6 +900,15 @@ export default function AssetsPage() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Describe the asset"
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">{t("assets.remarks")}</label>
+                <textarea
+                  value={formData.remarks}
+                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                  placeholder={t("assets.remarksPlaceholder") || "Additional notes, comments..."}
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>

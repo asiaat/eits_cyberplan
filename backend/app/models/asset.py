@@ -18,6 +18,7 @@ class Asset(Base):
     name = Column(String(255), nullable=False)
     asset_type = Column(String(50), nullable=False)
     description = Column(Text)
+    remarks = Column(Text)
     criticality = Column(String(20), default="normal")
     confidentiality_need = Column(String(20), default="normal")
     integrity_need = Column(String(20), default="normal")
