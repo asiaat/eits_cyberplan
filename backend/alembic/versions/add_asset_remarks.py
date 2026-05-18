@@ -17,7 +17,17 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column('assets', sa.Column('remarks', sa.Text(), nullable=True))
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name='assets' AND column_name='remarks'
+            ) THEN
+                ALTER TABLE assets ADD COLUMN remarks TEXT;
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade() -> None:

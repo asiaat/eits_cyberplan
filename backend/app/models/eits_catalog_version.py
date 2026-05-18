@@ -20,3 +20,5 @@ class EitsCatalogVersion(Base):
 
     modules = relationship("EitsModule", back_populates="catalog_version")
     measures = relationship("EitsMeasure", back_populates="catalog_version")
+    threats = relationship("EitsThreat", back_populates="version")
+    security_profiles = relationship("SecurityProfile", back_populates="catalog_version")
