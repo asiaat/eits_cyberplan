@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 const TOKEN_KEY = "access_token"
 const TENANT_ID_KEY = "tenant_id"
 const ORG_ID_KEY = "current_org_id"
-const API_BASE = "/api/v2"
+const API_BASE = import.meta.env.VITE_API_URL || "/api/v2"
 
 export interface UserRole {
   id: string

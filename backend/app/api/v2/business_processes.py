@@ -2,7 +2,7 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Header
 from sqlalchemy.orm import Session
 
 from app.api.deps import DB
@@ -83,7 +83,7 @@ def list_business_processes_v2(
     return result
 
 
-@router.post("/", response_model=BusinessProcessResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=BusinessProcessResponse, status_code=status.HTTP_201_CREATED)
 def create_business_process_v2(
     db: DB,
     current_user: LocalUser = CurrentUserV2,
