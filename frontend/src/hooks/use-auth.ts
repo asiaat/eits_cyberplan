@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react"
 const TOKEN_KEY = "access_token"
 const TENANT_ID_KEY = "tenant_id"
 const ORG_ID_KEY = "current_org_id"
-const API_BASE = "http://localhost:8000/api/v2"
+const API_BASE = "/api/v2"
 
 export interface UserRole {
   id: string
@@ -39,7 +39,8 @@ export function useAuth() {
 
   const fetchUser = useCallback(async (token: string, tenantIdForFetch?: string) => {
     try {
-      const tenantIdToUse = tenantIdForFetch || localStorage.getItem(TENANT_ID_KEY) || ""
+      // Priority: explicit param > TENANT_ID_KEY (authoritative) > ORG_ID_KEY
+      const tenantIdToUse = tenantIdForFetch || localStorage.getItem(TENANT_ID_KEY) || localStorage.getItem(ORG_ID_KEY) || ""
       const res = await fetch(`${API_BASE}/auth/me`, {
         headers: {
           Authorization: `Bearer ${token}`,
@@ -53,13 +54,13 @@ export function useAuth() {
         throw new Error("Unauthorized")
       }
       const data = await res.json()
-      
+
       const enrichedData = {
         ...data,
         name: data.full_name,
         permissions: data.permissions || [],
       }
-      
+
       setUser(enrichedData)
       setIsAuthenticated(true)
       localStorage.setItem("user_email", data.email || "")
@@ -96,7 +97,7 @@ export function useAuth() {
     const token = localStorage.getItem(TOKEN_KEY)
     const storedTenantId = localStorage.getItem(TENANT_ID_KEY)
     const storedOrgId = localStorage.getItem(ORG_ID_KEY)
-    
+
     if (token && storedTenantId) {
       setTenantId(storedTenantId)
       setSelectedOrgId(storedOrgId)
@@ -110,7 +111,7 @@ export function useAuth() {
     } else {
       setLoading(false)
     }
-  }, [fetchUser, fetchOrganizations])
+  }, [])
 
   const login = async (email: string, password: string) => {
     const formData = new URLSearchParams()
@@ -132,8 +133,20 @@ export function useAuth() {
     const token = tokenData.access_token
     localStorage.setItem(TOKEN_KEY, token)
 
+    // Use the tenant from the token directly - it's authoritative
+    const tokenPayload = JSON.parse(atob(token.split('.')[1]))
+    const tokenTenantId = tokenPayload.tenant
+    localStorage.setItem(TENANT_ID_KEY, tokenTenantId)
+    localStorage.setItem(ORG_ID_KEY, tokenTenantId) // Use same value for consistency
+    setTenantId(tokenTenantId)
+    setSelectedOrgId(tokenTenantId)
+
+    // Now fetch user with the correct tenant
     const userRes = await fetch(`${API_BASE}/auth/me`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Tenant-ID": tokenTenantId,
+      },
     })
 
     if (!userRes.ok) {
@@ -141,16 +154,13 @@ export function useAuth() {
     }
 
     const userData = await userRes.json()
-    
-    localStorage.setItem(TENANT_ID_KEY, userData.tenant_id)
-    setTenantId(userData.tenant_id)
-    
+
     const enrichedUserData = {
       ...userData,
       name: userData.full_name,
       permissions: userData.permissions || [],
     }
-    
+
     setUser(enrichedUserData)
     setIsAuthenticated(true)
     localStorage.setItem("user_email", userData.email || "")
@@ -161,16 +171,12 @@ export function useAuth() {
     const orgRes = await fetch(`${API_BASE}/tenants/my-organizations`, {
       headers: {
         Authorization: `Bearer ${token}`,
-        "X-Tenant-ID": userData.tenant_id,
+        "X-Tenant-ID": tokenTenantId,
       },
     })
     if (orgRes.ok) {
       const orgs = await orgRes.json()
       setOrganizations(orgs)
-      if (orgs.length > 0) {
-        localStorage.setItem(ORG_ID_KEY, orgs[0].id)
-        setSelectedOrgId(orgs[0].id)
-      }
     }
   }
 

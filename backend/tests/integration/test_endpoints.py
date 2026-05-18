@@ -77,6 +77,9 @@ class TestAuthProtection:
         ("/api/v2/organization/people", "GET", "List organization people"),
         ("/api/v2/organization/people", "POST", "Create worker"),
         ("/api/v2/organization/people/available", "GET", "List available persons"),
+        # V2 endpoints - Assets
+        ("/api/v2/assets/", "GET", "List assets v2"),
+        ("/api/v2/assets/", "POST", "Create asset v2"),
     ])
     def test_endpoint_requires_auth(self, endpoint, method, description):
         """
