@@ -9,18 +9,29 @@ depends_on = None
 
 
 def upgrade():
-    # Create FK constraints pointing to app_tenants and global_users
-    op.create_foreign_key(
-        'audit_logs_tenant_id_fkey',
-        'audit_logs', 'app_tenants',
-        ['tenant_id'], ['id'],
-        ondelete='CASCADE'
-    )
-    op.create_foreign_key(
-        'audit_logs_actor_user_id_fkey',
-        'audit_logs', 'global_users',
-        ['actor_user_id'], ['id']
-    )
+    # Create FK constraints pointing to app_tenants and global_users (idempotent)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'audit_logs_tenant_id_fkey'
+            ) THEN
+                ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_tenant_id_fkey
+                    FOREIGN KEY (tenant_id) REFERENCES app_tenants (id) ON DELETE CASCADE;
+            END IF;
+        END $$;
+    """)
+    op.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'audit_logs_actor_user_id_fkey'
+            ) THEN
+                ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_actor_user_id_fkey
+                    FOREIGN KEY (actor_user_id) REFERENCES global_users (id);
+            END IF;
+        END $$;
+    """)
 
 
 def downgrade():

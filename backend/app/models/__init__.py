@@ -26,6 +26,16 @@ from app.models.comment import Comment
 from app.models.organization_people import OrganizationPeople
 from app.models.person import Person, PersonOrganization
 from app.models.alert import Alert
+from app.models.eits_catalog_measure import EitsCatalogMeasure
+from app.models.eits_threat import EitsThreat, ModuleThreat
+from app.models.damage_scenario import DamageScenario
+from app.models.asset_type_category import AssetTypeCategory
+from app.models.security_profile import SecurityProfile
+from app.models.damage_assessment import DamageAssessment
+from app.models.protection_need_summary import ProtectionNeedSummary
+from app.models.asset_module_mapping import AssetModuleMapping
+from app.models.imr_item import ImrItem
+from app.models.risk_measure_link import RiskMeasureLink, DamageCategoryThreshold, ProcessModuleAssignment
 
 __all__ = [
     # Tier A - Subscription Layer
@@ -63,4 +73,19 @@ __all__ = [
     "Person",
     "PersonOrganization",
     "Alert",
+    # E-ITS v2 - Tier A
+    "EitsCatalogMeasure",
+    "EitsThreat",
+    "ModuleThreat",
+    "DamageScenario",
+    # E-ITS v2 - Tier B
+    "AssetTypeCategory",
+    "SecurityProfile",
+    "DamageAssessment",
+    "ProtectionNeedSummary",
+    "AssetModuleMapping",
+    "ImrItem",
+    "RiskMeasureLink",
+    "DamageCategoryThreshold",
+    "ProcessModuleAssignment",
 ]

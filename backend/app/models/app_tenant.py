@@ -29,6 +29,7 @@ class AppTenant(Base):
     e_its_roles = relationship("EITSRole", back_populates="tenant")
     audit_logs = relationship("AuditLog", back_populates="tenant")
     business_processes = relationship("BusinessProcess", back_populates="tenant")
+    security_profiles = relationship("SecurityProfile", back_populates="tenant")
 
 
 class GlobalUser(Base):
