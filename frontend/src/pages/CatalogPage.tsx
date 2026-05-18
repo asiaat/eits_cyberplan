@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { apiClient } from "@/lib/api-client"
+import { LevelBadge } from "@/components/level-badge"
 import {
   ChevronDown,
   ChevronRight,
@@ -53,12 +54,6 @@ interface EitsCatalogMeasure {
 
 interface ModuleWithMeasures extends EitsModule {
   measures: EitsCatalogMeasure[]
-}
-
-const levelColors: Record<string, string> = {
-  BASE: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200 dark:border-green-800",
-  STANDARD: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-200 dark:border-yellow-800",
-  HIGH: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-200 dark:border-red-800",
 }
 
 const moduleTypeColors: Record<string, string> = {
@@ -533,9 +528,7 @@ function MeasuresTab({
                         className="flex items-center gap-3 px-4 py-2 hover:bg-muted/20 cursor-pointer pl-8"
                         onClick={() => toggleMeasureExpand(measure.id)}
                       >
-                        <Badge className={levelColors[measure.measure_level] || "bg-gray-100"}>
-                          {t(`catalog.levels.${measure.measure_level.toLowerCase()}`)}
-                        </Badge>
+                        <LevelBadge level={measure.measure_level} />
                         <span className="font-mono text-sm w-32">{measure.code}</span>
                         <span className="flex-1 text-sm truncate">{measure.name}</span>
                         <span className="text-sm text-muted-foreground w-48 text-right">
@@ -552,9 +545,7 @@ function MeasuresTab({
                             <div className="flex gap-6">
                               <span>
                                 <span className="font-medium">{t("catalog.measureDetail.level")}:</span>{" "}
-                                <Badge className={levelColors[measure.measure_level]}>
-                                  {measure.measure_level}
-                                </Badge>
+                                <LevelBadge level={measure.measure_level} />
                               </span>
                               <span>
                                 <span className="font-medium">{t("catalog.measureDetail.responsible")}:</span>{" "}
