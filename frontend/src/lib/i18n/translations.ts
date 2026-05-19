@@ -342,6 +342,7 @@ organization: {
     catalog: {
       title: "E-ITS Catalog",
       noData: "No catalog items yet.",
+      modulesAndMeasuresCount: "{{count}} modules, {{total}} measures total",
       tabs: {
         modules: "Modules",
         measures: "Measures",
@@ -361,6 +362,7 @@ organization: {
       filters: {
         search: "Search...",
         group: "Group",
+        type: "Type",
         level: "Level",
         all: "All",
       },
@@ -847,6 +849,7 @@ inactive: "Mitteaktiivne",
     catalog: {
       title: "E-ITS Kataloog",
       noData: "Kataloogis andmeid veel ei ole.",
+      modulesAndMeasuresCount: "{{count}} moodulit {{total}} meetmega kokku",
       tabs: {
         modules: "Moodulid",
         measures: "Meetmed",
@@ -866,6 +869,7 @@ inactive: "Mitteaktiivne",
       filters: {
         search: "Otsi...",
         group: "Rühm",
+        type: "Tüüp",
         level: "Tase",
         all: "Kõik",
       },

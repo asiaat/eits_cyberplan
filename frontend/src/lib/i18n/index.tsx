@@ -26,7 +26,7 @@ function getNestedValue(obj: Record<string, unknown>, path: string): string {
 interface I18nContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextType | null>(null);
@@ -61,9 +61,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: string): string => {
+    (key: string, params?: Record<string, string | number>): string => {
       const translation = translations[language];
-      return getNestedValue(translation as Record<string, unknown>, key);
+      let result = getNestedValue(translation as Record<string, unknown>, key);
+      if (params) {
+        for (const [paramKey, value] of Object.entries(params)) {
+          result = result.replace(new RegExp(`{{${paramKey}}}`, "g"), String(value));
+        }
+      }
+      return result;
     },
     [language]
   );

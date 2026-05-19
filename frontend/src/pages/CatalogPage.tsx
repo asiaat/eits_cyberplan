@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useTranslation } from "@/lib/i18n"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -243,7 +244,7 @@ export default function CatalogPage() {
         </button>
       </div>
 
-      <div className="mb-4 flex gap-4">
+      <div className="mb-4 flex gap-4 items-center">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -253,9 +254,10 @@ export default function CatalogPage() {
             className="pl-9"
           />
         </div>
+        <Label className="whitespace-nowrap">{t("catalog.filters.group")}</Label>
         <Select value={groupFilter} onValueChange={setGroupFilter}>
           <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder={t("catalog.filters.group")} />
+            <SelectValue placeholder={t("catalog.filters.all")} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("catalog.filters.all")}</SelectItem>
@@ -267,34 +269,40 @@ export default function CatalogPage() {
           </SelectContent>
         </Select>
         {(activeTab === "modules") && (
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder={t("catalog.filters.type")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("catalog.filters.all")}</SelectItem>
-              {MODULE_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {t}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <>
+            <Label className="whitespace-nowrap">{t("catalog.filters.type")}</Label>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder={t("catalog.filters.all")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("catalog.filters.all")}</SelectItem>
+                {MODULE_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {t}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
         )}
         {activeTab === "measures" && (
-          <Select value={levelFilter} onValueChange={setLevelFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder={t("catalog.filters.level")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t("catalog.filters.all")}</SelectItem>
-              {LEVELS.map((l) => (
-                <SelectItem key={l} value={l}>
-                  {t(`catalog.levels.${l.toLowerCase()}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <>
+            <Label className="whitespace-nowrap">{t("catalog.filters.level")}</Label>
+            <Select value={levelFilter} onValueChange={setLevelFilter}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder={t("catalog.filters.all")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("catalog.filters.all")}</SelectItem>
+                {LEVELS.map((l) => (
+                  <SelectItem key={l} value={l}>
+                    {t(`catalog.levels.${l.toLowerCase()}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </>
         )}
       </div>
 
@@ -493,7 +501,7 @@ function MeasuresTab({
   return (
     <div className="space-y-2">
       <div className="text-sm text-muted-foreground mb-4">
-        {modulesWithMeasures.length} modules, {totalMeasures} measures total
+        {t("catalog.modulesAndMeasuresCount", { count: modulesWithMeasures.length, total: totalMeasures })}
       </div>
       {modulesWithMeasures.map((mod) => {
         const isModuleExpanded = expandedModules.has(mod.id)
