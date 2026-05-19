@@ -167,6 +167,7 @@ class AssetListItem(BaseModel):
     is_grouped: bool = False
     quantity: int = 1
     group_name: Optional[str] = None
+    module_mapping_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

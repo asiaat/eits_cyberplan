@@ -337,6 +337,7 @@ organization: {
       justification: "Justification (optional)",
       noModulesFound: "No modules found.",
       selectModule: "Select module",
+      modules: "Modules",
       criticalityLevels: {
         low: "Low",
         normal: "Normal",
@@ -905,6 +906,7 @@ inactive: "Mitteaktiivne",
       justification: "Põhjendus (valikuline)",
       noModulesFound: "Mooduleid ei leitud.",
       selectModule: "Vali moodul",
+      modules: "Moodulid",
       criticalityLevels: {
         low: "Madal",
         normal: "Normaalne",

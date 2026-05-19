@@ -124,6 +124,12 @@ export default function TargetsPage() {
   const [loadingModulesList, setLoadingModulesList] = useState(false)
   const [moduleJustification, setModuleJustification] = useState("")
 
+  // Edit dialog module state
+  const [editModuleSearch, setEditModuleSearch] = useState("")
+  const [editAvailableModules, setEditAvailableModules] = useState<EitsModule[]>([])
+  const [editLoadingModules, setEditLoadingModules] = useState(false)
+  const [editModuleJustification, setEditModuleJustification] = useState("")
+
   useEffect(() => {
     fetchTargets()
   }, [])
@@ -237,6 +243,8 @@ export default function TargetsPage() {
       remarks: target.remarks || "",
       criticality: target.criticality,
     })
+    resetEditModuleState()
+    fetchTargetModules(target.id)
     setEditDialogOpen(true)
   }
 
@@ -261,6 +269,19 @@ export default function TargetsPage() {
     }
   }
 
+  const searchModulesForEdit = async (query: string) => {
+    if (query.length < 2) return
+    setEditLoadingModules(true)
+    try {
+      const response = await apiClient.get("/catalog/modules", { params: { search: query } })
+      setEditAvailableModules(response.data.slice(0, 20))
+    } catch (error) {
+      console.error("Failed to search modules:", error)
+    } finally {
+      setEditLoadingModules(false)
+    }
+  }
+
   const handleAddModule = async (moduleId: string) => {
     if (!selectedTarget) return
     try {
@@ -275,6 +296,29 @@ export default function TargetsPage() {
     } catch (error) {
       console.error("Failed to add module:", error)
     }
+  }
+
+  const handleAddModuleInEdit = async (moduleId: string) => {
+    if (!selectedTarget) return
+    try {
+      await apiClient.post(`/targets/${selectedTarget.id}/modules`, {
+        module_id: moduleId,
+        justification: editModuleJustification || null,
+      })
+      setEditModuleSearch("")
+      setEditModuleJustification("")
+      setEditAvailableModules([])
+      fetchTargetModules(selectedTarget.id)
+      fetchTargets()
+    } catch (error) {
+      console.error("Failed to add module:", error)
+    }
+  }
+
+  const resetEditModuleState = () => {
+    setEditModuleSearch("")
+    setEditModuleJustification("")
+    setEditAvailableModules([])
   }
 
   const handleRemoveModule = async (targetId: string, mappingId: string) => {
@@ -562,7 +606,7 @@ export default function TargetsPage() {
 
       {/* Edit Target Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("targets.editTarget")}</DialogTitle>
           </DialogHeader>
@@ -639,6 +683,98 @@ export default function TargetsPage() {
                 value={formData.remarks}
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, remarks: e.target.value })}
                />
+            </div>
+
+            {/* Module Section in Edit Dialog */}
+            <div className="border rounded-lg p-4 mt-4">
+              <h4 className="text-sm font-medium mb-3">{t("targets.mappedModules")}</h4>
+              {loadingModules[selectedTarget?.id || ""] ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin"  />
+                  {t("common.loading")}
+                </div>
+              ) : (targetModules[selectedTarget?.id || ""] || []).length > 0 ? (
+                <div className="space-y-2">
+                  {(targetModules[selectedTarget?.id || ""] || []).map((mod) => (
+                    <div
+                      key={mod.id}
+                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm font-mono">{mod.module_code}</code>
+                          <span className="text-sm">{mod.module_name}</span>
+                          <Badge variant="outline" className="text-xs">{mod.module_group}</Badge>
+                        </div>
+                        {mod.justification && (
+                          <p className="text-xs text-muted-foreground mt-1">{mod.justification}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {getImrStatusBadge(mod.imr_status_summary)}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => selectedTarget && handleRemoveModule(selectedTarget.id, mod.id)}
+                        >
+                          <X className="h-4 w-4"  />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">{t("targets.noModules")}</p>
+              )}
+
+              {/* Add Module in Edit */}
+              <div className="mt-4 pt-4 border-t">
+                <Label className="text-sm">{t("targets.addModule")}</Label>
+                <Input
+                  className="mt-2"
+                  value={editModuleSearch}
+                  onChange={(e) => {
+                    setEditModuleSearch(e.target.value)
+                    searchModulesForEdit(e.target.value)
+                  }}
+                  placeholder={t("targets.searchModulePlaceholder")}
+                />
+                {editModuleJustification !== undefined && (
+                  <textarea
+                    className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
+                    value={editModuleJustification}
+                    onChange={(e) => setEditModuleJustification(e.target.value)}
+                    placeholder={t("targets.justificationPlaceholder")}
+                  />
+                )}
+                {editLoadingModules ? (
+                  <div className="flex items-center gap-2 text-muted-foreground mt-2">
+                    <Loader2 className="h-4 w-4 animate-spin"  />
+                    {t("common.loading")}
+                  </div>
+                ) : editAvailableModules.length > 0 ? (
+                  <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                    {editAvailableModules.map((mod) => (
+                      <div
+                        key={mod.id}
+                        className="flex items-center justify-between p-2 bg-muted/30 rounded hover:bg-muted/50 cursor-pointer"
+                        onClick={() => handleAddModuleInEdit(mod.id)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <code className="text-sm font-mono">{mod.code}</code>
+                          <span className="text-sm">{mod.name}</span>
+                        </div>
+                        <Badge variant="outline" className="text-xs">{mod.module_group}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                ) : editModuleSearch.length >= 2 ? (
+                  <p className="text-sm text-muted-foreground mt-2">{t("targets.noModulesFound")}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground mt-2">{t("targets.typeToSearch")}</p>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>

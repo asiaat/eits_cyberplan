@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import DB
 from app.api.v2.auth import get_current_user_v2, CurrentUserV2, LocalUser
 from app.models.asset import Asset
+from app.models.asset_module_mapping import AssetModuleMapping
 from app.models.process_asset import ProcessAsset
 from app.models.business_process import BusinessProcess
 from app.models.user import User
@@ -184,6 +185,11 @@ def list_assets_v2(
 
         linked_processes = _get_linked_processes(db, asset.id)
         can_manage = _can_manage_asset_links(db, asset, current_user)
+        
+        mapping_count = db.query(AssetModuleMapping).filter(
+            AssetModuleMapping.asset_id == asset.id,
+            AssetModuleMapping.tenant_id == current_user.tenant_id
+        ).count()
 
         item = AssetListItem(
             id=asset.id,
@@ -202,6 +208,7 @@ def list_assets_v2(
             linked_processes=linked_processes,
             can_manage_links=can_manage,
             created_at=asset.created_at,
+            module_mapping_count=mapping_count,
         )
         result.append(item)
 

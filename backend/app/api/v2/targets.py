@@ -62,11 +62,13 @@ def list_targets(
     result = []
     for target in targets:
         mapping_count = db.query(AssetModuleMapping).filter(
-            AssetModuleMapping.asset_id == target.id
+            AssetModuleMapping.asset_id == target.id,
+            AssetModuleMapping.tenant_id == current_user.tenant_id
         ).count()
         
         imr_count = db.query(ImrItem).join(AssetModuleMapping).filter(
-            AssetModuleMapping.asset_id == target.id
+            AssetModuleMapping.asset_id == target.id,
+            AssetModuleMapping.tenant_id == current_user.tenant_id
         ).count()
         
         target_dict = {
@@ -193,7 +195,8 @@ def get_target(
         raise HTTPException(status_code=404, detail="Target Object not found")
     
     mapping_count = db.query(AssetModuleMapping).filter(
-        AssetModuleMapping.asset_id == target.id
+        AssetModuleMapping.asset_id == target.id,
+        AssetModuleMapping.tenant_id == current_user.tenant_id
     ).count()
     
     imr_count = db.query(ImrItem).join(AssetModuleMapping).filter(
@@ -264,7 +267,8 @@ def update_target(
     pass
     
     mapping_count = db.query(AssetModuleMapping).filter(
-        AssetModuleMapping.asset_id == target.id
+        AssetModuleMapping.asset_id == target.id,
+        AssetModuleMapping.tenant_id == current_user.tenant_id
     ).count()
     
     imr_count = db.query(ImrItem).join(AssetModuleMapping).filter(
@@ -336,7 +340,8 @@ def get_target_modules(
         raise HTTPException(status_code=404, detail="Target Object not found")
     
     mappings = db.query(AssetModuleMapping).filter(
-        AssetModuleMapping.asset_id == target_id
+        AssetModuleMapping.asset_id == target_id,
+        AssetModuleMapping.tenant_id == current_user.tenant_id
     ).all()
     
     result = []
@@ -532,7 +537,8 @@ def get_target_imr(
         raise HTTPException(status_code=404, detail="Target Object not found")
     
     mappings = db.query(AssetModuleMapping).filter(
-        AssetModuleMapping.asset_id == target_id
+        AssetModuleMapping.asset_id == target_id,
+        AssetModuleMapping.tenant_id == current_user.tenant_id
     ).all()
     
     mapping_ids = [m.id for m in mappings]
