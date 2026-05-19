@@ -5,8 +5,6 @@ from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
-import os
-
 _env_candidates = [
     os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), ".env"),
     os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
@@ -46,6 +44,12 @@ class Settings(BaseSettings):
     )
 
     LOG_LEVEL: str = Field(default="INFO", validation_alias="LOG_LEVEL")
+
+    EITS_SOURCE_URL: str = Field(
+        default="https://eits.ria.ee/api/2/article/asset/2024/E-ITS%202024_meetmete_tabel_CC.xlsx",
+        validation_alias="EITS_SOURCE_URL",
+    )
+    EITS_IMPORT_YEAR: str = Field(default="2024", validation_alias="EITS_IMPORT_YEAR")
 
     model_config = {
         "env_file": _env_file,
