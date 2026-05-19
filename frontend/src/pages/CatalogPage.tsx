@@ -196,18 +196,24 @@ export default function CatalogPage() {
         <h1 className="text-3xl font-bold">{t("catalog.title")}</h1>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">{t("catalog.selectVersion")}:</span>
-          <Select value={selectedVersionId || ""} onValueChange={setSelectedVersionId}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder={t("catalog.selectVersion")} />
-            </SelectTrigger>
-            <SelectContent>
-              {versions.map((v) => (
-                <SelectItem key={v.id} value={v.id}>
-                  {v.year} - {v.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {versions.length === 1 ? (
+            <span className="text-sm font-medium">
+              {versions[0].year} - {versions[0].name}
+            </span>
+          ) : (
+            <Select value={selectedVersionId || ""} onValueChange={setSelectedVersionId}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder={t("catalog.selectVersion")} />
+              </SelectTrigger>
+              <SelectContent>
+                {versions.map((v) => (
+                  <SelectItem key={v.id} value={v.id}>
+                    {v.year} - {v.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
