@@ -171,3 +171,32 @@ def admin_token():
 def user_token():
     """JWT token for regular user."""
     return "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.user_token_placeholder"
+
+@pytest.fixture
+def eits_module_id():
+    """Return a valid E-ITS module ID from the database for integration tests."""
+    # This will be set if there's a module in the database
+    # For now, return None and tests will skip module-dependent tests
+    return None
+
+
+@pytest.fixture
+def client():
+    """Create a test client for API testing."""
+    from fastapi.testclient import TestClient
+    from app.main import app
+    return TestClient(app)
+
+
+@pytest.fixture
+def auth_headers(client):
+    """Create authentication headers for test client."""
+    # For now, return empty headers - actual auth would need a valid token
+    # In real tests, this would authenticate and get a token
+    return {"Authorization": "Bearer test-token-placeholder"}
+
+
+# Note: For full integration tests, you would need:
+# 1. A real database (or test database)
+# 2. Proper authentication with valid JWT tokens
+# 3. Real E-ITS modules in the catalog

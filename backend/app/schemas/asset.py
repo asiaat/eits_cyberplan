@@ -30,6 +30,15 @@ class LifecycleStatus(str, Enum):
     RETIRED = "retired"
 
 
+class TargetObjectType(str, Enum):
+    """E-ITS Target Object categories - used when is_grouped=True"""
+    APP = "APP"
+    SYS = "SYS"
+    NET = "NET"
+    INF = "INF"
+    IND = "IND"
+
+
 class ProtectionNeedLevel(str, Enum):
     NORMAL = "normal"
     HIGH = "high"
@@ -58,7 +67,7 @@ class LinkedProcessInfo(BaseModel):
 class AssetBase(BaseModel):
     """Shared fields for asset."""
     name: str = Field(..., min_length=1, max_length=255)
-    asset_type: AssetType
+    asset_type: Optional[str] = None  # Can be old types or E-ITS types. If creating Target Object with target_type, this is optional
     description: Optional[str] = None
     remarks: Optional[str] = None
     criticality: Criticality = Criticality.NORMAL
@@ -68,17 +77,20 @@ class AssetBase(BaseModel):
     lifecycle_status: LifecycleStatus = LifecycleStatus.ACTIVE
     owner_user_id: Optional[UUID] = None
     person_id: Optional[UUID] = None
+    is_grouped: bool = False
+    quantity: int = 1
+    group_name: Optional[str] = None
 
 
 class AssetCreate(AssetBase):
-    """Schema for creating an asset."""
-    pass
+    """Schema for creating an asset or target object."""
+    target_type: Optional[str] = None  # E-ITS type (APP, SYS, NET, INF, IND) - overrides asset_type for Target Objects
 
 
 class AssetUpdate(BaseModel):
     """Schema for updating an asset. All fields optional."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
-    asset_type: Optional[AssetType] = None
+    asset_type: Optional[str] = None  # Can be old types or E-ITS types
     description: Optional[str] = None
     remarks: Optional[str] = None
     criticality: Optional[Criticality] = None
@@ -88,6 +100,10 @@ class AssetUpdate(BaseModel):
     lifecycle_status: Optional[LifecycleStatus] = None
     owner_user_id: Optional[UUID] = None
     person_id: Optional[UUID] = None
+    is_grouped: Optional[bool] = None
+    quantity: Optional[int] = None
+    group_name: Optional[str] = None
+    target_type: Optional[TargetObjectType] = None  # Override asset_type for Target Objects
 
 
 class AssetResponse(AssetBase):
@@ -100,6 +116,32 @@ class AssetResponse(AssetBase):
     can_manage_links: bool = False
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TargetObjectResponse(BaseModel):
+    """Schema for Target Object response."""
+    id: UUID
+    tenant_id: UUID
+    name: str
+    asset_type: str  # E-ITS category (APP, SYS, NET, INF, IND)
+    description: Optional[str] = None
+    remarks: Optional[str] = None
+    criticality: str
+    is_grouped: bool = True
+    quantity: int
+    group_name: Optional[str] = None
+    confidentiality_need: str
+    integrity_need: str
+    availability_need: str
+    lifecycle_status: str
+    owner_user_id: Optional[UUID] = None
+    person_id: Optional[UUID] = None
+    linked_process_count: int = 0
+    module_mapping_count: int = 0
+    imr_item_count: int = 0
+    created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -122,6 +164,9 @@ class AssetListItem(BaseModel):
     linked_processes: list[LinkedProcessInfo] = []
     can_manage_links: bool = False
     created_at: datetime
+    is_grouped: bool = False
+    quantity: int = 1
+    group_name: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
