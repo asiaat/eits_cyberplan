@@ -296,10 +296,22 @@ def read_users_me_v2(db: DB, current_user: LocalUser = CurrentUserV2):
     from app.models.permission import Permission
     
     role_ids = [r.id for r in roles]  # E-ITS role UUIDs
+    
+    # First try e_its_role_permissions (new E-ITS style)
     role_perms = db.query(EITSRolePermission).filter(EITSRolePermission.role_id.in_(role_ids)).all() if role_ids else []
     perm_ids = [rp.permission_id for rp in role_perms]
     permissions = db.query(Permission).filter(Permission.id.in_(perm_ids)).all() if perm_ids else []
     permission_codes = [p.code for p in permissions]
+    
+    # Fallback: also check legacy role_permissions table (for admin/ism roles)
+    if not permission_codes and roles:
+        from app.models.role_permission import RolePermission
+        # Use role_name from E-ITS roles to match code in roles table
+        role_codes = [r.role_name for r in roles]  # e.g., "admin", "ism"
+        legacy_perms = db.query(RolePermission).filter(RolePermission.role_id.in_(role_codes)).all() if role_codes else []
+        perm_ids = [rp.permission_id for rp in legacy_perms]
+        permissions = db.query(Permission).filter(Permission.id.in_(perm_ids)).all() if perm_ids else []
+        permission_codes = [p.code for p in permissions]
     
     return UserResponse(
         id=str(current_user.id),
