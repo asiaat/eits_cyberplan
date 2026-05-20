@@ -445,7 +445,7 @@ export default function BusinessProcessesPage() {
           <h1 className="text-3xl font-bold">{t("businessProcesses.title")}</h1>
           {selectedOrgId && (
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-base px-3 py-1">
-              {organizations.find(o => o.id === selectedOrgId)?.name || "Unknown Org"}
+              {organizations.find(o => o.id === selectedOrgId)?.name || t("common.unknownOrg")}
             </Badge>
           )}
         </div>
@@ -472,7 +472,7 @@ export default function BusinessProcessesPage() {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
-          <option value="">All statuses</option>
+          <option value="">{t("common.allStatuses")}</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
           <option value="archived">Archived</option>
@@ -483,7 +483,7 @@ export default function BusinessProcessesPage() {
             value={divisionFilter}
             onChange={(e) => setDivisionFilter(e.target.value)}
           >
-            <option value="">{t("organization.divisions") || "All divisions"}</option>
+            <option value="">{t("common.allDivisions")}</option>
             {divisions.map((div) => (
               <option key={div.id} value={div.id}>
                 {div.name}
@@ -597,7 +597,7 @@ export default function BusinessProcessesPage() {
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter process name"
+                  placeholder={t("businessProcesses.namePlaceholder")}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
@@ -606,7 +606,7 @@ export default function BusinessProcessesPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe the business process"
+                  placeholder={t("businessProcesses.descPlaceholder")}
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
@@ -615,7 +615,7 @@ export default function BusinessProcessesPage() {
                 <textarea
                   value={formData.purpose}
                   onChange={(e) => setFormData({ ...formData, purpose: e.target.value })}
-                  placeholder="What is the purpose of this process?"
+                  placeholder={t("businessProcesses.purposePlaceholder")}
                   className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
@@ -625,7 +625,7 @@ export default function BusinessProcessesPage() {
                   <textarea
                     value={formData.inputs}
                     onChange={(e) => setFormData({ ...formData, inputs: e.target.value })}
-                    placeholder="What inputs does this process need?"
+                    placeholder={t("businessProcesses.inputsPlaceholder")}
                     className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   />
                 </div>
@@ -634,7 +634,7 @@ export default function BusinessProcessesPage() {
                   <textarea
                     value={formData.outputs}
                     onChange={(e) => setFormData({ ...formData, outputs: e.target.value })}
-                    placeholder="What outputs does this process produce?"
+                    placeholder={t("businessProcesses.outputsPlaceholder")}
                     className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                   />
                 </div>
@@ -648,7 +648,7 @@ export default function BusinessProcessesPage() {
                   }
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 >
-                  <option value="">No division</option>
+                  <option value="">{t("businessProcesses.noDivision")}</option>
                   {divisions.map((div) => (
                     <option key={div.id} value={div.id}>
                       {div.name}

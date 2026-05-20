@@ -203,7 +203,7 @@ export default function OrganizationPage() {
       console.log("Division saved:", res.data)
     } catch (error: any) {
       console.error("Failed to save division:", error.response?.data || error.message)
-      alert("Failed to save division: " + (error.response?.data?.detail || error.message))
+      alert(t("organization.failedToSaveDivision") + (error.response?.data?.detail || error.message))
     }
   }
 
@@ -262,7 +262,7 @@ export default function OrganizationPage() {
   }
 
   const unlinkWorker = async (assetId: string) => {
-    if (!confirm("Unlink this worker from organization?")) return
+    if (!confirm(t("organization.unlinkWorkerConfirm"))) return
     try {
       await apiClient.delete(`/organization/people/${assetId}`)
       loadPeopleAndUsers()
@@ -328,7 +328,7 @@ export default function OrganizationPage() {
   }
 
   const deleteUser = async (userId: string) => {
-    if (!confirm("Delete this user?") || !tenant) return
+    if (!confirm(t("organization.deleteUserConfirm")) || !tenant) return
     try {
       await apiClient.delete(`/organization/users/${userId}`)
       loadPeopleAndUsers(tenant.id)

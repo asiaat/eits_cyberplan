@@ -394,6 +394,41 @@ export const terminology: TermCategory[] = [
         description: "E-ITS abimaterjal, mis annab soovitused standardi rakendamiseks. Varasemalt kohustuslik, nüüd soovituslik."
       }
     ]
+  },
+  {
+    key: "evidence",
+    terms: [
+      {
+        et: "Tõend",
+        en: "Evidence",
+        description: "Dokument, teave või andmete kogum, mis toetab väite tõelevastavust või kinnitab konkreetse fakti olemasolu. E-ITS kontekstis kasutatakse tõendeid turvameetmete rakendamise tõestamiseks."
+      },
+      {
+        et: "Tõendi üleslaadimine",
+        en: "Evidence Upload",
+        description: "Faili või dokumendi üleslaadimine süsteemi, kus seda saab kasutada tõendina. Toetab erinevaid vorminguid nagu PDF, DOC, XLS, JPG, PNG ja TXT."
+      },
+      {
+        et: "Tõendi tüüp",
+        en: "Evidence Type",
+        description: "Tõendi liigitus, mis võib olla dokument (fail), URL/viide (väline link) või märkus (tekstiline sisend)."
+      },
+      {
+        et: "Dokument",
+        en: "Document",
+        description: "Kirjalik või trükitud materjal, mida kasutatakse tõendina. E-ITS kontekstis peamiselt PDF, DOC, DOCX, XLS, XLSX vormingus failid."
+      },
+      {
+        et: "Faili räsi",
+        en: "File Hash",
+        description: "Matemaatiline arvutus, mis esindab faili sisu ainulaadselt. Kasutatakse faili autentsuse ja tervikluse kontrollimiseks, näiteks SHA-256 räsi abil."
+      },
+      {
+        et: "Kehtivusaeg",
+        en: "Valid Until",
+        description: "Kuupäev, mille möödumiseni tõend on kehtiv ja aktsepteeritav. Pärast seda tuleb tõend uuendada või uuesti esitada."
+      }
+    ]
   }
 ];
 

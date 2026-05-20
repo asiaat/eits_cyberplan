@@ -114,14 +114,14 @@ export default function EvidencesPage() {
           id: result.id,
           title: result.title,
           is_new: true,
-          message: t("evidences.uploadSuccess") || "File uploaded successfully",
+          message: t("evidences.uploadSuccess"),
         })
       } else {
         setUploadResult({
           id: result.id,
           title: result.title,
           is_new: false,
-          message: t("evidences.fileExists") || "This file already exists in the system. It has been linked to your organization.",
+          message: t("evidences.fileExists"),
         })
       }
 
@@ -169,12 +169,12 @@ export default function EvidencesPage() {
         <div className="flex items-center gap-3">
           <h1 className="text-3xl font-bold">{t("evidences.title")}</h1>
           <Badge variant="outline" className="bg-primary/10 text-primary">
-            {evidences.length} {t("evidences.items") || "items"}
+            {evidences.length} {t("evidences.items")}
           </Badge>
         </div>
         <Button onClick={() => setShowUpload(true)}>
           <Upload className="h-4 w-4 mr-2" />
-          {t("evidences.uploadNew") || "Upload Evidence"}
+          {t("evidences.uploadNew")}
         </Button>
       </div>
 
@@ -188,7 +188,7 @@ export default function EvidencesPage() {
 
       <div className="flex items-center gap-4">
         <Input
-          placeholder={t("evidences.search") || "Search evidence..."}
+          placeholder={t("evidences.search")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-sm"
@@ -203,7 +203,7 @@ export default function EvidencesPage() {
               <p className="text-muted-foreground mb-4">{t("evidences.noData")}</p>
               <Button onClick={() => setShowUpload(true)} variant="outline">
                 <Upload className="h-4 w-4 mr-2" />
-                {t("evidences.uploadFirst") || "Upload your first evidence"}
+                {t("evidences.uploadFirst")}
               </Button>
             </div>
           </CardContent>
@@ -278,9 +278,9 @@ export default function EvidencesPage() {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t("evidences.uploadTitle") || "Upload Evidence"}</DialogTitle>
+            <DialogTitle>{t("evidences.uploadTitle")}</DialogTitle>
             <DialogDescription>
-              {t("evidences.uploadDesc") || "Upload a file to store as evidence. Supported formats: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, TXT (max 50MB)."}
+              {t("evidences.uploadDesc")}
             </DialogDescription>
           </DialogHeader>
 
@@ -328,7 +328,7 @@ export default function EvidencesPage() {
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder={t("evidences.titlePlaceholder") || "Evidence title"}
+                placeholder={t("evidences.titlePlaceholder")}
                 className="mt-1"
               />
             </div>
@@ -339,9 +339,9 @@ export default function EvidencesPage() {
                 onChange={(e) => setEvidenceType(e.target.value)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
               >
-                <option value="document">{t("evidences.typeDocument") || "Document"}</option>
-                <option value="url">{t("evidences.typeUrl") || "URL/Reference"}</option>
-                <option value="note">{t("evidences.typeNote") || "Note"}</option>
+                <option value="document">{t("evidences.typeDocument")}</option>
+                <option value="url">{t("evidences.typeUrl")}</option>
+                <option value="note">{t("evidences.typeNote")}</option>
               </select>
             </div>
           </div>
@@ -365,10 +365,10 @@ export default function EvidencesPage() {
           <DialogHeader>
             <DialogTitle className="flex items-center">
               <AlertTriangle className="h-5 w-5 text-yellow-500 mr-2" />
-              {t("evidences.deleteConfirmTitle") || "Delete Evidence?"}
+              {t("evidences.deleteTitle")}
             </DialogTitle>
             <DialogDescription>
-              {t("evidences.deleteConfirmDesc") || "This will permanently delete the evidence file. This action cannot be undone."}
+              {t("evidences.deleteConfirm")}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
