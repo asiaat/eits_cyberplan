@@ -40,13 +40,8 @@ interface TurbeviisSelection {
   updated_at: string
 }
 
-interface ApproachInfo {
+interface ApproachItem {
   code: string
-  display: string
-  descriptions: {
-    et: string
-    en: string
-  }
 }
 
 const approachColors: Record<string, string> = {
@@ -61,13 +56,12 @@ export default function TurbeviisPage() {
   const selectedOrgIdRef = useRef(selectedOrgId)
 
   const [selections, setSelections] = useState<TurbeviisSelection[]>([])
-  const [approachInfo, setApproachInfo] = useState<{ approaches: ApproachInfo[] } | null>(null)
+  const [approachCodes, setApproachCodes] = useState<{ approaches: ApproachItem[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEvidenceDialog, setShowEvidenceDialog] = useState(false)
   const [selectedSelection, setSelectedSelection] = useState<TurbeviisSelection | null>(null)
   const [availableEvidences, setAvailableEvidences] = useState<EvidenceItem[]>([])
-  const [_linkingEvidence, setLinkingEvidence] = useState(false)
 
   interface EvidenceItem {
     id: string
@@ -80,7 +74,7 @@ export default function TurbeviisPage() {
 
   useEffect(() => {
     fetchSelections()
-    fetchApproachInfo()
+    fetchApproachCodes()
   }, [selectedOrgId])
 
   const fetchSelections = async () => {
@@ -97,12 +91,12 @@ export default function TurbeviisPage() {
     }
   }
 
-  const fetchApproachInfo = async () => {
+  const fetchApproachCodes = async () => {
     try {
-      const response = await apiClient.get("/turbeviis/approaches/info")
-      setApproachInfo(response.data)
+      const response = await apiClient.get("/turbeviis/approaches/list")
+      setApproachCodes(response.data)
     } catch (err) {
-      console.error("Failed to fetch approach info:", err)
+      console.error("Failed to fetch approach codes:", err)
     }
   }
 
@@ -120,7 +114,6 @@ export default function TurbeviisPage() {
 
   const handleLinkEvidence = async (selectionId: string, evidenceId: string) => {
     try {
-      setLinkingEvidence(true)
       const response = await apiClient.post(`/turbeviis/${selectionId}/link-evidence`, {
         evidence_id: evidenceId,
       })
@@ -130,8 +123,6 @@ export default function TurbeviisPage() {
     } catch (err: any) {
       console.error("Failed to link evidence:", err)
       alert(err.response?.data?.detail || "Failed to link evidence")
-    } finally {
-      setLinkingEvidence(false)
     }
   }
 
@@ -154,6 +145,15 @@ export default function TurbeviisPage() {
     } catch (err) {
       console.error("Failed to fetch evidences:", err)
     }
+  }
+
+  const approachCodeToKey = (code: string): string => {
+    const map: Record<string, string> = {
+      BASIC: "basic",
+      STANDARD: "standard",
+      CORE: "core",
+    }
+    return map[code] || code.toLowerCase()
   }
 
   if (loading) {
@@ -184,9 +184,10 @@ export default function TurbeviisPage() {
         </Card>
       )}
 
-      {approachInfo && (
+      {approachCodes && (
         <div className="grid gap-6 md:grid-cols-3">
-          {approachInfo.approaches.map((approach) => {
+          {approachCodes.approaches.map((approach) => {
+            const approachKey = approachCodeToKey(approach.code)
             const selection = selections.find(s => s.security_approach === approach.code)
             const isActive = selection?.is_active
             const hasEvidence = selection?.evidence_id
@@ -200,24 +201,21 @@ export default function TurbeviisPage() {
                   <div className="flex items-start justify-between">
                     <div>
                       <Badge variant="outline" className={approachColors[approach.code]}>
-                        {approach.display}
+                        {t(`turbeviis.approaches.${approachKey}.name`)}
                       </Badge>
-                      <CardTitle className="mt-2 text-xl">{approach.display}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{approach.descriptions.en}</p>
+                      <CardTitle className="mt-2 text-xl">
+                        {t(`turbeviis.approaches.${approachKey}.subtitle`)}
+                      </CardTitle>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm">{approach.descriptions.en}</p>
+                  <p className="text-sm">{t(`turbeviis.approaches.${approachKey}.description`)}</p>
 
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium">When to use:</h4>
+                    <h4 className="text-sm font-medium">{t("turbeviis.whenToUse")}</h4>
                     <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                      {approach.code === "BASIC"
-                        ? "When all processes have NORMAL protection needs."
-                        : approach.code === "STANDARD"
-                        ? "When some processes have HIGH or VERY HIGH protection needs."
-                        : "When critical processes require HIGH protection, but full standard security is not immediately feasible."}
+                      {t(`turbeviis.approaches.${approachKey}.when`)}
                     </p>
                   </div>
 
@@ -278,31 +276,36 @@ export default function TurbeviisPage() {
         <div className="space-y-4">
           <h3 className="text-lg font-medium">{t("turbeviis.activeMode")}</h3>
           <div className="grid gap-4">
-            {selections.filter(s => s.is_active).map(selection => (
-              <Card key={selection.id} className="bg-primary/5">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-5 w-5 text-primary" />
-                        <span className="font-medium">{selection.approach_display}</span>
-                        {selection.catalog_version_name && (
-                          <Badge variant="outline">{selection.catalog_version_name}</Badge>
+            {selections.filter(s => s.is_active).map(selection => {
+              const approachKey = approachCodeToKey(selection.security_approach)
+              return (
+                <Card key={selection.id} className="bg-primary/5">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Shield className="h-5 w-5 text-primary" />
+                          <span className="font-medium">
+                            {t(`turbeviis.approaches.${approachKey}.name`)}
+                          </span>
+                          {selection.catalog_version_name && (
+                            <Badge variant="outline">{selection.catalog_version_name}</Badge>
+                          )}
+                        </div>
+                        {selection.notes && (
+                          <p className="text-sm text-muted-foreground">{selection.notes}</p>
+                        )}
+                        {selection.approved_by_name && (
+                          <p className="text-xs text-muted-foreground">
+                            {t("turbeviis.approvedBy")}: {selection.approved_by_name}
+                          </p>
                         )}
                       </div>
-                      {selection.notes && (
-                        <p className="text-sm text-muted-foreground">{selection.notes}</p>
-                      )}
-                      {selection.approved_by_name && (
-                        <p className="text-xs text-muted-foreground">
-                          {t("turbeviis.approvedBy")}: {selection.approved_by_name}
-                        </p>
-                      )}
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
         </div>
       )}

@@ -67,25 +67,17 @@ class EvidenceLinkRequest(BaseModel):
     evidence_id: UUID
 
 
-APPROACH_DISPLAY = {
-    "BASIC": "Põhiturve",
-    "STANDARD": "Standardturve",
-    "CORE": "Tuumikuturve",
-}
-
-APPROACH_DESCRIPTIONS = {
-    "BASIC": {
-        "et": "Kellele: Organisatsioonidele, mille kõikide äriprotsesside ja andmete kaitsetarve on normaalne. Olemus: See esindab infoturbe mihea taset ja stardimeetmeid. Riskihaldus: Kaitse saavutatakse puhtalt etalonturbe kataloogi põhimeetmete (BASE) rakendamisega.",
-        "en": "For: Organizations where all business processes and data protection needs are normal. Essence: This represents the minimum level of information security and starting measures. Risk management: Protection is achieved by implementing baseline protection catalogue (BASE) measures only."
-    },
-    "STANDARD": {
-        "et": "Kellele: Organisatsioonidele, mille kaitsetarve on suur või väga suur. Olemus: See viib organisatsiooni turvataseme vastavusse rahvusvaheliselt tunnustatud standardiga ISO/IEC 27001. Riskihaldus: Lisaks põhiturbe meetmetele rakendatakse standardmeetmeid (STANDARD) ning viiakse kohustuslikult läbi etalonturbe väline riskianalüüs.",
-        "en": "For: Organizations with high or very high protection needs. Essence: Brings organization's security level in line with internationally recognized standard ISO/IEC 27001. Risk management: In addition to baseline measures, standard measures (STANDARD) are implemented and external risk analysis is conducted."
-    },
-    "CORE": {
-        "et": "Kellele: Organisatsioonidele, millel on kõrge kaitsetarbega kriitilised protsessid, kuid puudub kohene ressurss standardturbe rakendamiseks tervele asutusele. Olemus: Standardturve rakendatakse piiritletud osas – ehk kriitiliste äriprotsesside ja varade tuumikus. Ülejäänud organisatsiooni kaitsealal rakendatakse esialgu põhiturvet.",
-        "en": "For: Organizations with critical processes with high protection needs, but lacking immediate resources to implement standard security for the entire organization. Essence: Standard security is applied in a limited scope - i.e., for critical business processes and assets. The rest of the organization initially implements baseline security."
-    },
+@router.get("/approaches/list")
+def list_approaches(
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """Get list of available security approaches (codes only)."""
+    return {
+        "approaches": [
+            {"code": "BASIC"},
+            {"code": "STANDARD"},
+            {"code": "CORE"},
+        ]
 }
 
 
@@ -137,7 +129,7 @@ def list_turbeviis_selections(
             catalog_version_id=sel.catalog_version_id,
             catalog_version_name=catalog_name,
             security_approach=sel.security_approach,
-            approach_display=APPROACH_DISPLAY.get(sel.security_approach, sel.security_approach),
+            approach_display=sel.security_approach,
             evidence_id=sel.evidence_id,
             evidence=evidence_info,
             approved_by=sel.approved_by,
@@ -192,7 +184,7 @@ def create_turbeviis_selection(
         catalog_version_id=new_sel.catalog_version_id,
         catalog_version_name=catalog_name,
         security_approach=new_sel.security_approach,
-        approach_display=APPROACH_DISPLAY.get(new_sel.security_approach, new_sel.security_approach),
+        approach_display=new_sel.security_approach,
         evidence_id=new_sel.evidence_id,
         evidence=None,
         approved_by=new_sel.approved_by,
@@ -250,7 +242,7 @@ def get_turbeviis_selection(
         catalog_version_id=sel.catalog_version_id,
         catalog_version_name=catalog_name,
         security_approach=sel.security_approach,
-        approach_display=APPROACH_DISPLAY.get(sel.security_approach, sel.security_approach),
+        approach_display=sel.security_approach,
         evidence_id=sel.evidence_id,
         evidence=evidence_info,
         approved_by=sel.approved_by,
@@ -330,7 +322,7 @@ def update_turbeviis_selection(
         catalog_version_id=sel.catalog_version_id,
         catalog_version_name=catalog_name,
         security_approach=sel.security_approach,
-        approach_display=APPROACH_DISPLAY.get(sel.security_approach, sel.security_approach),
+        approach_display=sel.security_approach,
         evidence_id=sel.evidence_id,
         evidence=evidence_info,
         approved_by=sel.approved_by,
@@ -409,7 +401,7 @@ def link_evidence_to_turbeviis(
         catalog_version_id=sel.catalog_version_id,
         catalog_version_name=catalog_name,
         security_approach=sel.security_approach,
-        approach_display=APPROACH_DISPLAY.get(sel.security_approach, sel.security_approach),
+        approach_display=sel.security_approach,
         evidence_id=sel.evidence_id,
         evidence=evidence_info,
         approved_by=sel.approved_by,
@@ -453,7 +445,7 @@ def unlink_evidence_from_turbeviis(
         catalog_version_id=sel.catalog_version_id,
         catalog_version_name=catalog_name,
         security_approach=sel.security_approach,
-        approach_display=APPROACH_DISPLAY.get(sel.security_approach, sel.security_approach),
+        approach_display=sel.security_approach,
         evidence_id=None,
         evidence=None,
         approved_by=sel.approved_by,
@@ -464,20 +456,3 @@ def unlink_evidence_from_turbeviis(
         created_at=str(sel.created_at) if sel.created_at else None,
         updated_at=str(sel.updated_at) if sel.updated_at else None,
     )
-
-
-@router.get("/approaches/info")
-def get_approach_info(
-    current_user: LocalUser = Depends(get_current_user_v2),
-):
-    """Get information about all three security approaches."""
-    return {
-        "approaches": [
-            {
-                "code": code,
-                "display": APPROACH_DISPLAY[code],
-                "descriptions": APPROACH_DESCRIPTIONS[code],
-            }
-            for code in ["BASIC", "STANDARD", "CORE"]
-        ]
-    }
