@@ -67,8 +67,6 @@ class BusinessProcessCreate(BusinessProcessBase):
     """Schema for creating a business process."""
     owner_user_id: Optional[UUID] = None
     asset_ids: Optional[list[UUID]] = Field(default_factory=list, description="Asset IDs to link initially")
-    justification: Optional[str] = Field(None, min_length=20, description="Required for HIGH/VERY_HIGH protection needs")
-    approved_by: Optional[UUID] = Field(None, description="Must have admin/ISM role for HIGH/VERY_HIGH protection needs")
 
 
 class BusinessProcessUpdate(BaseModel):
@@ -84,8 +82,6 @@ class BusinessProcessUpdate(BaseModel):
     availability_need: Optional[ProtectionNeedLevel] = None
     owner_user_id: Optional[UUID] = None
     division_id: Optional[UUID] = None
-    justification: Optional[str] = Field(None, min_length=20, description="Required for HIGH/VERY_HIGH protection needs")
-    approved_by: Optional[UUID] = Field(None, description="Must have admin/ISM role for HIGH/VERY_HIGH protection needs")
 
 
 class BusinessProcessResponse(BusinessProcessBase):

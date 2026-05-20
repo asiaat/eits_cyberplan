@@ -26,7 +26,6 @@ from app.schemas.business_process import (
 from app.services.business_process_service import (
     calculate_protection_need,
     is_high_or_very_high,
-    validate_protection_need_justification,
     get_linked_asset_ids,
     create_cascade_alert,
     check_circular_dependency,
@@ -119,15 +118,6 @@ def create_business_process_v2(
     availability = data.availability_need.value if hasattr(data.availability_need, 'value') else data.availability_need
 
     protection_need = calculate_protection_need(confidentiality, integrity, availability)
-
-    if is_high_or_very_high(protection_need):
-        justification = getattr(data, 'justification', None) or None
-        approved_by = getattr(data, 'approved_by', None) or None
-        is_valid, error_msg = validate_protection_need_justification(
-            db, current_user.tenant_id, protection_need, justification, approved_by
-        )
-        if not is_valid:
-            raise HTTPException(status_code=400, detail=error_msg)
 
     bp = BusinessProcess(
         tenant_id=current_user.tenant_id,
@@ -259,15 +249,6 @@ def update_business_process_v2(
     )
 
     if is_high_or_very_high(new_protection_need) and new_protection_need != old_protection_need:
-        justification = getattr(data, 'justification', None) or getattr(bp, 'justification', None) or None
-        approved_by = getattr(data, 'approved_by', None) or getattr(bp, 'approved_by', None) or None
-        is_valid, error_msg = validate_protection_need_justification(
-            db, current_user.tenant_id, new_protection_need, justification, approved_by
-        )
-        if not is_valid:
-            db.rollback()
-            raise HTTPException(status_code=400, detail=error_msg)
-
         linked_asset_ids = get_linked_asset_ids(db, bp.id)
         create_cascade_alert(
             db, current_user.tenant_id, bp.id, bp.name, new_protection_need, linked_asset_ids

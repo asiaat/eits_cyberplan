@@ -54,8 +54,6 @@ interface BusinessProcessFormData {
   division_id: string | null
   owner_user_id: string | null
   asset_ids: string[]
-  justification?: string
-  approved_by?: string
 }
 
 interface DependencyItem {
@@ -130,10 +128,6 @@ export default function BusinessProcessesPage() {
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   
-  useEffect(() => {
-    console.log("BP Page: selectedOrgId =", selectedOrgId, "loading =", loading)
-  }, [selectedOrgId, loading])
-  
   const [formData, setFormData] = useState<BusinessProcessFormData>({
     name: "",
     description: "",
@@ -167,7 +161,6 @@ export default function BusinessProcessesPage() {
   const [newDepDescription, setNewDepDescription] = useState("")
   const [linkEvidenceId, setLinkEvidenceId] = useState("")
   const [searchEvidence, setSearchEvidence] = useState("")
-  const [approvers, setApprovers] = useState<{id: string, full_name: string, email: string}[]>([])
 
   const getProtectionLevel = (c: string, i: string, a: string): string => {
     const levels = { normal: 0, unknown: 1, high: 2, very_high: 3 }
@@ -235,9 +228,7 @@ export default function BusinessProcessesPage() {
 
   useEffect(() => {
     if (!selectedOrgId) return
-    console.log("effect running with org:", selectedOrgId)
     fetchDivisions()
-    fetchApprovers()
     fetchProcesses()
   }, [selectedOrgId, statusFilter, divisionFilter])
 
@@ -331,8 +322,6 @@ export default function BusinessProcessesPage() {
       division_id: process.division_id,
       owner_user_id: process.owner?.id || null,
       asset_ids: [],
-      justification: "",
-      approved_by: undefined,
     })
     setShowForm(true)
   }
@@ -340,29 +329,10 @@ export default function BusinessProcessesPage() {
   const handleSubmit = async () => {
     try {
       setSaving(true)
-      const protectionLevel = getProtectionLevel(formData.confidentiality_need, formData.integrity_need, formData.availability_need)
-      const submitData: BusinessProcessFormData = { ...formData }
-      
-      if (isHighOrVeryHigh(protectionLevel)) {
-        if (!submitData.justification || submitData.justification.trim().length < 20) {
-          alert("Justification must be at least 20 characters for HIGH/VERY_HIGH protection needs")
-          setSaving(false)
-          return
-        }
-        if (!submitData.approved_by) {
-          alert("Please select an approver (admin/ISM) for HIGH/VERY_HIGH protection needs")
-          setSaving(false)
-          return
-        }
-      } else {
-        delete submitData.justification
-        delete submitData.approved_by
-      }
-      
       if (editingId) {
-        await apiClient.patch(`/business-processes/${editingId}`, submitData)
+        await apiClient.patch(`/business-processes/${editingId}`, formData)
       } else {
-        await apiClient.post("/business-processes", submitData)
+        await apiClient.post("/business-processes", formData)
       }
       setShowForm(false)
       fetchProcesses()
@@ -745,33 +715,6 @@ export default function BusinessProcessesPage() {
                   </select>
                 </div>
               </div>
-              {isHighOrVeryHigh(getProtectionLevel(formData.confidentiality_need, formData.integrity_need, formData.availability_need)) && (
-                <>
-                  <div>
-                    <label className="text-sm font-medium">Justification (min 20 chars)</label>
-                    <textarea
-                      value={formData.justification || ""}
-                      onChange={(e) => setFormData({ ...formData, justification: e.target.value })}
-                      rows={3}
-                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                      placeholder="Explain why HIGH/VERY_HIGH protection is needed..."
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium">Approved By (admin/ISM)</label>
-                    <select
-                      value={formData.approved_by || ""}
-                      onChange={(e) => setFormData({ ...formData, approved_by: e.target.value || undefined })}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    >
-                      <option value="">Select approver...</option>
-                      {approvers.map((a) => (
-                        <option key={a.id} value={a.id}>{a.full_name} ({a.email})</option>
-                      ))}
-                    </select>
-                  </div>
-                </>
-              )}
               <div className="flex items-center justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={() => setShowForm(false)}>
                   {t("common.cancel")}

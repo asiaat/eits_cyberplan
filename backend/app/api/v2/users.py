@@ -9,6 +9,7 @@ from app.api.deps import DB
 from app.api.v2.auth import CurrentUserV2
 from app.models.app_tenant import GlobalUser
 from app.models.local_user import LocalUser, EITSRole, UserRole
+from app.models.membership import Membership
 from app.core.security import get_password_hash
 
 router = APIRouter()
@@ -89,9 +90,18 @@ def get_e_its_role(role_id: UUID, db: DB, current_user = CurrentUserV2):
 def _get_user_with_roles(user: LocalUser, db: DB) -> LocalUserResponse:
     """Helper to get user with roles."""
     global_user = db.query(GlobalUser).filter(GlobalUser.id == user.global_user_id).first()
+    
+    # Get E-ITS roles from user_roles table (by local_user.id)
     user_roles = db.query(UserRole).filter(UserRole.user_id == user.id).all()
     role_ids = [ur.role_id for ur in user_roles]
-    roles = db.query(EITSRole).filter(EITSRole.id.in_(role_ids)).all() if role_ids else []
+    eits_roles = db.query(EITSRole).filter(EITSRole.id.in_(role_ids)).all() if role_ids else []
+    
+    # Also get legacy roles from memberships table (by global_user.id)
+    memberships = db.query(Membership).filter(Membership.user_id == user.global_user_id).all()
+    legacy_roles = [m.role_id for m in memberships if m.role_id]
+    
+    # Combine both role sources
+    all_roles = [r.role_name for r in eits_roles] + legacy_roles
     
     return LocalUserResponse(
         id=str(user.id),
@@ -99,7 +109,7 @@ def _get_user_with_roles(user: LocalUser, db: DB) -> LocalUserResponse:
         department=user.department,
         is_active=user.is_active,
         email=global_user.email if global_user else "",
-        roles=[r.role_name for r in roles]
+        roles=list(set(all_roles))  # deduplicate
     )
 
 
