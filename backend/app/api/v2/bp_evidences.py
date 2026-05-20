@@ -34,6 +34,13 @@ class EvidenceLinkResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class LinkedBPInfo(BaseModel):
+    """Schema for linked business process info."""
+    process_id: UUID
+    process_name: str
+    link_id: UUID
+
+
 class EvidenceListItem(BaseModel):
     """Schema for evidence item in BP context."""
     id: UUID
@@ -46,6 +53,7 @@ class EvidenceListItem(BaseModel):
     valid_until: Optional[str] = None
     review_due_date: Optional[str] = None
     link_id: UUID
+    linked_business_processes: list[LinkedBPInfo] = []
 
     model_config = {"from_attributes": True}
 
@@ -240,6 +248,21 @@ def list_evidences(
             if owner:
                 owner_name = owner.full_name
 
+        bp_links = db.query(EvidenceLink).filter(
+            EvidenceLink.evidence_id == evidence.id,
+            EvidenceLink.target_type == "business_process",
+        ).all()
+
+        linked_bps = []
+        for bp_link in bp_links:
+            bp = db.query(BusinessProcess).filter(BusinessProcess.id == bp_link.target_id).first()
+            if bp:
+                linked_bps.append(LinkedBPInfo(
+                    process_id=bp.id,
+                    process_name=bp.name,
+                    link_id=bp_link.id,
+                ))
+
         result.append(EvidenceListItem(
             id=evidence.id,
             title=evidence.title,
@@ -251,6 +274,7 @@ def list_evidences(
             valid_until=str(evidence.valid_until) if evidence.valid_until else None,
             review_due_date=str(evidence.review_due_date) if evidence.review_due_date else None,
             link_id=evidence.id,
+            linked_business_processes=linked_bps,
         ))
 
     return result

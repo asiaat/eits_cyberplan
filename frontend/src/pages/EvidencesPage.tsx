@@ -16,6 +16,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
+interface LinkedBP {
+  process_id: string
+  process_name: string
+  link_id: string
+}
+
 interface EvidenceItem {
   id: string
   title: string
@@ -30,6 +36,7 @@ interface EvidenceItem {
   review_due_date: string | null
   created_at: string
   download_url: string | null
+  linked_business_processes: LinkedBP[]
 }
 
 interface UploadResult {
@@ -260,6 +267,16 @@ export default function EvidencesPage() {
                     <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
                       SHA256: {evidence.file_hash.substring(0, 16)}...
                     </code>
+                  </div>
+                )}
+                {evidence.linked_business_processes && evidence.linked_business_processes.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">{t("evidences.linkedTo") || "Linked to"}:</span>
+                    {evidence.linked_business_processes.map((bp) => (
+                      <Badge key={bp.link_id} variant="outline" className="text-xs">
+                        {bp.process_name}
+                      </Badge>
+                    ))}
                   </div>
                 )}
               </CardContent>
