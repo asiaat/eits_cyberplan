@@ -124,3 +124,61 @@ class ProcessAssetLinkCreate(BaseModel):
 class ProcessAssetLinkUpdate(BaseModel):
     """Schema for updating an asset-process link."""
     relation_description: Optional[str] = None
+
+
+class DependencyType(str, Enum):
+    DATA_FLOW = "DATA_FLOW"
+    OPERATIONAL_TRIGGER = "OPERATIONAL_TRIGGER"
+    INFORMATION_EXCHANGE = "INFORMATION_EXCHANGE"
+    SUPPORTING_SERVICE = "SUPPORTING_SERVICE"
+
+
+class BusinessProcessDependencyCreate(BaseModel):
+    """Schema for creating a business process dependency."""
+    depends_on_process_id: UUID
+    dependency_type: DependencyType = DependencyType.DATA_FLOW
+    description: Optional[str] = None
+
+
+class BusinessProcessDependencyResponse(BaseModel):
+    """Schema for business process dependency response."""
+    id: UUID
+    tenant_id: UUID
+    primary_process_id: UUID
+    depends_on_process_id: UUID
+    dependency_type: Optional[str] = None
+    description: Optional[str] = None
+    created_at: datetime
+    depends_on_process: Optional["BusinessProcessSummary"] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BusinessProcessSummary(BaseModel):
+    """Minimal business process info for dependency display."""
+    id: UUID
+    name: str
+    status: str
+    confidentiality_need: str
+    integrity_need: str
+    availability_need: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BusinessProcessDependencyListItem(BaseModel):
+    """Simplified dependency for list views."""
+    id: UUID
+    depends_on_process_id: UUID
+    dependency_type: Optional[str] = None
+    description: Optional[str] = None
+    created_at: datetime
+    depends_on_process: Optional[BusinessProcessSummary] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class BusinessProcessWithDependencies(BusinessProcessResponse):
+    """Business process response with dependency info."""
+    dependencies: list[BusinessProcessDependencyListItem] = Field(default_factory=list)
+    dependents: list[BusinessProcessDependencyListItem] = Field(default_factory=list)

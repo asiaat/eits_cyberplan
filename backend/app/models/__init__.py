@@ -36,6 +36,7 @@ from app.models.protection_need_summary import ProtectionNeedSummary
 from app.models.asset_module_mapping import AssetModuleMapping
 from app.models.imr_item import ImrItem
 from app.models.risk_measure_link import RiskMeasureLink, DamageCategoryThreshold, ProcessModuleAssignment
+from app.models.business_process_dependency import BusinessProcessDependency
 
 __all__ = [
     # Tier A - Subscription Layer
@@ -55,6 +56,7 @@ __all__ = [
     "EITSRolePermission",
     "Membership",
     "BusinessProcess",
+    "BusinessProcessDependency",
     "Asset",
     "AssetRelation",
     "ProcessAsset",

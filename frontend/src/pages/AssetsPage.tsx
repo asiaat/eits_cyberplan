@@ -812,7 +812,7 @@ export default function AssetsPage() {
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
         >
-          <option value="">{t("assets.type") || "All types"}</option>
+          <option value="">{t("common.allTypes")}</option>
           {assetTypes.map((type) => (
             <option key={type.value} value={type.value}>
               {type.label}
@@ -824,7 +824,7 @@ export default function AssetsPage() {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
         >
-          <option value="">{t("assets.status") || "All statuses"}</option>
+          <option value="">{t("common.allStatuses")}</option>
           {statusLevels.map((status) => (
             <option key={status.value} value={status.value}>
               {status.label}
@@ -1030,7 +1030,7 @@ export default function AssetsPage() {
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter asset name"
+                  placeholder={t("assets.namePlaceholder")}
                   className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
@@ -1053,7 +1053,7 @@ export default function AssetsPage() {
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  placeholder="Describe the asset"
+                  placeholder={t("assets.descPlaceholder")}
                   className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                 />
               </div>
@@ -1527,7 +1527,7 @@ export default function AssetsPage() {
               ) : moduleSearch.length >= 2 ? (
                 <p className="text-sm text-muted-foreground">{t("assets.noModulesFound")}</p>
               ) : (
-                <p className="text-sm text-muted-foreground">Type at least 2 characters to search.</p>
+                <p className="text-sm text-muted-foreground">{t("assets.searchHint")}</p>
               )}
             </div>
             <div>
