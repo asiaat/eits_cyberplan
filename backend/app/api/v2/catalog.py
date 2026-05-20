@@ -141,6 +141,7 @@ def list_all_modules(
     version_id: UUID | None = Query(None, alias="version_id", description="Filter by specific catalog version"),
     module_group: str | None = Query(None, alias="module_group", description="Filter by module group"),
     module_type: str | None = Query(None, alias="module_type", description="Filter by type: PROCESS or SYSTEM"),
+    search: str | None = Query(None, alias="search", description="Search by module code or name"),
     skip: int = Query(0, ge=0),
     limit: int = Query(500, ge=1, le=1000),
 ):
@@ -150,6 +151,7 @@ def list_all_modules(
         version_id: Optional catalog version filter.
         module_group: Optional module group filter.
         module_type: Optional module type filter.
+        search: Optional search filter (matches code or name).
         skip: Pagination offset.
         limit: Maximum results (max 1000).
 
@@ -163,7 +165,12 @@ def list_all_modules(
         query = query.filter(EitsModule.module_group == module_group)
     if module_type:
         query = query.filter(EitsModule.module_type == module_type)
-    modules = query.offset(skip).limit(limit).all()
+    if search:
+        search_term = f"%{search}%"
+        query = query.filter(
+            (EitsModule.code.ilike(search_term)) | (EitsModule.name.ilike(search_term))
+        )
+    modules = query.order_by(EitsModule.code).offset(skip).limit(limit).all()
     return modules
 
 

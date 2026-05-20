@@ -8,6 +8,7 @@ import SelectOrgPage from "@/pages/SelectOrgPage"
 import DashboardPage from "@/pages/DashboardPage"
 import BusinessProcessesPage from "@/pages/BusinessProcessesPage"
 import AssetsPage from "@/pages/AssetsPage"
+import TargetsPage from "@/pages/TargetsPage"
 import CatalogPage from "@/pages/CatalogPage"
 import MappingsPage from "@/pages/MappingsPage"
 import ImplementationPlanPage from "@/pages/ImplementationPlanPage"
@@ -69,6 +70,14 @@ export default function App() {
                 element={
                   <ProtectedRoute>
                     <AssetsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/targets"
+                element={
+                  <ProtectedRoute>
+                    <TargetsPage />
                   </ProtectedRoute>
                 }
               />

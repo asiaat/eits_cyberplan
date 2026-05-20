@@ -3,6 +3,7 @@ import { useTranslation } from "@/lib/i18n"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
@@ -14,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
-import { AlertTriangle, Search, ChevronDown, ChevronRight, Unlink, Link2, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react"
+import { AlertTriangle, Search, ChevronDown, ChevronRight, Unlink, Link2, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown, BookOpen, Loader2, X } from "lucide-react"
 import {
   flexRender,
   getCoreRowModel,
@@ -52,6 +53,7 @@ interface AssetListItem {
   can_manage_links: boolean
   created_at: string
   remarks: string | null
+  module_mapping_count: number
 }
 
 interface AssetFormData {
@@ -140,6 +142,13 @@ export default function AssetsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({})
   const [linkingProcess, setLinkingProcess] = useState(false)
+  const [showModuleDialog, setShowModuleDialog] = useState(false)
+  const [selectedAssetForModule, setSelectedAssetForModule] = useState<AssetListItem | null>(null)
+  const [moduleSearch, setModuleSearch] = useState("")
+  const [availableModules, setAvailableModules] = useState<{id: string; code: string; name: string; module_group: string}[]>([])
+  const [loadingModules, setLoadingModules] = useState(false)
+  const [moduleJustification, setModuleJustification] = useState("")
+  const [assigningModule, setAssigningModule] = useState(false)
   const [showAddProcess, setShowAddProcess] = useState(false)
   const [selectedProcess, setSelectedProcess] = useState<string | null>(null)
   const [loadingProcesses, setLoadingProcesses] = useState(false)
@@ -148,6 +157,14 @@ export default function AssetsPage() {
   const [allProcesses, setAllProcesses] = useState<BusinessProcessOption[]>([])
   const [processesExpanded, setProcessesExpanded] = useState(false)
   const [processSearch, setProcessSearch] = useState("")
+  
+  // Edit dialog module state
+  const [editModuleSearch, setEditModuleSearch] = useState("")
+  const [editAvailableModules, setEditAvailableModules] = useState<{id: string; code: string; name: string; module_group: string}[]>([])
+  const [editLoadingModules, setEditLoadingModules] = useState(false)
+  const [editModuleJustification, setEditModuleJustification] = useState("")
+  const [assetModules, setAssetModules] = useState<{id: string; module_id: string; module_code: string; module_name: string; module_group: string; justification: string | null}[]>([])
+  const [loadingAssetModules, setLoadingAssetModules] = useState(false)
 
   const table = useReactTable({
     data: assets,
@@ -291,12 +308,30 @@ export default function AssetsPage() {
         },
       },
       {
+        accessorKey: "module_mapping_count",
+        header: t("assets.modules"),
+        cell: ({ row }: any) => {
+          const count = row.original.module_mapping_count as number
+          return count > 0 ? (
+            <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900 dark:text-purple-200 cursor-pointer" onClick={() => { const asset = row.original; setSelectedAssetForModule(asset); setShowModuleDialog(true); setModuleSearch(""); setModuleJustification(""); setAvailableModules([]); }}>
+              {count}
+            </Badge>
+          ) : (
+            <span className="text-muted-foreground text-sm">-</span>
+          )
+        },
+      },
+      {
         id: "actions",
         header: t("common.actions"),
         cell: ({ row }: any) => {
           const asset = row.original
           return (
             <div className="flex gap-1">
+              <Button variant="ghost" size="sm" onClick={() => { console.log("Assign module click", asset.id, asset.name); setSelectedAssetForModule(asset); setShowModuleDialog(true); setModuleSearch(""); setModuleJustification(""); setAvailableModules([]); }}>
+                <BookOpen className="h-4 w-4 mr-1" />
+                {t("assets.assignModule")}
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => handleEdit(asset)}>
                 {t("common.edit")}
               </Button>
@@ -435,6 +470,8 @@ export default function AssetsPage() {
       owner_user_id: asset.owner_user_id,
       person_id: asset.person_id,
     })
+    resetEditModuleState()
+    fetchAssetModules(asset.id)
     setShowForm(true)
   }
 
@@ -493,6 +530,123 @@ export default function AssetsPage() {
   const handleDeleteCancel = () => {
     setDeletingId(null)
     setDeleteError(null)
+  }
+
+  const searchModules = async (query: string) => {
+    console.log("searchModules called with:", query)
+    if (query.length < 2) {
+      setAvailableModules([])
+      return
+    }
+    setLoadingModules(true)
+    try {
+      const response = await apiClient.get("/catalog/modules", { params: { search: query } })
+      console.log("Modules response:", response.data?.length, "modules")
+      setAvailableModules(response.data?.slice(0, 20) || [])
+    } catch (err) {
+      console.error("Failed to search modules:", err)
+      setAvailableModules([])
+    } finally {
+      setLoadingModules(false)
+    }
+  }
+
+  const searchModulesForEdit = async (query: string) => {
+    if (query.length < 2) {
+      setEditAvailableModules([])
+      return
+    }
+    setEditLoadingModules(true)
+    try {
+      const response = await apiClient.get("/catalog/modules", { params: { search: query } })
+      setEditAvailableModules(response.data?.slice(0, 20) || [])
+    } catch (err) {
+      console.error("Failed to search modules:", err)
+      setEditAvailableModules([])
+    } finally {
+      setEditLoadingModules(false)
+    }
+  }
+
+  const fetchAssetModules = async (assetId: string) => {
+    setLoadingAssetModules(true)
+    try {
+      const response = await apiClient.get("/asset-module-mappings/", { params: { asset_id: assetId } })
+      const transformed = (response.data || []).map((m: any) => ({
+        id: m.id,
+        module_id: m.module_id,
+        module_code: m.module?.code || "",
+        module_name: m.module?.name || "",
+        module_group: m.module?.module_group || "",
+        justification: m.justification,
+      }))
+      setAssetModules(transformed)
+    } catch (err) {
+      console.error("Failed to fetch asset modules:", err)
+      setAssetModules([])
+    } finally {
+      setLoadingAssetModules(false)
+    }
+  }
+
+  const handleAssignModuleInEdit = async (moduleId: string) => {
+    if (!editingId) return
+    setAssigningModule(true)
+    try {
+      await apiClient.post("/asset-module-mappings/", {
+        asset_id: editingId,
+        module_id: moduleId,
+        justification: editModuleJustification || null,
+      })
+      setEditModuleSearch("")
+      setEditModuleJustification("")
+      setEditAvailableModules([])
+      fetchAssetModules(editingId)
+      fetchAssets()
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || "Unknown error"
+      alert(t("assets.moduleAssignError", { error: errorMsg }))
+    } finally {
+      setAssigningModule(false)
+    }
+  }
+
+  const handleRemoveModule = async (mappingId: string) => {
+    if (!confirm(t("targets.confirmRemoveModule"))) return
+    try {
+      await apiClient.delete(`/asset-module-mappings/${mappingId}`)
+      if (editingId) fetchAssetModules(editingId)
+      fetchAssets()
+    } catch (err: any) {
+      console.error("Failed to remove module:", err)
+    }
+  }
+
+  const resetEditModuleState = () => {
+    setEditModuleSearch("")
+    setEditModuleJustification("")
+    setEditAvailableModules([])
+    setAssetModules([])
+  }
+
+  const handleAssignModule = async (moduleId: string) => {
+    if (!selectedAssetForModule || !selectedOrgIdRef.current) return
+    setAssigningModule(true)
+    try {
+      await apiClient.post("/asset-module-mappings/", {
+        asset_id: selectedAssetForModule.id,
+        module_id: moduleId,
+        justification: moduleJustification || null,
+      })
+      setShowModuleDialog(false)
+      alert(t("assets.moduleAssignedSuccess", { code: "?", count: 0 }))
+      fetchAssets()
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.detail || "Unknown error"
+      alert(t("assets.moduleAssignError", { error: errorMsg }))
+    } finally {
+      setAssigningModule(false)
+    }
   }
 
   const fetchUnlinkedProcesses = async (assetId: string) => {
@@ -1138,6 +1292,93 @@ export default function AssetsPage() {
                 )}
               </div>
 
+              {/* Module Section in Edit Dialog */}
+              <div className="border rounded-lg p-4 mt-4">
+                <h4 className="text-sm font-medium mb-3">{t("targets.mappedModules")}</h4>
+                {loadingAssetModules ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    {t("common.loading")}
+                  </div>
+                ) : assetModules.length > 0 ? (
+                  <div className="space-y-2">
+                    {assetModules.map((mod) => (
+                      <div
+                        key={mod.id}
+                        className="flex items-center justify-between p-3 bg-muted/30 rounded-lg"
+                      >
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <code className="text-sm font-mono">{mod.module_code}</code>
+                            <span className="text-sm">{mod.module_name}</span>
+                            <Badge variant="outline" className="text-xs">{mod.module_group}</Badge>
+                          </div>
+                          {mod.justification && (
+                            <p className="text-xs text-muted-foreground mt-1">{mod.justification}</p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => handleRemoveModule(mod.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t("targets.noModules")}</p>
+                )}
+
+                {/* Add Module in Edit */}
+                <div className="mt-4 pt-4 border-t">
+                  <Label className="text-sm">{t("targets.addModule")}</Label>
+                  <Input
+                    className="mt-2"
+                    value={editModuleSearch}
+                    onChange={(e) => {
+                      setEditModuleSearch(e.target.value)
+                      searchModulesForEdit(e.target.value)
+                    }}
+                    placeholder={t("assets.searchModule")}
+                  />
+                  <textarea
+                    className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-2"
+                    value={editModuleJustification}
+                    onChange={(e) => setEditModuleJustification(e.target.value)}
+                    placeholder={t("assets.justification")}
+                  />
+                  {editLoadingModules ? (
+                    <div className="flex items-center gap-2 text-muted-foreground mt-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      {t("common.loading")}
+                    </div>
+                  ) : editAvailableModules.length > 0 ? (
+                    <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                      {editAvailableModules.map((mod) => (
+                        <div
+                          key={mod.id}
+                          className="flex items-center justify-between p-2 bg-muted/30 rounded hover:bg-muted/50 cursor-pointer"
+                          onClick={() => handleAssignModuleInEdit(mod.id)}
+                        >
+                          <div className="flex items-center gap-2">
+                            <code className="text-sm font-mono">{mod.code}</code>
+                            <span className="text-sm">{mod.name}</span>
+                          </div>
+                          <Badge variant="outline" className="text-xs">{mod.module_group}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : editModuleSearch.length >= 2 ? (
+                    <p className="text-sm text-muted-foreground mt-2">{t("assets.noModulesFound")}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground mt-2">{t("targets.typeToSearch")}</p>
+                  )}
+                </div>
+              </div>
+
               <div className="flex items-center justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={() => setShowForm(false)}>
                   {t("common.cancel")}
@@ -1234,6 +1475,74 @@ export default function AssetsPage() {
               disabled={!selectedProcess || linkingProcess || unlinkedProcesses.length === 0}
             >
               {linkingProcess ? t("common.saving") : t("assets.link")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Module Assignment Dialog */}
+      <Dialog open={showModuleDialog} onOpenChange={setShowModuleDialog}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("assets.moduleAssignmentTitle")}</DialogTitle>
+            <DialogDescription>{t("assets.moduleAssignmentDesc")}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedAssetForModule && selectedAssetForModule.linked_process_count === 0 && (
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md text-yellow-800 text-sm">
+                {t("assets.noBPWarning")}
+              </div>
+            )}
+            <div>
+              <Label>{t("assets.searchModule")}</Label>
+              <Input
+                value={moduleSearch}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setModuleSearch(e.target.value)
+                  searchModules(e.target.value)
+                }}
+                placeholder={t("assets.searchModule")}
+              />
+            </div>
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {loadingModules ? (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t("common.loading")}
+                </div>
+              ) : availableModules.length > 0 ? (
+                availableModules.map((mod) => (
+                  <div
+                    key={mod.id}
+                    className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 cursor-pointer"
+                    onClick={() => handleAssignModule(mod.id)}
+                  >
+                    <div>
+                      <code className="text-sm font-mono">{mod.code}</code>
+                      <span className="text-sm ml-2">{mod.name}</span>
+                    </div>
+                    <Badge variant="outline">{mod.module_group}</Badge>
+                  </div>
+                ))
+              ) : moduleSearch.length >= 2 ? (
+                <p className="text-sm text-muted-foreground">{t("assets.noModulesFound")}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Type at least 2 characters to search.</p>
+              )}
+            </div>
+            <div>
+              <Label>{t("assets.justification")}</Label>
+              <textarea
+                className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={moduleJustification}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setModuleJustification(e.target.value)}
+                placeholder={t("assets.justification")}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowModuleDialog(false)} disabled={assigningModule}>
+              {t("common.cancel")}
             </Button>
           </DialogFooter>
         </DialogContent>

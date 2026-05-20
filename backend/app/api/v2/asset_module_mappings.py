@@ -12,6 +12,7 @@ from app.models.asset import Asset
 from app.models.eits_module import EitsModule
 from app.models.eits_catalog_measure import EitsCatalogMeasure
 from app.models.imr_item import ImrItem
+from app.models.process_asset import ProcessAsset
 from app.models.security_profile import SecurityProfile
 from app.schemas.eits_catalog import (
     AssetModuleMappingCreate,
@@ -74,6 +75,18 @@ def create_asset_module_mapping(
     ).first()
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
+
+    # CRITICAL: Check if asset is linked to a Business Process
+    # Per E-ITS methodology, assets must be linked to BP for protection need inheritance
+    bp_linkage = db.query(ProcessAsset).filter(
+        ProcessAsset.asset_id == data.asset_id
+    ).first()
+
+    if not bp_linkage:
+        raise HTTPException(
+            status_code=409,
+            detail="Asset must be linked to a Business Process before it can be assigned an E-ITS module."
+        )
 
     module = db.query(EitsModule).filter(EitsModule.id == data.module_id).first()
     if not module:

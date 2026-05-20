@@ -1,7 +1,7 @@
 """Asset model."""
 import uuid
 
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Boolean, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -24,6 +24,9 @@ class Asset(Base):
     integrity_need = Column(String(20), default="normal")
     availability_need = Column(String(20), default="normal")
     lifecycle_status = Column(String(50), default="active")
+    is_grouped = Column(Boolean, default=False, server_default='false', nullable=False)
+    quantity = Column(Integer, default=1, server_default='1', nullable=False)
+    group_name = Column(String(255), nullable=True)
     created_at = Column(DateTime, server_default="now()")
     updated_at = Column(DateTime, server_default="now()", onupdate="now()")
 
@@ -33,3 +36,4 @@ class Asset(Base):
     relations_from = relationship("AssetRelation", back_populates="source_asset", foreign_keys="AssetRelation.source_asset_id")
     relations_to = relationship("AssetRelation", back_populates="target_asset", foreign_keys="AssetRelation.target_asset_id")
     processes = relationship("ProcessAsset", back_populates="asset")
+    module_mappings = relationship("AssetModuleMapping", back_populates="asset", cascade="all, delete-orphan")
