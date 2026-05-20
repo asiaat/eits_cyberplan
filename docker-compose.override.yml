@@ -9,3 +9,6 @@ services:
     working_dir: /app/frontend
     environment:
       - NODE_ENV=development
+      - VITE_API_URL=/api/v2
+    extra_hosts:
+      - "host.docker.internal:172.18.0.1"
