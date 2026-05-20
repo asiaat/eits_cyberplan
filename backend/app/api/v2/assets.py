@@ -26,37 +26,31 @@ router = APIRouter()
 
 
 def _can_manage_asset_links(db: Session, asset: Asset, current_user: LocalUser) -> bool:
-    """Check if user can manage asset-process links (is owner or has infoturbejuht role)."""
+    """Check if user can manage asset-process links (is owner or has admin/ISM role)."""
     # Asset owner can always manage links
     if asset.owner_user_id == current_user.id:
         return True
     
-    # Check if user has infoturbejuht role in EITSRole table (per-tenant roles)
+    # Check if user has admin, ISM, or infoturbejuht role via user_roles
     user_roles = db.query(UserRole).filter(
         UserRole.user_id == current_user.id
     ).all()
     
-    if not user_roles:
-        return False
-        
-    role_ids = [str(ur.role_id) for ur in user_roles]
+    if user_roles:
+        role_ids = [str(ur.role_id) for ur in user_roles]
+        if role_ids:
+            eits_roles = db.query(EITSRole).filter(EITSRole.id.in_(role_ids)).all()
+            for role in eits_roles:
+                if role.role_name.lower() in {"admin", "ism", "infoturbejuht"}:
+                    return True
     
-    if role_ids:
-        infoturbejuht_role = db.query(EITSRole).filter(
-            EITSRole.id.in_(role_ids),
-            EITSRole.role_name == "Infoturbejuht"  # Case sensitive!
-        ).first()
-        if infoturbejuht_role:
-            return True
-    
-    # Check if user has any admin-type global role
+    # Also check memberships for legacy roles (using global_user_id)
     from app.models.membership import Membership
-    memberships = db.query(Membership).filter(
-        Membership.user_id == current_user.id
-    ).all()
-    
-    for mem in memberships:
-        if mem.role_id in ['admin', 'administrator', 'superadmin']:
+    memberships = db.query(Membership).filter(Membership.user_id == current_user.global_user_id).all()
+    legacy_roles = [m.role_id for m in memberships if m.role_id]
+    if legacy_roles:
+        allowed_roles = {"admin", "ism", "infoturbejuht"}
+        if any(r.lower() in allowed_roles for r in legacy_roles):
             return True
     
     return False
@@ -378,6 +372,69 @@ def link_asset_to_process(
     process_id: UUID = None,
 ):
     """Link an asset to a business process."""
+    if asset_id is None or process_id is None:
+        raise HTTPException(status_code=400, detail="asset_id and process_id are required")
+
+    asset = db.query(Asset).filter(
+        Asset.id == asset_id,
+        Asset.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    if not _can_manage_asset_links(db, asset, current_user):
+        raise HTTPException(status_code=403, detail="Not authorized to manage asset links")
+
+    bp = db.query(BusinessProcess).filter(
+        BusinessProcess.id == process_id,
+        BusinessProcess.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not bp:
+        raise HTTPException(status_code=404, detail="Business process not found")
+
+    existing = db.query(ProcessAsset).filter(
+        ProcessAsset.business_process_id == process_id,
+        ProcessAsset.asset_id == asset_id,
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Asset already linked to this process")
+
+    link = ProcessAsset(
+        tenant_id=current_user.tenant_id,
+        business_process_id=process_id,
+        asset_id=asset_id,
+    )
+    db.add(link)
+    db.commit()
+
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="link_asset",
+        entity_type="asset",
+        entity_id=str(asset_id),
+        after_json={"process_id": str(process_id), "process_name": bp.name},
+    )
+
+    return {"message": "Asset linked to process successfully"}
+
+
+@router.post("/{asset_id}/link-process/")
+def link_asset_to_process_alt(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+    asset_id: UUID = None,
+    data: dict = None,
+):
+    """Link an asset to a business process (alternate endpoint)."""
+    if not data or "process_id" not in data:
+        raise HTTPException(status_code=400, detail="process_id is required")
+    process_id = data["process_id"]
+    
     if asset_id is None or process_id is None:
         raise HTTPException(status_code=400, detail="asset_id and process_id are required")
 
