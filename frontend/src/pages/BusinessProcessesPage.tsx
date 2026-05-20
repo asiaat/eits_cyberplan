@@ -54,6 +54,8 @@ interface BusinessProcessFormData {
   division_id: string | null
   owner_user_id: string | null
   asset_ids: string[]
+  justification?: string
+  approved_by?: string
 }
 
 interface DependencyItem {
@@ -113,6 +115,11 @@ export default function BusinessProcessesPage() {
   const { t } = useTranslation()
   const { organizations, selectedOrgId } = useAuth()
   const selectedOrgIdRef = useRef(selectedOrgId)
+  
+  useEffect(() => {
+    selectedOrgIdRef.current = selectedOrgId
+  }, [selectedOrgId])
+  
   const [processes, setProcesses] = useState<ProcessListItem[]>([])
   const [divisions, setDivisions] = useState<Division[]>([])
   const [loading, setLoading] = useState(true)
@@ -122,6 +129,11 @@ export default function BusinessProcessesPage() {
   const [divisionFilter, setDivisionFilter] = useState<string>("")
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
+  
+  useEffect(() => {
+    console.log("BP Page: selectedOrgId =", selectedOrgId, "loading =", loading)
+  }, [selectedOrgId, loading])
+  
   const [formData, setFormData] = useState<BusinessProcessFormData>({
     name: "",
     description: "",
@@ -155,15 +167,27 @@ export default function BusinessProcessesPage() {
   const [newDepDescription, setNewDepDescription] = useState("")
   const [linkEvidenceId, setLinkEvidenceId] = useState("")
   const [searchEvidence, setSearchEvidence] = useState("")
+  const [approvers, setApprovers] = useState<{id: string, full_name: string, email: string}[]>([])
 
-  useEffect(() => { selectedOrgIdRef.current = selectedOrgId }, [selectedOrgId])
+  const getProtectionLevel = (c: string, i: string, a: string): string => {
+    const levels = { normal: 0, unknown: 1, high: 2, very_high: 3 }
+    const max = Math.max(levels[c] || 0, levels[i] || 0, levels[a] || 0)
+    return Object.entries(levels).find(([, v]) => v === max)?.[0] || "normal"
+  }
 
-  useEffect(() => {
+  const isHighOrVeryHigh = (level: string) => level === "high" || level === "very_high"
+
+  const fetchApprovers = async () => {
     const token = localStorage.getItem("access_token")
-    if (!selectedOrgIdRef.current || !token) return
-    fetchDivisions()
-    fetchProcesses()
-  }, [selectedOrgId])
+    if (!token || !selectedOrgIdRef.current) return
+    try {
+      const res = await apiClient.get(`/users/`, { params: { tenant_id: selectedOrgIdRef.current } })
+      const users = res.data?.filter((u: any) => u.roles?.some((r: any) => ["admin", "ism"].includes(r.role_name))) || []
+      setApprovers(users.map((u: any) => ({ id: u.id, full_name: u.full_name || u.email, email: u.email })))
+    } catch (err) {
+      console.error("Failed to fetch approvers:", err)
+    }
+  }
 
   const fetchDivisions = async () => {
     if (!selectedOrgIdRef.current) return
@@ -180,15 +204,26 @@ export default function BusinessProcessesPage() {
   }
 
   const fetchProcesses = async () => {
-    if (!selectedOrgIdRef.current) return
+    const orgId = selectedOrgIdRef.current || selectedOrgId
+    console.log("fetchProcesses called, org:", orgId)
+    if (!orgId) {
+      console.log("fetchProcesses: no org id, returning")
+      return
+    }
     const token = localStorage.getItem("access_token")
-    if (!token) return
+    if (!token) {
+      console.log("fetchProcesses: no token, returning")
+      return
+    }
     try {
+      console.log("fetchProcesses: fetching...")
       setLoading(true)
       setError(null)
       const params: Record<string, string> = {}
       if (statusFilter) params.status = statusFilter
+      if (divisionFilter) params.division_id = divisionFilter
       const response = await apiClient.get("/business-processes/", { params })
+      console.log("fetchProcesses: got", response.data?.length, "processes")
       setProcesses(response.data)
     } catch (err: any) {
       console.error("fetchProcesses error:", err)
@@ -199,6 +234,10 @@ export default function BusinessProcessesPage() {
   }
 
   useEffect(() => {
+    if (!selectedOrgId) return
+    console.log("effect running with org:", selectedOrgId)
+    fetchDivisions()
+    fetchApprovers()
     fetchProcesses()
   }, [selectedOrgId, statusFilter, divisionFilter])
 
@@ -292,6 +331,8 @@ export default function BusinessProcessesPage() {
       division_id: process.division_id,
       owner_user_id: process.owner?.id || null,
       asset_ids: [],
+      justification: "",
+      approved_by: undefined,
     })
     setShowForm(true)
   }
@@ -299,10 +340,29 @@ export default function BusinessProcessesPage() {
   const handleSubmit = async () => {
     try {
       setSaving(true)
-      if (editingId) {
-        await apiClient.patch(`/business-processes/${editingId}`, formData)
+      const protectionLevel = getProtectionLevel(formData.confidentiality_need, formData.integrity_need, formData.availability_need)
+      const submitData: BusinessProcessFormData = { ...formData }
+      
+      if (isHighOrVeryHigh(protectionLevel)) {
+        if (!submitData.justification || submitData.justification.trim().length < 20) {
+          alert("Justification must be at least 20 characters for HIGH/VERY_HIGH protection needs")
+          setSaving(false)
+          return
+        }
+        if (!submitData.approved_by) {
+          alert("Please select an approver (admin/ISM) for HIGH/VERY_HIGH protection needs")
+          setSaving(false)
+          return
+        }
       } else {
-        await apiClient.post("/business-processes", formData)
+        delete submitData.justification
+        delete submitData.approved_by
+      }
+      
+      if (editingId) {
+        await apiClient.patch(`/business-processes/${editingId}`, submitData)
+      } else {
+        await apiClient.post("/business-processes", submitData)
       }
       setShowForm(false)
       fetchProcesses()
@@ -685,6 +745,33 @@ export default function BusinessProcessesPage() {
                   </select>
                 </div>
               </div>
+              {isHighOrVeryHigh(getProtectionLevel(formData.confidentiality_need, formData.integrity_need, formData.availability_need)) && (
+                <>
+                  <div>
+                    <label className="text-sm font-medium">Justification (min 20 chars)</label>
+                    <textarea
+                      value={formData.justification || ""}
+                      onChange={(e) => setFormData({ ...formData, justification: e.target.value })}
+                      rows={3}
+                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      placeholder="Explain why HIGH/VERY_HIGH protection is needed..."
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium">Approved By (admin/ISM)</label>
+                    <select
+                      value={formData.approved_by || ""}
+                      onChange={(e) => setFormData({ ...formData, approved_by: e.target.value || undefined })}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    >
+                      <option value="">Select approver...</option>
+                      {approvers.map((a) => (
+                        <option key={a.id} value={a.id}>{a.full_name} ({a.email})</option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
               <div className="flex items-center justify-end gap-2 pt-4">
                 <Button variant="outline" onClick={() => setShowForm(false)}>
                   {t("common.cancel")}
