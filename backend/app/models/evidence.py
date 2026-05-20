@@ -17,6 +17,7 @@ class Evidence(Base):
     evidence_type = Column(String(50), nullable=False)
     storage_uri = Column(String(500))
     external_url = Column(String(500))
+    file_hash = Column(String(64), nullable=True, index=True)
     version = Column(String(20))
     owner_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     valid_from = Column(DateTime)
