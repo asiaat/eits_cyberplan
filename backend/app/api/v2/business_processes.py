@@ -11,12 +11,28 @@ from app.models.asset import Asset
 from app.models.process_asset import ProcessAsset
 from app.models.business_process import BusinessProcess
 from app.models.user import User
+from app.models.business_process_dependency import BusinessProcessDependency
 from app.schemas.business_process import (
     BusinessProcessCreate,
     BusinessProcessUpdate,
     BusinessProcessResponse,
     BusinessProcessListItem,
     ProcessAssetLinkCreate,
+    BusinessProcessDependencyCreate,
+    BusinessProcessDependencyResponse,
+    BusinessProcessWithDependencies,
+    BusinessProcessSummary,
+)
+from app.services.business_process_service import (
+    calculate_protection_need,
+    is_high_or_very_high,
+    validate_protection_need_justification,
+    get_linked_asset_ids,
+    create_cascade_alert,
+    check_circular_dependency,
+    get_upstream_dependencies,
+    get_downstream_dependents,
+    build_dependency_tree,
 )
 from app.core.audit import log_audit as audit_log
 
@@ -89,12 +105,30 @@ def create_business_process_v2(
     current_user: LocalUser = CurrentUserV2,
     data: BusinessProcessCreate = None,
 ):
-    """Create a new business process."""
+    """Create a new business process.
+
+    SOP 1: Protection need is auto-calculated as MAX(C, I, A).
+    SOP 2: HIGH/VERY_HIGH protection needs require justification and approval.
+    SOP 3: HIGH/VERY_HIGH protection needs trigger cascade alerts for asset review.
+    """
     if data is None:
         raise HTTPException(status_code=400, detail="Request body required")
-    
-    print(f"DEBUG create_bp: division_id received = {data.division_id}, type = {type(data.division_id)}")
-    
+
+    confidentiality = data.confidentiality_need.value if hasattr(data.confidentiality_need, 'value') else data.confidentiality_need
+    integrity = data.integrity_need.value if hasattr(data.integrity_need, 'value') else data.integrity_need
+    availability = data.availability_need.value if hasattr(data.availability_need, 'value') else data.availability_need
+
+    protection_need = calculate_protection_need(confidentiality, integrity, availability)
+
+    if is_high_or_very_high(protection_need):
+        justification = getattr(data, 'justification', None) or None
+        approved_by = getattr(data, 'approved_by', None) or None
+        is_valid, error_msg = validate_protection_need_justification(
+            db, current_user.tenant_id, protection_need, justification, approved_by
+        )
+        if not is_valid:
+            raise HTTPException(status_code=400, detail=error_msg)
+
     bp = BusinessProcess(
         tenant_id=current_user.tenant_id,
         name=data.name,
@@ -103,9 +137,9 @@ def create_business_process_v2(
         inputs=data.inputs,
         outputs=data.outputs,
         status=data.status.value if hasattr(data.status, 'value') else data.status,
-        confidentiality_need=data.confidentiality_need.value if hasattr(data.confidentiality_need, 'value') else data.confidentiality_need,
-        integrity_need=data.integrity_need.value if hasattr(data.integrity_need, 'value') else data.integrity_need,
-        availability_need=data.availability_need.value if hasattr(data.availability_need, 'value') else data.availability_need,
+        confidentiality_need=confidentiality,
+        integrity_need=integrity,
+        availability_need=availability,
         division_id=data.division_id,
         owner_user_id=data.owner_user_id,
     )
@@ -126,6 +160,12 @@ def create_business_process_v2(
             asset_id=asset_id,
         )
         db.add(link)
+
+    if is_high_or_very_high(protection_need):
+        linked_asset_ids = get_linked_asset_ids(db, bp.id)
+        create_cascade_alert(
+            db, current_user.tenant_id, bp.id, bp.name, protection_need, linked_asset_ids
+        )
 
     db.commit()
     db.refresh(bp)
@@ -194,6 +234,12 @@ def update_business_process_v2(
         "availability_need": bp.availability_need,
     }
 
+    old_protection_need = calculate_protection_need(
+        bp.confidentiality_need,
+        bp.integrity_need,
+        bp.availability_need
+    )
+
     update_data = data.model_dump(exclude_unset=True, exclude_none=True)
     for field, value in update_data.items():
         if field in ("status", "confidentiality_need", "integrity_need", "availability_need"):
@@ -203,8 +249,29 @@ def update_business_process_v2(
                 setattr(bp, field, value)
         elif field == "owner_user_id":
             setattr(bp, field, value)
-        elif field not in ("asset_ids",):
+        elif field not in ("asset_ids", "justification", "approved_by"):
             setattr(bp, field, value)
+
+    new_protection_need = calculate_protection_need(
+        bp.confidentiality_need,
+        bp.integrity_need,
+        bp.availability_need
+    )
+
+    if is_high_or_very_high(new_protection_need) and new_protection_need != old_protection_need:
+        justification = getattr(data, 'justification', None) or getattr(bp, 'justification', None) or None
+        approved_by = getattr(data, 'approved_by', None) or getattr(bp, 'approved_by', None) or None
+        is_valid, error_msg = validate_protection_need_justification(
+            db, current_user.tenant_id, new_protection_need, justification, approved_by
+        )
+        if not is_valid:
+            db.rollback()
+            raise HTTPException(status_code=400, detail=error_msg)
+
+        linked_asset_ids = get_linked_asset_ids(db, bp.id)
+        create_cascade_alert(
+            db, current_user.tenant_id, bp.id, bp.name, new_protection_need, linked_asset_ids
+        )
 
     db.commit()
     db.refresh(bp)
@@ -256,6 +323,206 @@ def delete_business_process_v2(
     )
 
     db.delete(bp)
+    db.commit()
+
+
+@router.get("/{process_id}/dependencies", response_model=BusinessProcessWithDependencies)
+def get_business_process_dependencies(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+    process_id: UUID = None,
+):
+    """Get all dependencies (upstream and downstream) for a business process."""
+    if process_id is None:
+        raise HTTPException(status_code=400, detail="process_id is required")
+
+    bp = db.query(BusinessProcess).filter(
+        BusinessProcess.id == process_id,
+        BusinessProcess.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not bp:
+        raise HTTPException(status_code=404, detail="Business process not found")
+
+    base_response = _build_response(db, bp)
+
+    upstream_deps = get_upstream_dependencies(db, current_user.tenant_id, process_id)
+    downstream_deps = get_downstream_dependents(db, current_user.tenant_id, process_id)
+
+    upstream_list = []
+    for dep in upstream_deps:
+        dep_bp = db.query(BusinessProcess).filter(BusinessProcess.id == dep.depends_on_process_id).first()
+        bp_summary = None
+        if dep_bp:
+            bp_summary = BusinessProcessSummary(
+                id=dep_bp.id,
+                name=dep_bp.name,
+                status=dep_bp.status,
+                confidentiality_need=dep_bp.confidentiality_need,
+                integrity_need=dep_bp.integrity_need,
+                availability_need=dep_bp.availability_need,
+            )
+        upstream_list.append({
+            "id": dep.id,
+            "depends_on_process_id": dep.depends_on_process_id,
+            "dependency_type": dep.dependency_type,
+            "description": dep.description,
+            "created_at": dep.created_at,
+            "depends_on_process": bp_summary,
+        })
+
+    downstream_list = []
+    for dep in downstream_deps:
+        dep_bp = db.query(BusinessProcess).filter(BusinessProcess.id == dep.primary_process_id).first()
+        bp_summary = None
+        if dep_bp:
+            bp_summary = BusinessProcessSummary(
+                id=dep_bp.id,
+                name=dep_bp.name,
+                status=dep_bp.status,
+                confidentiality_need=dep_bp.confidentiality_need,
+                integrity_need=dep_bp.integrity_need,
+                availability_need=dep_bp.availability_need,
+            )
+        downstream_list.append({
+            "id": dep.id,
+            "depends_on_process_id": dep.primary_process_id,
+            "dependency_type": dep.dependency_type,
+            "description": dep.description,
+            "created_at": dep.created_at,
+            "depends_on_process": bp_summary,
+        })
+
+    return BusinessProcessWithDependencies(
+        **base_response.model_dump(),
+        dependencies=upstream_list,
+        dependents=downstream_list,
+    )
+
+
+@router.post("/{process_id}/dependencies", response_model=BusinessProcessDependencyResponse, status_code=status.HTTP_201_CREATED)
+def create_business_process_dependency(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+    process_id: UUID = None,
+    data: BusinessProcessDependencyCreate = None,
+):
+    """Create a dependency from one business process to another.
+
+    Validates:
+    - No self-referencing dependencies
+    - No circular dependency chains
+    - Both processes exist in the same tenant
+    """
+    if process_id is None:
+        raise HTTPException(status_code=400, detail="process_id is required")
+    if data is None:
+        raise HTTPException(status_code=400, detail="Request body required")
+
+    if process_id == data.depends_on_process_id:
+        raise HTTPException(status_code=400, detail="A process cannot depend on itself")
+
+    bp = db.query(BusinessProcess).filter(
+        BusinessProcess.id == process_id,
+        BusinessProcess.tenant_id == current_user.tenant_id,
+    ).first()
+    if not bp:
+        raise HTTPException(status_code=404, detail="Business process not found")
+
+    depends_on_bp = db.query(BusinessProcess).filter(
+        BusinessProcess.id == data.depends_on_process_id,
+        BusinessProcess.tenant_id == current_user.tenant_id,
+    ).first()
+    if not depends_on_bp:
+        raise HTTPException(status_code=404, detail="Target process not found in this tenant")
+
+    would_cycle, cycle_msg = check_circular_dependency(
+        db, current_user.tenant_id, process_id, data.depends_on_process_id
+    )
+    if would_cycle:
+        raise HTTPException(status_code=400, detail=cycle_msg)
+
+    existing = db.query(BusinessProcessDependency).filter(
+        BusinessProcessDependency.primary_process_id == process_id,
+        BusinessProcessDependency.depends_on_process_id == data.depends_on_process_id,
+        BusinessProcessDependency.tenant_id == current_user.tenant_id,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Dependency already exists")
+
+    dependency = BusinessProcessDependency(
+        tenant_id=current_user.tenant_id,
+        primary_process_id=process_id,
+        depends_on_process_id=data.depends_on_process_id,
+        dependency_type=data.dependency_type.value if hasattr(data.dependency_type, 'value') else data.dependency_type,
+        description=data.description,
+    )
+    db.add(dependency)
+    db.flush()
+
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="create",
+        entity_type="business_process_dependency",
+        entity_id=str(dependency.id),
+        after_json={
+            "primary_process_id": str(process_id),
+            "depends_on_process_id": str(data.depends_on_process_id),
+            "dependency_type": data.dependency_type,
+        },
+    )
+
+    return BusinessProcessDependencyResponse(
+        id=dependency.id,
+        tenant_id=dependency.tenant_id,
+        primary_process_id=dependency.primary_process_id,
+        depends_on_process_id=dependency.depends_on_process_id,
+        dependency_type=dependency.dependency_type,
+        description=dependency.description,
+        created_at=dependency.created_at,
+    )
+
+
+@router.delete("/{process_id}/dependencies/{dependency_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_business_process_dependency(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+    process_id: UUID = None,
+    dependency_id: UUID = None,
+):
+    """Delete a business process dependency."""
+    if process_id is None or dependency_id is None:
+        raise HTTPException(status_code=400, detail="process_id and dependency_id are required")
+
+    bp = db.query(BusinessProcess).filter(
+        BusinessProcess.id == process_id,
+        BusinessProcess.tenant_id == current_user.tenant_id,
+    ).first()
+    if not bp:
+        raise HTTPException(status_code=404, detail="Business process not found")
+
+    dependency = db.query(BusinessProcessDependency).filter(
+        BusinessProcessDependency.id == dependency_id,
+        BusinessProcessDependency.primary_process_id == process_id,
+        BusinessProcessDependency.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not dependency:
+        raise HTTPException(status_code=404, detail="Dependency not found")
+
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="delete",
+        entity_type="business_process_dependency",
+        entity_id=str(dependency_id),
+        before_json={"primary_process_id": str(process_id)},
+    )
+
+    db.delete(dependency)
     db.commit()
 
 
