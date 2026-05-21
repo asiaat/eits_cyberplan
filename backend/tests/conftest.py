@@ -4,7 +4,160 @@ import pytest
 
 def pytest_configure(config):
     """Configure test environment before any imports."""
+    import time
     os.environ["APP_ENV"] = "test"
+    config._start_time = time.time()
+
+
+def pytest_sessionstart(session):
+    """Record session start time."""
+    import time
+    if not hasattr(session.config, '_start_time'):
+        session.config._start_time = time.time()
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    """Add enhanced test summary report at the end of test run."""
+    import time
+
+    GREEN = "\033[32m"
+    YELLOW = "\033[33m"
+    RED = "\033[31m"
+    BOLD_CYAN = "\033[1;36m"
+    BOLD_MAGENTA = "\033[1;35m"
+    BOLD_BLUE = "\033[1;34m"
+    BOLD_WHITE = "\033[1;37m"
+    RESET = "\033[0m"
+
+    start_time = getattr(config, '_start_time', None)
+    duration = time.time() - start_time if start_time else 0
+
+    print("\n")
+    print(f"{BOLD_CYAN}{'=' * 70}{RESET}")
+    print(f"{BOLD_CYAN}E-ITS BACKEND TEST REPORT{RESET}".center(70))
+    print(f"{BOLD_CYAN}{'=' * 70}{RESET}")
+
+    stats = terminalreporter.stats
+
+    passed = len(stats.get("passed", []))
+    skipped = len(stats.get("skipped", []))
+    failed = len(stats.get("failed", []))
+    xpassed = len(stats.get("xpassed", []))
+    xfailed = len(stats.get("xfailed", []))
+    warning_list = stats.get("warning", []) or stats.get("warnings", [])
+    total = passed + skipped + failed + xpassed + xfailed
+
+    pass_rate = (passed / total * 100) if total > 0 else 0
+    avg_time = (duration / total * 1000) if total > 0 else 0
+
+    print(f"\n{BOLD_CYAN}╔{'═' * 68}╗{RESET}")
+    print(f"{BOLD_CYAN}║{RESET} {BOLD_WHITE}TEST SUMMARY{RESET}".center(69) + f"{BOLD_CYAN}║{RESET}")
+    print(f"{BOLD_CYAN}╠{'═' * 68}╣{RESET}")
+    print(f"{BOLD_CYAN}║{RESET} {BOLD_WHITE}Total:{RESET} {total} tests  {BOLD_WHITE}│{RESET} {GREEN}Pass Rate:{RESET} {pass_rate:.1f}%  {BOLD_WHITE}│{RESET} {BOLD_WHITE}Time:{RESET} {duration:.2f}s ({avg_time:.1f}ms) {BOLD_CYAN}║{RESET}")
+    print(f"{BOLD_CYAN}╠{'═' * 68}╣{RESET}")
+    print(f"{BOLD_CYAN}║{RESET}  {GREEN}✓ {passed} Passed{RESET}  {YELLOW}~ {skipped} Skipped{RESET}  {RED}✗ {failed} Failed{RESET}" + " " * max(0, 42 - len(f"{passed}{skipped}{failed}")) + f"{BOLD_CYAN}║{RESET}")
+    print(f"{BOLD_CYAN}╚{'═' * 68}╝{RESET}")
+
+    if warning_list:
+        print(f"\n{BOLD_MAGENTA}WARNINGS ({len(warning_list)}):{RESET}")
+        for w in warning_list:
+            msg = getattr(w, 'message', str(w))
+            loc = getattr(w, 'location', '')
+            clean_msg = msg.split('\n')[0].strip() if msg else "Unknown warning"
+            if "asyncio_mode" in clean_msg:
+                source = "pyproject.toml"
+                desc = "Unknown config option 'asyncio_mode' - may affect test behavior"
+            elif loc:
+                parts = str(loc).split(':')
+                source = parts[0] if parts else str(loc)
+                desc = clean_msg
+            else:
+                source = "pytest"
+                desc = clean_msg
+            print(f"  {YELLOW}⚠{RESET} {source}: {desc}")
+
+    file_stats = {}
+    for test_list, key in [(stats.get("passed", []), "passed"), (stats.get("skipped", []), "skipped"), (stats.get("failed", []), "failed")]:
+        for test in test_list:
+            if hasattr(test, 'nodeid'):
+                nodeid = test.nodeid
+                filepath = nodeid.split("::")[0]
+                if filepath not in file_stats:
+                    file_stats[filepath] = {"passed": 0, "skipped": 0, "failed": 0}
+                file_stats[filepath][key] += 1
+
+    cat_files = {
+        "Schema Validation": ["tests/integration/test_assets.py", "tests/integration/test_catalog.py"],
+        "API Authentication": ["tests/integration/test_endpoints.py"],
+        "ETL Pipeline": ["tests/unit/test_etl.py"],
+        "Business Process Service": ["tests/unit/test_business_process_service.py"],
+        "Targets API": ["tests/integration/test_targets.py"],
+        "Modeling Service": ["tests/integration/test_modeling.py"],
+        "Protection Mode": ["tests/integration/test_protection_mode.py"],
+    }
+
+    print(f"\n{BOLD_BLUE}╔{'─' * 68}╗{RESET}")
+    print(f"{BOLD_BLUE}║{RESET} {BOLD_BLUE}BY CATEGORY (with actual results){RESET}".ljust(69) + f"{BOLD_BLUE}║{RESET}")
+    print(f"{BOLD_BLUE}╠{'─' * 68}╣{RESET}")
+
+    header = f"{BOLD_BLUE}║{RESET} {'Category':<26} {'P':>5} {'S':>5} {'F':>5} {'Tot':>5} {'%':>6} {BOLD_BLUE}║{RESET}"
+    print(header)
+    print(f"{BOLD_BLUE}╠{'─' * 68}╣{RESET}")
+
+    for cat_name, files in cat_files.items():
+        cat_passed = 0
+        cat_skipped = 0
+        cat_failed = 0
+        for f in files:
+            if f in file_stats:
+                cat_passed += file_stats[f]["passed"]
+                cat_skipped += file_stats[f]["skipped"]
+                cat_failed += file_stats[f]["failed"]
+
+        cat_total = cat_passed + cat_skipped + cat_failed
+        cat_pct = (cat_total / total * 100) if total > 0 else 0
+
+        if cat_skipped == cat_total and cat_total > 0:
+            icon = f"{YELLOW}~{RESET}"
+        elif cat_failed > 0:
+            icon = f"{RED}✗{RESET}"
+        else:
+            icon = f"{GREEN}✓{RESET}"
+
+        p_str = f"{GREEN}{cat_passed}{RESET}" if cat_passed > 0 else "0"
+        s_str = f"{YELLOW}{cat_skipped}{RESET}" if cat_skipped > 0 else "0"
+        f_str = f"{RED}{cat_failed}{RESET}" if cat_failed > 0 else "0"
+        pct_str = f"{cat_pct:.1f}%"
+        print(f"{BOLD_BLUE}║{RESET} {icon} {cat_name:<24} {p_str:>5} {s_str:>5} {f_str:>5} {cat_total:>5} {pct_str:>6} {BOLD_BLUE}║{RESET}")
+
+    print(f"{BOLD_BLUE}╚{'─' * 68}╝{RESET}")
+
+    if failed > 0:
+        print(f"\n{RED}{'-' * 70}{RESET}")
+        print(f"{RED}FAILED TESTS ({failed}):{RESET}".ljust(70))
+        print(f"{RED}{'-' * 70}{RESET}")
+        for rep in stats.get("failed", []):
+            if hasattr(rep, "nodeid"):
+                print(f"  {RED}✗{RESET} {rep.nodeid}")
+    else:
+        print(f"\n{GREEN}{'-' * 70}{RESET}")
+        print(f"{GREEN}FAILED TESTS: 0 - all good!{RESET}".ljust(70))
+        print(f"{GREEN}{'-' * 70}{RESET}")
+
+    if skipped > 0:
+        print(f"\n{YELLOW}{'-' * 70}{RESET}")
+        print(f"{YELLOW}SKIPPED TESTS ({skipped}):{RESET}".ljust(70))
+        print(f"{YELLOW}{'-' * 70}{RESET}")
+        for rep in stats.get("skipped", []):
+            if hasattr(rep, "nodeid"):
+                reason = rep.longrepr if hasattr(rep, "longrepr") else "no reason"
+                print(f"  {YELLOW}~{RESET} {rep.nodeid}")
+                print(f"    Reason: {reason}")
+
+    print(f"\n{BOLD_CYAN}{'=' * 70}{RESET}")
+    print(f"{BOLD_CYAN}E-ITS BACKEND TEST REPORT - END{RESET}".center(70))
+    print(f"{BOLD_CYAN}{'=' * 70}{RESET}")
+    print()
 
 
 @pytest.fixture(autouse=True)
@@ -182,17 +335,41 @@ def eits_module_id():
 
 @pytest.fixture
 def client():
-    """Create a test client for API testing."""
+    """Create a test client for API testing with mocked database and auth."""
     from fastapi.testclient import TestClient
-    from app.main import app
-    return TestClient(app)
+    from unittest.mock import patch, MagicMock
+
+    mock_engine = MagicMock()
+    mock_conn = MagicMock()
+    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+    with patch("app.db.session.get_engine", return_value=mock_engine):
+        with patch("app.db.session.get_session_maker") as mock_maker:
+            mock_maker.return_value = MagicMock(return_value=MagicMock())
+            from app.main import app
+            from app.api.v2.auth import get_current_user_v2
+            from uuid import uuid4
+
+            mock_user = MagicMock()
+            mock_user.id = uuid4()
+            mock_user.tenant_id = uuid4()
+            mock_user.global_user_id = uuid4()
+            mock_user.full_name = "Test User"
+            mock_user.is_active = True
+            mock_user.email = "test@example.com"
+            mock_user.roles = []
+
+            app.dependency_overrides[get_current_user_v2] = lambda: mock_user
+            client = TestClient(app)
+            yield client
+            if get_current_user_v2 in app.dependency_overrides:
+                del app.dependency_overrides[get_current_user_v2]
 
 
 @pytest.fixture
 def auth_headers(client):
     """Create authentication headers for test client."""
-    # For now, return empty headers - actual auth would need a valid token
-    # In real tests, this would authenticate and get a token
     return {"Authorization": "Bearer test-token-placeholder"}
 
 

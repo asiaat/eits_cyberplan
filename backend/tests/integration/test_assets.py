@@ -157,13 +157,13 @@ class TestAssetCreateSchema:
         with pytest.raises(ValueError):
             AssetCreate(asset_type=AssetType.INFORMATION_ASSET)
 
-    def test_asset_create_requires_asset_type(self):
-        """Test that AssetCreate requires asset_type field."""
-        from pydantic import ValidationError
+    def test_asset_create_asset_type_optional(self):
+        """Test that asset_type is optional (can be None for target_type override)."""
         from app.schemas.asset import AssetCreate
 
-        with pytest.raises(ValidationError):
-            AssetCreate(name="Test Asset")
+        asset = AssetCreate(name="Test Asset")
+        assert asset.name == "Test Asset"
+        assert asset.asset_type is None
 
     def test_asset_create_valid_minimal(self):
         """Test AssetCreate with minimal required fields."""

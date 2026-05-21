@@ -511,3 +511,9 @@ class RiskV2Response(RiskV2Base):
 
 from app.schemas.asset import AssetListItem
 from app.schemas.business_process import BusinessProcessListItem
+
+
+class ProtectionNeedUpdate(BaseModel):
+    confidentiality: str
+    integrity: str
+    availability: str

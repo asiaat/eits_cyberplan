@@ -56,3 +56,10 @@ filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.alembic]
 script_location = "alembic"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.3.0",
+    "pytest-cov>=7.1.0",
+]

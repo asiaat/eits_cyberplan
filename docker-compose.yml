@@ -56,10 +56,11 @@ services:
       - .env
     ports:
       - "8000:8000"
-    # For development, mount code with hot-reload.
-    # Note: For this to work, the local .venv must be compatible or rebuilt in container.
-    # volumes:
-    #   - ./backend:/app/backend
+    # For development, mount source code for hot-reload without overriding .venv
+    volumes:
+      - ./backend/app:/app/backend/app
+      - ./backend/alembic:/app/backend/alembic
+      - ./backend/pyproject.toml:/app/backend/pyproject.toml
     depends_on:
       postgres:
         condition: service_healthy
