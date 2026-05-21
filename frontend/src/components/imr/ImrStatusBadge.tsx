@@ -27,9 +27,8 @@ export function ImrStatusBadge({ status, size = "md" }: ImrStatusBadgeProps) {
   }
 
   return (
-    <span className={`inline-flex items-center rounded-full font-medium ${style.bg} ${style.text} ${sizeClasses[size]}`}>
-      <span className="mr-1 font-bold">{status}</span>
-      <span>{label}</span>
+    <span className={`inline-flex items-center rounded-full font-bold ${style.bg} ${style.text} ${sizeClasses[size]}`}>
+      {status}
     </span>
   )
 }

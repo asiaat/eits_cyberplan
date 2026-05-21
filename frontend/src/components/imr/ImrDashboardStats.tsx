@@ -35,52 +35,49 @@ export function ImrDashboardStats() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
       {/* Total Items */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <div className="bg-white rounded-lg border border-slate-200 p-3">
         <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
           {t("implementationPlan.dashboard.totalItems")}
         </div>
-        <div className="text-3xl font-bold text-slate-900 mt-2">
+        <div className="text-2xl font-bold text-slate-900 mt-1">
           {stats.total_items}
         </div>
       </div>
 
       {/* Overdue */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <div className="bg-white rounded-lg border border-slate-200 p-3">
         <div className="text-xs font-semibold text-red-600 uppercase tracking-wide">
           {t("implementationPlan.dashboard.overdue")}
         </div>
-        <div className="text-3xl font-bold text-red-600 mt-2">
+        <div className="text-2xl font-bold text-red-600 mt-1">
           {stats.overdue_count}
         </div>
       </div>
 
       {/* Implemented */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <div className="bg-white rounded-lg border border-slate-200 p-3">
         <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">
           {t("implementationPlan.dashboard.implemented")}
         </div>
-        <div className="text-3xl font-bold text-emerald-600 mt-2">
+        <div className="text-2xl font-bold text-emerald-600 mt-1">
           {stats.pearo_status_counts["R"] || 0}
         </div>
       </div>
 
       {/* In Progress */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4">
+      <div className="bg-white rounded-lg border border-slate-200 p-3">
         <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide">
           {t("implementationPlan.dashboard.inProgress")}
         </div>
-        <div className="text-3xl font-bold text-amber-600 mt-2">
+        <div className="text-2xl font-bold text-amber-600 mt-1">
           {stats.pearo_status_counts["E"] || 0}
         </div>
       </div>
 
       {/* Status Breakdown */}
-      <div className="col-span-1 md:col-span-4 bg-white rounded-lg border border-slate-200 p-4">
-        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
-          {t("implementationPlan.table.status")}
-        </div>
+      <div className="col-span-2 md:col-span-4 bg-white rounded-lg border border-slate-200 p-3">
         <div className="flex flex-wrap gap-2">
           {IMR_STATUS_OPTIONS.map((option) => {
             const count = stats.pearo_status_counts[option.value] || 0
@@ -88,7 +85,7 @@ export function ImrDashboardStats() {
             return (
               <div 
                 key={option.value}
-                className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm ${statusColors[option.value]}`}
+                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs ${statusColors[option.value]}`}
               >
                 <span className="font-bold">{option.value}</span>
                 <span className="font-medium">{t(`implementationPlan.status.${option.value}` as any)}</span>

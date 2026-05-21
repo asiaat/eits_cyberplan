@@ -27,6 +27,7 @@ class Asset(Base):
     is_grouped = Column(Boolean, default=False, server_default='false', nullable=False)
     quantity = Column(Integer, default=1, server_default='1', nullable=False)
     group_name = Column(String(255), nullable=True)
+    is_core = Column(Boolean, default=False, server_default='false', nullable=False)
     created_at = Column(DateTime, server_default="now()")
     updated_at = Column(DateTime, server_default="now()", onupdate="now()")
 

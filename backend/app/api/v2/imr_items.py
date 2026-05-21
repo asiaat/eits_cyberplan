@@ -33,6 +33,12 @@ def _build_imr_response(db: Session, item: ImrItem) -> ImrItemResponse:
     measure_info = None
     if measure:
         measure_info = {"id": measure.id, "code": measure.code, "name": measure.name, "measure_level": measure.measure_level}
+    
+    # Derive requirement_profile from measure level if not set
+    profile = item.requirement_profile
+    if not profile and measure:
+        profile = "PÕHIMEEDE" if measure.measure_level == "BASE" else "PIIRATULT"
+    
     return ImrItemResponse(
         id=item.id,
         tenant_id=item.tenant_id,
@@ -58,6 +64,9 @@ def _build_imr_response(db: Session, item: ImrItem) -> ImrItemResponse:
         created_by=item.created_by,
         updated_by=item.updated_by,
         status_changed_at=item.status_changed_at,
+        requirement_profile=profile,
+        todo_description=item.todo_description,
+        cost_eur=float(item.cost_eur) if item.cost_eur else None,
     )
 
 
@@ -126,6 +135,9 @@ def create_imr_item(
         next_review_date=data.next_review_date,
         priority=data.priority.value if hasattr(data.priority, 'value') else data.priority,
         verification_method=data.verification_method,
+        requirement_profile=data.requirement_profile,
+        todo_description=data.todo_description,
+        cost_eur=data.cost_eur,
     )
     db.add(item)
     db.commit()

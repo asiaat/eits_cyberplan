@@ -35,6 +35,7 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
   const [showEvidenceSelector, setShowEvidenceSelector] = useState(false)
   const [linkingLoading, setLinkingLoading] = useState(false)
   const [availableUsers, setAvailableUsers] = useState<UserOption[]>([])
+  const [costInput, setCostInput] = useState<string>("")
 
   useEffect(() => {
     if (item) {
@@ -45,7 +46,11 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
         due_date: item.due_date,
         responsible_user_id: item.responsible_user_id,
         verification_method: item.verification_method || "",
+        requirement_profile: item.requirement_profile,
+        todo_description: item.todo_description,
+        cost_eur: item.cost_eur,
       })
+      setCostInput(item.cost_eur !== undefined ? String(item.cost_eur) : "")
       
       if (item.pearo_status !== "R") {
         loadValidationStatus()
@@ -276,6 +281,118 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
             />
           </div>
 
+          {/* Requirement Profile - Auto-set from module */}
+          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
+            <label className="block text-sm font-bold text-slate-800 mb-2">
+              {t("implementationPlan.modal.requirementProfile") || "Profiil"}
+            </label>
+            <select
+              value={formData.requirement_profile || ""}
+              disabled
+              className="w-full border border-slate-400 bg-slate-200 rounded-lg p-2.5 text-sm text-slate-600 cursor-not-allowed"
+            >
+              <option value="">Vali profiil...</option>
+              <option value="PÕHIMEEDE">PÕHIMEEDE (Basic)</option>
+              <option value="PIIRATULT">PIIRATULT (Limited)</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500">Profiil määratakse automaatselt moodulist</p>
+          </div>
+
+          {/* Todo Description */}
+          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
+            <label className="block text-sm font-bold text-slate-800 mb-2">
+              {t("implementationPlan.modal.todoDescription") || "Veel teha"}
+            </label>
+            <textarea
+              value={formData.todo_description || ""}
+              onChange={(e) => setFormData({ ...formData, todo_description: e.target.value })}
+              rows={3}
+              placeholder="Kirjelda, mis veel tuleb teha..."
+              className="w-full border border-slate-400 bg-white rounded-lg p-3 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Cost EUR */}
+          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
+            <label className="block text-sm font-bold text-slate-800 mb-2">
+              {t("implementationPlan.modal.costEur") || "Maksumus (EUR)"}
+            </label>
+            <input
+              type="number"
+              value={costInput}
+              onChange={(e) => {
+                setCostInput(e.target.value)
+                setFormData({ ...formData, cost_eur: e.target.value ? parseFloat(e.target.value) : undefined })
+              }}
+              step="0.01"
+              min="0"
+              placeholder="0.00"
+              className="w-full border border-slate-400 bg-white rounded-lg p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Next Review Date */}
+          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
+            <label className="block text-sm font-bold text-slate-800 mb-2">
+              {t("implementationPlan.modal.nextReviewDate") || "Järgmine ülevaade"}
+            </label>
+            <input
+              type="date"
+              value={formData.next_review_date || ""}
+              onChange={(e) => setFormData({ ...formData, next_review_date: e.target.value })}
+              className="w-full border border-slate-400 bg-white rounded-lg p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Non-implementation Justification */}
+          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
+            <label className="block text-sm font-bold text-slate-800 mb-2">
+              {t("implementationPlan.modal.nonImplementationJustification") || "Mitterakendamise põhjendus"}
+            </label>
+            <textarea
+              value={formData.non_implementation_justification || ""}
+              onChange={(e) => setFormData({ ...formData, non_implementation_justification: e.target.value })}
+              rows={3}
+              placeholder="Kui meetmeid ei rakendata, selgita põhjuseid..."
+              className="w-full border border-slate-400 bg-white rounded-lg p-3 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Partial Scope Description */}
+          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
+            <label className="block text-sm font-bold text-slate-800 mb-2">
+              {t("implementationPlan.modal.partialScopeDescription") || "Osaline rakendamine"}
+            </label>
+            <textarea
+              value={formData.partial_scope_description || ""}
+              onChange={(e) => setFormData({ ...formData, partial_scope_description: e.target.value })}
+              rows={3}
+              placeholder="Kui meetmeid rakendatakse osaliselt, kirjelda ulatust..."
+              className="w-full border border-slate-400 bg-white rounded-lg p-3 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            />
+          </div>
+
+          {/* Risk Acceptance Section - Read only when status is A */}
+          {(item.pearo_status === "A" || formData.pearo_status === "A") && (
+            <div className="bg-orange-50 p-4 rounded-lg border border-orange-300">
+              <h4 className="font-bold text-orange-800 mb-3">{t("implementationPlan.modal.riskAcceptance") || "Risk aktsepteeritud"}</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-orange-700 mb-1">
+                    {t("implementationPlan.modal.riskAcceptedBy") || "Aktsepteeritud by"}
+                  </label>
+                  <span className="text-sm text-orange-900">{item.risk_acceptance_approved_by || "—"}</span>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-orange-700 mb-1">
+                    {t("implementationPlan.modal.riskAcceptedAt") || "Kuupäev"}
+                  </label>
+                  <span className="text-sm text-orange-900">{item.risk_acceptance_date ? formatDate(item.risk_acceptance_date) : "—"}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Evidence Indicator */}
           <div className={`p-4 rounded-lg border ${
             validationStatus?.linked_evidence_count && validationStatus.linked_evidence_count > 0 
@@ -357,4 +474,10 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
       </div>
     </div>
   )
+}
+
+function formatDate(dateStr: string): string {
+  if (!dateStr) return "—"
+  const date = new Date(dateStr)
+  return date.toLocaleDateString("et-EE", { year: "numeric", month: "short", day: "numeric" })
 }

@@ -316,12 +316,18 @@ class ImrItemBase(BaseModel):
     created_by: Optional[UUID] = None
     updated_by: Optional[UUID] = None
     status_changed_at: Optional[datetime] = None
+    requirement_profile: Optional[str] = None
+    todo_description: Optional[str] = None
+    cost_eur: Optional[float] = None
 
 
 class ImrItemCreate(ImrItemBase):
     asset_module_mapping_id: Optional[UUID] = None
     is_process_module_measure: bool = False
     responsible_user_id: Optional[UUID] = None
+    requirement_profile: Optional[str] = None
+    todo_description: Optional[str] = None
+    cost_eur: Optional[float] = None
 
 
 class ImrItemUpdate(BaseModel):
@@ -337,6 +343,9 @@ class ImrItemUpdate(BaseModel):
     risk_acceptance_date: Optional[datetime] = None
     verification_method: Optional[str] = None
     last_verified_at: Optional[datetime] = None
+    requirement_profile: Optional[str] = None
+    todo_description: Optional[str] = None
+    cost_eur: Optional[float] = None
 
 
 class MeasureInfo(BaseModel):

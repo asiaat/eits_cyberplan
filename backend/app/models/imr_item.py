@@ -1,7 +1,7 @@
 """ImrItem model - E-ITS IMR with PEARO status."""
 import uuid
 
-from sqlalchemy import Column, String, Text, Date, DateTime, Boolean, ForeignKey
+from sqlalchemy import Column, String, Text, Date, DateTime, Boolean, ForeignKey, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -37,6 +37,9 @@ class ImrItem(Base):
     created_by = Column(UUID(as_uuid=True), ForeignKey("local_users.id", ondelete="SET NULL"), nullable=True)
     updated_by = Column(UUID(as_uuid=True), ForeignKey("local_users.id", ondelete="SET NULL"), nullable=True)
     status_changed_at = Column(DateTime(timezone=True), nullable=True)
+    requirement_profile = Column(String(20), nullable=True)
+    todo_description = Column(Text, nullable=True)
+    cost_eur = Column(Numeric(12, 2), nullable=True)
 
     tenant = relationship("AppTenant")
     asset_module_mapping = relationship("AssetModuleMapping", back_populates="imr_items")

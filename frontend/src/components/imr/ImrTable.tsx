@@ -1,8 +1,11 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { ImrItem, ImrValidationStatus } from "@/lib/imr-types"
 import { useImrApi } from "@/lib/use-imr-api"
 import { useTranslation } from "@/lib/i18n"
 import { ImrStatusBadge, ImrPriorityBadge, ImrValidationIndicator } from "./ImrStatusBadge"
+
+type SortField = "code" | "status" | "priority" | "dueDate" | "profile" | "responsible" | "todo" | "cost"
+type SortOrder = "asc" | "desc"
 
 interface ImrTableProps {
   onEditItem?: (item: ImrItem) => void
@@ -16,9 +19,12 @@ interface ImrTableProps {
 
 export function ImrTable({ onEditItem, filters }: ImrTableProps) {
   const { t } = useTranslation()
-  const { loading, error, fetchImrItems } = useImrApi()
+  const { loading, error, fetchImrItems, fetchUsers } = useImrApi()
   const [items, setItems] = useState<ImrItem[]>([])
   const [validationStatuses, setValidationStatuses] = useState<Record<string, ImrValidationStatus>>({})
+  const [users, setUsers] = useState<Record<string, string>>({})
+  const [sortField, setSortField] = useState<SortField>("dueDate")
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
   
   const PAGE_SIZE = 20
   const [page, setPage] = useState(1)
@@ -33,6 +39,12 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
     const fetchedItems = await fetchImrItems({ ...filters, skip, limit: PAGE_SIZE })
     setItems(fetchedItems)
     setHasMore(fetchedItems.length === PAGE_SIZE)
+    
+    // Fetch user names
+    const userList = await fetchUsers()
+    const userMap: Record<string, string> = {}
+    userList.forEach((u: any) => { userMap[u.id] = u.full_name })
+    setUsers(userMap)
     
     const statuses: Record<string, ImrValidationStatus> = {}
     for (const item of fetchedItems) {
@@ -49,6 +61,56 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
     }
     setValidationStatuses(statuses)
   }
+
+  const sortedItems = useMemo(() => {
+    const sorted = [...items].sort((a, b) => {
+      let cmp = 0
+      switch (sortField) {
+        case "code":
+          cmp = (a.measure?.code || "").localeCompare(b.measure?.code || "")
+          break
+        case "status":
+          cmp = a.pearo_status.localeCompare(b.pearo_status)
+          break
+        case "priority":
+          const priorityOrder = { P1: 1, P2: 2, P3: 3 }
+          cmp = (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2)
+          break
+        case "dueDate":
+          cmp = (a.due_date || "").localeCompare(b.due_date || "")
+          break
+        case "profile":
+          cmp = (a.requirement_profile || "").localeCompare(b.requirement_profile || "")
+          break
+        case "responsible":
+          cmp = (users[a.responsible_user_id] || "").localeCompare(users[b.responsible_user_id] || "")
+          break
+        case "todo":
+          cmp = (a.todo_description || "").localeCompare(b.todo_description || "")
+          break
+        case "cost":
+          cmp = (a.cost_eur || 0) - (b.cost_eur || 0)
+          break
+      }
+      return sortOrder === "asc" ? cmp : -cmp
+    })
+    return sorted
+  }, [items, sortField, sortOrder, users])
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortOrder("asc")
+    }
+  }
+
+  const SortIcon = ({ field }: { field: SortField }) => (
+    <span className="ml-1 text-xs">
+      {sortField === field ? (sortOrder === "asc" ? "↑" : "↓") : "↕"}
+    </span>
+  )
 
   const startItem = (page - 1) * PAGE_SIZE + 1
   const endItem = page * PAGE_SIZE
@@ -71,20 +133,63 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-left border-collapse">
+      <table className="w-full text-left border-collapse text-xs">
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-            <th className="p-3">{t("implementationPlan.table.code")}</th>
-            <th className="p-3">{t("implementationPlan.table.measure")}</th>
-            <th className="p-3">{t("implementationPlan.table.status")}</th>
-            <th className="p-3">{t("implementationPlan.table.priority")}</th>
-            <th className="p-3">{t("implementationPlan.table.dueDate")}</th>
-            <th className="p-3">{t("implementationPlan.table.responsible")}</th>
-            <th className="p-3 text-center">{t("implementationPlan.table.validation")}</th>
+          <tr className="bg-slate-50 border-b border-slate-200 font-semibold text-slate-600 uppercase tracking-wider">
+            <th 
+              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-20"
+              onClick={() => handleSort("code")}
+            >
+              {t("implementationPlan.table.code")}<SortIcon field="code" />
+            </th>
+            <th className="py-2 px-2 w-48">{t("implementationPlan.table.measure")}</th>
+            <th 
+              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-24"
+              onClick={() => handleSort("status")}
+            >
+              {t("implementationPlan.table.status")}<SortIcon field="status" />
+            </th>
+            <th 
+              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-20"
+              onClick={() => handleSort("priority")}
+            >
+              {t("implementationPlan.table.priority")}<SortIcon field="priority" />
+            </th>
+            <th 
+              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-24"
+              onClick={() => handleSort("dueDate")}
+            >
+              {t("implementationPlan.table.dueDate")}<SortIcon field="dueDate" />
+            </th>
+            <th 
+              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-28"
+              onClick={() => handleSort("responsible")}
+            >
+              {t("implementationPlan.table.responsible")}<SortIcon field="responsible" />
+            </th>
+            <th 
+              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-20"
+              onClick={() => handleSort("profile")}
+            >
+              {t("implementationPlan.table.profile")}<SortIcon field="profile" />
+            </th>
+            <th 
+              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-32"
+              onClick={() => handleSort("todo")}
+            >
+              {t("implementationPlan.modal.todoDescription")}<SortIcon field="todo" />
+            </th>
+            <th 
+              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-20 text-right"
+              onClick={() => handleSort("cost")}
+            >
+              {t("implementationPlan.modal.costEur")}<SortIcon field="cost" />
+            </th>
+            <th className="py-2 px-2 text-center w-16">{t("implementationPlan.table.validation")}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {items.map((item) => {
+          {sortedItems.map((item) => {
             const validation = validationStatuses[item.id]
             const canTransition = validation?.can_transition_to_implemented ?? false
             
@@ -94,40 +199,62 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
                 onClick={() => onEditItem?.(item)}
                 className="hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-100"
               >
-                <td className="p-3">
-                  <span className="font-bold text-blue-800 text-sm">
+                <td className="py-2 px-2">
+                  <span className="font-bold text-blue-800">
                     {item.measure?.code || "N/A"}
                   </span>
                 </td>
-                <td className="p-3">
-                  <div className="max-w-xs">
-                    <span className="font-medium text-slate-900 text-sm truncate block" title={item.measure?.name}>
-                      {item.measure?.name || "N/A"}
-                    </span>
-                    {item.implementation_description && (
-                      <span className="text-xs text-slate-500 truncate block mt-0.5">
-                        {item.implementation_description.substring(0, 50)}...
-                      </span>
-                    )}
-                  </div>
+                <td className="py-2 px-2">
+                  <span className="font-medium text-slate-900 truncate block" title={item.measure?.name}>
+                    {item.measure?.name || "N/A"}
+                  </span>
                 </td>
-                <td className="p-3">
+                <td className="py-2 px-2">
                   <ImrStatusBadge status={item.pearo_status} size="sm" />
                 </td>
-                <td className="p-3">
+                <td className="py-2 px-2">
                   <ImrPriorityBadge priority={item.priority} />
                 </td>
-                <td className="p-3">
-                  <span className={`text-sm ${isOverdue(item) ? "text-red-600 font-medium" : "text-slate-600"}`}>
-                    {item.due_date ? formatDate(item.due_date) : "Määramata"}
+                <td className="py-2 px-2">
+                  <span className={`${isOverdue(item) ? "text-red-600 font-medium" : "text-slate-600"}`}>
+                    {item.due_date ? formatDate(item.due_date) : "—"}
                   </span>
                 </td>
-                <td className="p-3">
-                  <span className="text-sm text-slate-600">
-                    {item.responsible_user_id || t("implementationPlan.table.unassigned")}
+                <td className="py-2 px-2">
+                  <span className="text-slate-600 truncate block" title={item.responsible_user_id ? users[item.responsible_user_id] : undefined}>
+                    {item.responsible_user_id ? (users[item.responsible_user_id] || "—") : t("implementationPlan.table.unassigned")}
                   </span>
                 </td>
-                <td className="p-3 text-center">
+                <td className="py-2 px-2">
+                  {item.requirement_profile ? (
+                    <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${
+                      item.requirement_profile === "PÕHIMEEDE" 
+                        ? "bg-emerald-100 text-emerald-800" 
+                        : "bg-amber-100 text-amber-800"
+                    }`}>
+                      {item.requirement_profile}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400">—</span>
+                  )}
+                </td>
+                <td className="py-2 px-2">
+                  {item.todo_description ? (
+                    <span className="text-slate-600 truncate block max-w-[120px]" title={item.todo_description}>
+                      {item.todo_description.substring(0, 20)}...
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </td>
+                <td className="py-2 px-2 text-right">
+                  {item.cost_eur !== undefined && item.cost_eur !== null ? (
+                    <span className="text-slate-600">{item.cost_eur.toFixed(0)}</span>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
+                </td>
+                <td className="py-2 px-2 text-center">
                   {item.pearo_status !== "R" && (
                     <ImrValidationIndicator 
                       canTransition={canTransition}

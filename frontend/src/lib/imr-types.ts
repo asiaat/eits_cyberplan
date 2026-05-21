@@ -28,6 +28,9 @@ export interface ImrItem {
   created_by?: string
   updated_by?: string
   status_changed_at?: string
+  requirement_profile?: string
+  todo_description?: string
+  cost_eur?: number
 }
 
 export interface MeasureInfo {
@@ -50,6 +53,9 @@ export interface ImrItemUpdate {
   risk_acceptance_date?: string
   verification_method?: string
   last_verified_at?: string
+  requirement_profile?: string
+  todo_description?: string
+  cost_eur?: number
 }
 
 export interface ImrValidationStatus {
