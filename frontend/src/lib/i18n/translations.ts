@@ -597,6 +597,13 @@ organization: {
         showOverdueOnly: "Show overdue only",
         allStatuses: "All statuses",
       },
+      pagination: {
+        showing: "Showing",
+        of: "of",
+        previous: "Previous",
+        next: "Next",
+        page: "Page",
+      },
     },
     risks: {
       title: "Risk Register",
@@ -1352,6 +1359,13 @@ inactive: "Mitteaktiivne",
         filterByStatus: "Filtreeri staatusega",
         showOverdueOnly: "Näita ainult viivitunuid",
         allStatuses: "Kõik staatused",
+      },
+      pagination: {
+        showing: "Näitan",
+        of: "-st",
+        previous: "Eelmine",
+        next: "Järgmine",
+        page: "Leht",
       },
     },
     risks: {

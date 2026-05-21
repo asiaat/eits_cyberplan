@@ -2,16 +2,37 @@ import { useState, useCallback } from "react"
 import { apiClient } from "./api-client"
 import { ImrItem, ImrItemUpdate, ImrValidationStatus, ImrSummaryStatistics } from "./imr-types"
 
+interface UserOption {
+  id: string
+  full_name: string
+  email: string
+  department: string | null
+}
+
 export function useImrApi() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchImrItems = useCallback(async (filters?: {
-    pearo_status?: string
-    priority?: string
-    asset_id?: string
-    overdue_only?: boolean
-  }): Promise<ImrItem[]> => {
+  const fetchUsers = useCallback(async (): Promise<UserOption[]> => {
+    try {
+      const response = await apiClient.get("/users/")
+      return response.data || []
+    } catch (err: any) {
+      console.error("Failed to fetch users", err)
+      return []
+    }
+  }, [])
+
+  const fetchImrItems = useCallback(async (
+    filters?: {
+      pearo_status?: string
+      priority?: string
+      asset_id?: string
+      overdue_only?: boolean
+      skip?: number
+      limit?: number
+    }
+  ): Promise<ImrItem[]> => {
     setLoading(true)
     setError(null)
     try {
@@ -20,6 +41,8 @@ export function useImrApi() {
       if (filters?.priority) params.append("priority", filters.priority)
       if (filters?.asset_id) params.append("asset_id", filters.asset_id)
       if (filters?.overdue_only) params.append("overdue_only", "true")
+      if (filters?.skip) params.append("skip", String(filters.skip))
+      if (filters?.limit) params.append("limit", String(filters.limit))
       
       const response = await apiClient.get(`/imr/?${params.toString()}`)
       return response.data
@@ -125,5 +148,6 @@ export function useImrApi() {
     linkEvidenceToImr,
     bulkUpdateStatus,
     getImrSummary,
+    fetchUsers,
   }
 }

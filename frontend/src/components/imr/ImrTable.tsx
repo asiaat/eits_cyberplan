@@ -19,20 +19,24 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
   const { loading, error, fetchImrItems } = useImrApi()
   const [items, setItems] = useState<ImrItem[]>([])
   const [validationStatuses, setValidationStatuses] = useState<Record<string, ImrValidationStatus>>({})
+  
+  const PAGE_SIZE = 20
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
     loadItems()
-  }, [filters])
+  }, [filters, page])
 
   const loadItems = async () => {
-    const fetchedItems = await fetchImrItems(filters)
+    const skip = (page - 1) * PAGE_SIZE
+    const fetchedItems = await fetchImrItems({ ...filters, skip, limit: PAGE_SIZE })
     setItems(fetchedItems)
+    setHasMore(fetchedItems.length === PAGE_SIZE)
     
-    // Load validation status for each item
     const statuses: Record<string, ImrValidationStatus> = {}
     for (const item of fetchedItems) {
       if (item.pearo_status !== "R") {
-        // We would fetch validation status here, but for simplicity we'll just mark it
         statuses[item.id] = {
           can_transition_to_implemented: false,
           validation_errors: [],
@@ -45,6 +49,9 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
     }
     setValidationStatuses(statuses)
   }
+
+  const startItem = (page - 1) * PAGE_SIZE + 1
+  const endItem = page * PAGE_SIZE
 
   if (loading) {
     return <div className="text-center py-8">{t("common.loading")}</div>
@@ -137,6 +144,32 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
           })}
         </tbody>
       </table>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-300 bg-slate-100">
+        <div className="text-sm font-bold text-slate-700">
+          {startItem} - {endItem}
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-4 py-2 text-sm font-bold border-2 border-slate-400 rounded-lg bg-white text-slate-700 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ← {t("implementationPlan.pagination.previous")}
+          </button>
+          <span className="px-4 py-2 text-sm font-bold text-slate-800 bg-slate-200 rounded-lg border-2 border-slate-300">
+            {t("implementationPlan.pagination.page")} {page}
+          </span>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={!hasMore}
+            className="px-4 py-2 text-sm font-bold border-2 border-slate-400 rounded-lg bg-white text-slate-700 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {t("implementationPlan.pagination.next")} →
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
