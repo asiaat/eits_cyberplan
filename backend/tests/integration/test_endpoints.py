@@ -194,18 +194,25 @@ class TestLoginEndpoint:
             
         print(f"       Result: PASS - Validation works ✓")
 
-    @pytest.mark.skip(reason="Requires database with real user data")
+    @pytest.mark.skip(reason="Requires database with real user data - needs valid user in DB")
     def test_login_rejects_invalid_credentials(self):
         """
         =============================================================
         TEST: Login Validation - Invalid Credentials
         =============================================================
-        
+
         Test that login endpoint rejects invalid credentials.
-        
+
         Expected: 401 Unauthorized
         """
-        pass
+        from app.main import app
+
+        with TestClient(app) as client:
+            response = client.post("/api/v2/auth/login", data={
+                "username": "nonexistent@example.com",
+                "password": "wrongpassword"
+            })
+            assert response.status_code == 401
 
 
 class TestV2Auth:
@@ -213,41 +220,31 @@ class TestV2Auth:
     =============================================================
     TEST CLASS: V2 Authentication (IAM) Tests
     =============================================================
-    
+
     Purpose: Test new v2 auth endpoints for Tier A/B multi-tenancy.
+
+    NOTE: These are placeholder stub tests. They require:
+    - Real database with GlobalUser/LocalUser tables
+    - Valid JWT token generation
+    - Proper user registration flow
+
+    To enable: implement with proper mocking using the existing
+    client + auth_headers fixtures, or run with real DB.
     """
 
     @pytest.mark.skip(reason="Requires database with real user data")
     def test_register_v2_creates_user(self):
-        """
-        =============================================================
-        TEST: V2 Register Creates User
-        =============================================================
-        
-        Test that register endpoint creates both GlobalUser and LocalUser.
-        """
+        """Test that register endpoint creates both GlobalUser and LocalUser."""
         pass
 
     @pytest.mark.skip(reason="Requires database with real user data")
     def test_login_v2_returns_jwt_with_tenant(self):
-        """
-        =============================================================
-        TEST: V2 Login Returns JWT with Tenant
-        =============================================================
-        
-        Test that login returns JWT with tenant context in payload.
-        """
+        """Test that login returns JWT with tenant context in payload."""
         pass
 
     @pytest.mark.skip(reason="Requires database with real user data")
     def test_mfa_setup_v2(self):
-        """
-        =============================================================
-        TEST: V2 MFA Setup
-        =============================================================
-        
-        Test that MFA setup returns TOTP secret and otpauth_url.
-        """
+        """Test that MFA setup returns TOTP secret and otpauth_url."""
         pass
 
 
@@ -256,41 +253,29 @@ class TestV2UsersAndRoles:
     =============================================================
     TEST CLASS: V2 Users & E-ITS Roles Tests
     =============================================================
-    
+
     Purpose: Test v2 user management and E-ITS role endpoints.
+
+    NOTE: These are placeholder stub tests. They require:
+    - Real database with user/role tables
+    - Proper tenant-scoped queries
+
+    To enable: implement with proper mocking or run with real DB.
     """
 
     @pytest.mark.skip(reason="Requires database with real user data")
     def test_list_users_v2(self):
-        """
-        =============================================================
-        TEST: List V2 Users
-        =============================================================
-        
-        Test that users endpoint returns local users for tenant.
-        """
+        """Test that users endpoint returns local users for tenant."""
         pass
 
     @pytest.mark.skip(reason="Requires database with real user data")
     def test_list_eits_roles(self):
-        """
-        =============================================================
-        TEST: List E-ITS Roles
-        =============================================================
-        
-        Test that roles endpoint returns E-ITS roles (infoturbejuht, etc).
-        """
+        """Test that roles endpoint returns E-ITS roles (infoturbejuht, etc)."""
         pass
 
     @pytest.mark.skip(reason="Requires database with real user data")
     def test_assign_eits_role(self):
-        """
-        =============================================================
-        TEST: Assign E-ITS Role to User
-        =============================================================
-        
-        Test assigning an E-ITS role to a user.
-        """
+        """Test assigning an E-ITS role to a user."""
         pass
 
 
