@@ -63,6 +63,7 @@ export default function TurbeviisPage() {
   const [selectedSelection, setSelectedSelection] = useState<TurbeviisSelection | null>(null)
   const [availableEvidences, setAvailableEvidences] = useState<EvidenceItem[]>([])
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
+  const [switchingTo, setSwitchingTo] = useState<string | null>(null)
 
   interface EvidenceItem {
     id: string
@@ -78,17 +79,40 @@ export default function TurbeviisPage() {
     fetchApproachCodes()
   }, [selectedOrgId])
 
-  const fetchSelections = async () => {
+const fetchSelections = async () => {
     try {
       setLoading(true)
       setError(null)
-      const response = await apiClient.get("/turbeviis/")
-      setSelections(response.data || [])
+      const timestamp = Date.now()
+      const response = await apiClient.get(`/turbeviis/?_=${timestamp}`)
+      const data = response.data || []
+      setSelections(data)
+      console.log("Fetched selections:", data.map((s: TurbeviisSelection) => ({ approach: s.security_approach, isActive: s.is_active })))
     } catch (err: any) {
       console.error("Failed to fetch turbeviis selections:", err)
       setError(err.response?.data?.detail || "Failed to load protection modes")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleSelectApproach = async (approachCode: string) => {
+    setSwitchingTo(approachCode)
+
+    try {
+      await apiClient.post("/turbeviis/", {
+        security_approach: approachCode,
+      })
+
+      setTimeout(() => {
+        fetchSelections().then(() => {
+          setSwitchingTo(null)
+        })
+      }, 100)
+    } catch (err: any) {
+      console.error("Failed to select approach:", err)
+      setSwitchingTo(null)
+      alert(err.response?.data?.detail || "Failed to select approach")
     }
   }
 
@@ -98,22 +122,6 @@ export default function TurbeviisPage() {
       setApproachCodes(response.data)
     } catch (err) {
       console.error("Failed to fetch approach codes:", err)
-    }
-  }
-
-  const handleSelectApproach = async (approachCode: string) => {
-    console.log("handleSelectApproach called with:", approachCode)
-    try {
-      const response = await apiClient.post("/turbeviis/", {
-        security_approach: approachCode,
-      })
-      console.log("Response data:", response.data)
-      console.log("Current selections before fetch:", selections)
-      fetchSelections()
-      console.log("After fetchSelections call")
-    } catch (err: any) {
-      console.error("Failed to select approach:", err)
-      alert(err.response?.data?.detail || "Failed to select approach")
     }
   }
 
@@ -291,6 +299,8 @@ export default function TurbeviisPage() {
                           {t("turbeviis.deactivate")}
                         </Button>
                       </>
+                    ) : selections.some(s => s.is_active) ? (
+                      <div />
                     ) : (
                       <Button
                         variant="default"
