@@ -21,7 +21,7 @@ import OrganizationPage from "@/pages/OrganizationPage"
 import SupportPeoplePage from "@/pages/SupportPeoplePage"
 import AlertsPage from "@/pages/AlertsPage"
 import SettingsPage from "@/pages/SettingsPage"
-import TurbeviisPage from "@/pages/TurbeviisPage"
+import ProtectionModePage from "@/pages/ProtectionModePage"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, loading, selectedOrgId } = useAuth()
@@ -83,10 +83,10 @@ export default function App() {
                 }
               />
               <Route
-                path="/turbeviis"
+                path="/protection-mode"
                 element={
                   <ProtectedRoute>
-                    <TurbeviisPage />
+                    <ProtectionModePage />
                   </ProtectedRoute>
                 }
               />

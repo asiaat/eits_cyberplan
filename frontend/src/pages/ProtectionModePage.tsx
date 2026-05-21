@@ -50,7 +50,7 @@ const approachColors: Record<string, string> = {
   CORE: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900 dark:text-red-200",
 }
 
-export default function TurbeviisPage() {
+export default function ProtectionModePage() {
   const { t } = useTranslation()
   const { selectedOrgId } = useAuth()
   const selectedOrgIdRef = useRef(selectedOrgId)
@@ -63,7 +63,6 @@ export default function TurbeviisPage() {
   const [selectedSelection, setSelectedSelection] = useState<TurbeviisSelection | null>(null)
   const [availableEvidences, setAvailableEvidences] = useState<EvidenceItem[]>([])
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
-  const [switchingTo, setSwitchingTo] = useState<string | null>(null)
 
   interface EvidenceItem {
     id: string
@@ -84,7 +83,7 @@ const fetchSelections = async () => {
       setLoading(true)
       setError(null)
       const timestamp = Date.now()
-      const response = await apiClient.get(`/turbeviis/?_=${timestamp}`)
+      const response = await apiClient.get(`/protection-mode/?_=${timestamp}`)
       const data = response.data || []
       setSelections(data)
       console.log("Fetched selections:", data.map((s: TurbeviisSelection) => ({ approach: s.security_approach, isActive: s.is_active })))
@@ -97,28 +96,23 @@ const fetchSelections = async () => {
   }
 
   const handleSelectApproach = async (approachCode: string) => {
-    setSwitchingTo(approachCode)
-
     try {
-      await apiClient.post("/turbeviis/", {
+      await apiClient.post("/protection-mode/", {
         security_approach: approachCode,
       })
 
       setTimeout(() => {
-        fetchSelections().then(() => {
-          setSwitchingTo(null)
-        })
+        fetchSelections()
       }, 100)
     } catch (err: any) {
       console.error("Failed to select approach:", err)
-      setSwitchingTo(null)
       alert(err.response?.data?.detail || "Failed to select approach")
     }
   }
 
   const fetchApproachCodes = async () => {
     try {
-      const response = await apiClient.get("/turbeviis/approaches/list")
+      const response = await apiClient.get("/protection-mode/approaches/list")
       setApproachCodes(response.data)
     } catch (err) {
       console.error("Failed to fetch approach codes:", err)
@@ -127,7 +121,7 @@ const fetchSelections = async () => {
 
   const handleLinkEvidence = async (selectionId: string, evidenceId: string) => {
     try {
-      const response = await apiClient.post(`/turbeviis/${selectionId}/link-evidence`, {
+      const response = await apiClient.post(`/protection-mode/${selectionId}/link-evidence`, {
         evidence_id: evidenceId,
       })
       setSelections(selections.map(s => s.id === selectionId ? response.data : s))
@@ -141,7 +135,7 @@ const fetchSelections = async () => {
 
   const handleUnlinkEvidence = async (selectionId: string) => {
     try {
-      const response = await apiClient.delete(`/turbeviis/${selectionId}/unlink-evidence`)
+      const response = await apiClient.delete(`/protection-mode/${selectionId}/unlink-evidence`)
       setSelections(selections.map(s => s.id === selectionId ? response.data : s))
     } catch (err: any) {
       console.error("Failed to unlink evidence:", err)
@@ -156,7 +150,7 @@ const fetchSelections = async () => {
   const handleDeactivateConfirm = async () => {
     if (!deactivatingId) return
     try {
-      await apiClient.patch(`/turbeviis/${deactivatingId}`, { is_active: false })
+      await apiClient.patch(`/protection-mode/${deactivatingId}`, { is_active: false })
       setDeactivatingId(null)
       fetchSelections()
     } catch (err: any) {

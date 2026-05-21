@@ -47,7 +47,7 @@ function getNavSections(t: (key: string) => string): NavSection[] {
         { path: "/processes", label: t("nav.businessProcesses"), icon: FolderKanban },
         { path: "/assets", label: t("nav.assets"), icon: Boxes },
         { path: "/targets", label: t("nav.targets"), icon: Target },
-        { path: "/turbeviis", label: t("nav.turbeviis"), icon: Shield },
+        { path: "/protection-mode", label: t("nav.turbeviis"), icon: Shield },
         { path: "/catalog", label: t("nav.catalog"), icon: BookMarked },
         { path: "/mappings", label: t("nav.mappings"), icon: Link2 },
         { path: "/implementation-plan", label: t("nav.implementationPlan"), icon: ListTodo },
