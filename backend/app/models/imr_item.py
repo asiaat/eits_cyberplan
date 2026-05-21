@@ -30,7 +30,13 @@ class ImrItem(Base):
     verification_method = Column(Text, nullable=True)
     last_verified_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default="now()")
-    updated_at = Column(DateTime(timezone=True), server_default="now()", onupdate="now()")
+    updated_at = Column(DateTime(timezone=True), server_default="now()", onupdate="now")
+    
+    # New fields for enhanced IMR tracking
+    mapped_module_id = Column(UUID(as_uuid=True), nullable=True)
+    created_by = Column(UUID(as_uuid=True), ForeignKey("local_users.id", ondelete="SET NULL"), nullable=True)
+    updated_by = Column(UUID(as_uuid=True), ForeignKey("local_users.id", ondelete="SET NULL"), nullable=True)
+    status_changed_at = Column(DateTime(timezone=True), nullable=True)
 
     tenant = relationship("AppTenant")
     asset_module_mapping = relationship("AssetModuleMapping", back_populates="imr_items")
@@ -39,6 +45,8 @@ class ImrItem(Base):
     responsible_user = relationship("LocalUser", foreign_keys=[responsible_user_id])
     risk_acceptance_approver = relationship("LocalUser", foreign_keys=[risk_acceptance_approved_by])
     risk_measure_links = relationship("RiskMeasureLink", back_populates="imr_item")
+    creator = relationship("LocalUser", foreign_keys=[created_by])
+    modifier = relationship("LocalUser", foreign_keys=[updated_by])
 
     @property
     def pearo_status_display(self):

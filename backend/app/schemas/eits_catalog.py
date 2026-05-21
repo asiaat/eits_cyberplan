@@ -312,6 +312,10 @@ class ImrItemBase(BaseModel):
     next_review_date: Optional[date] = None
     priority: ImrPriority = ImrPriority.P2
     verification_method: Optional[str] = None
+    mapped_module_id: Optional[UUID] = None
+    created_by: Optional[UUID] = None
+    updated_by: Optional[UUID] = None
+    status_changed_at: Optional[datetime] = None
 
 
 class ImrItemCreate(ImrItemBase):
