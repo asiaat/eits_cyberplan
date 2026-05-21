@@ -22,7 +22,7 @@ interface LinkedEvidence {
   file_hash: string | null
 }
 
-interface TurbeviisSelection {
+interface ProtectionModeSelection {
   id: string
   tenant_id: string
   catalog_version_id: string | null
@@ -55,12 +55,12 @@ export default function ProtectionModePage() {
   const { selectedOrgId } = useAuth()
   const selectedOrgIdRef = useRef(selectedOrgId)
 
-  const [selections, setSelections] = useState<TurbeviisSelection[]>([])
+  const [selections, setSelections] = useState<ProtectionModeSelection[]>([])
   const [approachCodes, setApproachCodes] = useState<{ approaches: ApproachItem[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEvidenceDialog, setShowEvidenceDialog] = useState(false)
-  const [selectedSelection, setSelectedSelection] = useState<TurbeviisSelection | null>(null)
+  const [selectedSelection, setSelectedSelection] = useState<ProtectionModeSelection | null>(null)
   const [availableEvidences, setAvailableEvidences] = useState<EvidenceItem[]>([])
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
 
@@ -86,9 +86,9 @@ const fetchSelections = async () => {
       const response = await apiClient.get(`/protection-mode/?_=${timestamp}`)
       const data = response.data || []
       setSelections(data)
-      console.log("Fetched selections:", data.map((s: TurbeviisSelection) => ({ approach: s.security_approach, isActive: s.is_active })))
+      console.log("Fetched selections:", data.map((s: ProtectionModeSelection) => ({ approach: s.security_approach, isActive: s.is_active })))
     } catch (err: any) {
-      console.error("Failed to fetch turbeviis selections:", err)
+      console.error("Failed to fetch protection mode selections:", err)
       setError(err.response?.data?.detail || "Failed to load protection modes")
     } finally {
       setLoading(false)
@@ -163,7 +163,7 @@ const fetchSelections = async () => {
     setDeactivatingId(null)
   }
 
-  const openEvidenceDialog = async (selection: TurbeviisSelection) => {
+  const openEvidenceDialog = async (selection: ProtectionModeSelection) => {
     setSelectedSelection(selection)
     try {
       const response = await apiClient.get("/evidences")
@@ -197,8 +197,8 @@ const fetchSelections = async () => {
         <div className="flex items-center gap-3">
           <Shield className="h-8 w-8 text-primary" />
           <div>
-            <h1 className="text-3xl font-bold">{t("turbeviis.title")}</h1>
-            <p className="text-muted-foreground mt-1">{t("turbeviis.description")}</p>
+            <h1 className="text-3xl font-bold">{t("protectionmode.title")}</h1>
+            <p className="text-muted-foreground mt-1">{t("protectionmode.description")}</p>
           </div>
         </div>
       </div>
@@ -228,21 +228,21 @@ const fetchSelections = async () => {
                   <div className="flex items-start justify-between">
                     <div>
                       <Badge variant="outline" className={approachColors[approach.code]}>
-                        {t(`turbeviis.approaches.${approachKey}.name`)}
+                        {t(`protectionmode.approaches.${approachKey}.name`)}
                       </Badge>
                       <CardTitle className="mt-2 text-xl">
-                        {t(`turbeviis.approaches.${approachKey}.subtitle`)}
+                        {t(`protectionmode.approaches.${approachKey}.subtitle`)}
                       </CardTitle>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-sm">{t(`turbeviis.approaches.${approachKey}.description`)}</p>
+                  <p className="text-sm">{t(`protectionmode.approaches.${approachKey}.description`)}</p>
 
                   <div className="space-y-2">
-                    <h4 className="text-sm font-medium">{t("turbeviis.whenToUse")}</h4>
+                    <h4 className="text-sm font-medium">{t("protectionmode.whenToUse")}</h4>
                     <p className="text-xs text-muted-foreground bg-muted p-2 rounded">
-                      {t(`turbeviis.approaches.${approachKey}.when`)}
+                      {t(`protectionmode.approaches.${approachKey}.when`)}
                     </p>
                   </div>
 
@@ -251,7 +251,7 @@ const fetchSelections = async () => {
                       {isActive && (
                         <Badge variant="default" className="bg-green-600">
                           <CheckCircle className="h-3 w-3 mr-1" />
-                          {t("turbeviis.isActive")}
+                          {t("protectionmode.isActive")}
                         </Badge>
                       )}
                     </div>
@@ -280,7 +280,7 @@ const fetchSelections = async () => {
                             onClick={() => openEvidenceDialog(selection)}
                           >
                             <Link2 className="h-4 w-4 mr-2" />
-                            {t("turbeviis.linkEvidence")}
+                            {t("protectionmode.linkEvidence")}
                           </Button>
                         )}
 
@@ -290,7 +290,7 @@ const fetchSelections = async () => {
                           className="w-full"
                           onClick={() => handleDeactivateClick(selection.id)}
                         >
-                          {t("turbeviis.deactivate")}
+                          {t("protectionmode.deactivate")}
                         </Button>
                       </>
                     ) : selections.some(s => s.is_active) ? (
@@ -301,7 +301,7 @@ const fetchSelections = async () => {
                         className="w-full"
                         onClick={() => handleSelectApproach(approach.code)}
                       >
-                        {t("turbeviis.selectApproach")}
+                        {t("protectionmode.selectApproach")}
                       </Button>
                     )}
                   </div>
@@ -314,7 +314,7 @@ const fetchSelections = async () => {
 
       {selections.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-lg font-medium">{t("turbeviis.activeMode")}</h3>
+          <h3 className="text-lg font-medium">{t("protectionmode.activeMode")}</h3>
           <div className="grid gap-4">
             {selections.filter(s => s.is_active).map(selection => {
               const approachKey = approachCodeToKey(selection.security_approach)
@@ -326,7 +326,7 @@ const fetchSelections = async () => {
                         <div className="flex items-center gap-2">
                           <Shield className="h-5 w-5 text-primary" />
                           <span className="font-medium">
-                            {t(`turbeviis.approaches.${approachKey}.name`)}
+                            {t(`protectionmode.approaches.${approachKey}.name`)}
                           </span>
                           {selection.catalog_version_name && (
                             <Badge variant="outline">{selection.catalog_version_name}</Badge>
@@ -337,7 +337,7 @@ const fetchSelections = async () => {
                         )}
                         {selection.approved_by_name && (
                           <p className="text-xs text-muted-foreground">
-                            {t("turbeviis.approvedBy")}: {selection.approved_by_name}
+                            {t("protectionmode.approvedBy")}: {selection.approved_by_name}
                           </p>
                         )}
                       </div>
@@ -358,9 +358,9 @@ const fetchSelections = async () => {
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{t("turbeviis.selectEvidence")}</DialogTitle>
+            <DialogTitle>{t("protectionmode.selectEvidence")}</DialogTitle>
             <DialogDescription>
-              {t("turbeviis.description")}
+              {t("protectionmode.description")}
             </DialogDescription>
           </DialogHeader>
 
@@ -405,14 +405,14 @@ const fetchSelections = async () => {
           <DialogHeader>
             <DialogTitle className="flex items-center">
               <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
-              {t("turbeviis.confirmDeactivateTitle")}
+              {t("protectionmode.confirmDeactivateTitle")}
             </DialogTitle>
             <DialogDescription className="space-y-3 pt-2">
-              <p>{t("turbeviis.confirmDeactivateDesc")}</p>
+              <p>{t("protectionmode.confirmDeactivateDesc")}</p>
               <p className="font-medium text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded border border-yellow-200 dark:border-yellow-800">
-                {t("turbeviis.confirmDeactivateWarning")}
+                {t("protectionmode.confirmDeactivateWarning")}
               </p>
-              <p className="font-semibold text-foreground">{t("turbeviis.confirmDeactivateAssurance")}</p>
+              <p className="font-semibold text-foreground">{t("protectionmode.confirmDeactivateAssurance")}</p>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -420,7 +420,7 @@ const fetchSelections = async () => {
               {t("common.cancel")}
             </Button>
             <Button variant="destructive" onClick={handleDeactivateConfirm}>
-              {t("turbeviis.confirmDeactivateButton")}
+              {t("protectionmode.confirmDeactivateButton")}
             </Button>
           </DialogFooter>
         </DialogContent>

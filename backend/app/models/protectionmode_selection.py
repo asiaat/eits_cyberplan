@@ -1,4 +1,4 @@
-"""TurbeviisSelection model - turbeviisi valik koos tõendiga."""
+"""ProtectionModeSelection model - kaitsevaliku valik koos tõendiga."""
 import uuid
 
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Boolean
@@ -8,8 +8,8 @@ from sqlalchemy.orm import relationship
 from app.db.base import Base
 
 
-class TurbeviisSelection(Base):
-    __tablename__ = "turbeviis_selections"
+class ProtectionModeSelection(Base):
+    __tablename__ = "protectionmode_selections"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("app_tenants.id", ondelete="CASCADE"), nullable=False)
@@ -23,7 +23,7 @@ class TurbeviisSelection(Base):
     created_at = Column(DateTime(timezone=True), server_default="now()")
     updated_at = Column(DateTime(timezone=True), server_default="now()", onupdate="now()")
 
-    tenant = relationship("AppTenant", back_populates="turbeviis_selections")
-    catalog_version = relationship("EitsCatalogVersion", back_populates="turbeviis_selections")
+    tenant = relationship("AppTenant", back_populates="protectionmode_selections")
+    catalog_version = relationship("EitsCatalogVersion", back_populates="protectionmode_selections")
     evidence = relationship("Evidence")
     approved_by_user = relationship("LocalUser", foreign_keys=[approved_by])
