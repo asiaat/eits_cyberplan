@@ -338,7 +338,7 @@ class TestModelingService:
         """Asset linked to BP without approved protection need → 400."""
         module = _make_module()
         process_asset = FakeModel(id=uuid4(), asset_id=MOCK_TARGET_ID, business_process_id=uuid4())
-        bp = FakeModel(id=uuid4(), name="Test BP")
+        bp = FakeModel(id=uuid4(), name="Test BP", confidentiality_need=None, integrity_need=None, availability_need=None)
         self._mock_queries(
             first_values=[module, bp, None],  # PNS .first() returns None
             all_side_effect=[[process_asset]],
@@ -386,7 +386,7 @@ class TestModelingService:
         """Direct call: unapproved BP → Estonian error."""
         from app.services.v2.modeling_service import ModelingService
         process_asset = FakeModel(id=uuid4(), asset_id=MOCK_TARGET_ID, business_process_id=uuid4())
-        bp = FakeModel(id=uuid4(), name="Test BP")
+        bp = FakeModel(id=uuid4(), name="Test BP", confidentiality_need=None, integrity_need=None, availability_need=None)
         self.mock_session.query.return_value.filter.return_value.all.side_effect = [
             [process_asset],  # ProcessAsset.all()
         ]

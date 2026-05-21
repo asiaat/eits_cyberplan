@@ -187,9 +187,14 @@ export default function MappingsPage() {
 
   const selectedTargets = targetType === "asset" ? assets : bps
 
-  const approvedBpIds = new Set(
-    protectionNeeds.filter((pn) => pn.approved_by).map((pn) => pn.business_process_id)
-  )
+  const approvedBpIds = new Set([
+    ...protectionNeeds.filter((pn) => pn.approved_by).map((pn) => pn.business_process_id),
+    ...bps.filter((bp: any) =>
+      bp.confidentiality_need !== null && bp.confidentiality_need !== "" && bp.confidentiality_need !== "unknown" ||
+      bp.integrity_need !== null && bp.integrity_need !== "" && bp.integrity_need !== "unknown" ||
+      bp.availability_need !== null && bp.availability_need !== "" && bp.availability_need !== "unknown"
+    ).map((bp: any) => bp.id)
+  ])
 
   const linkedProcesses = assets.find((a) => a.id === targetId) as any
   const linkedProcessList: Array<{ id: string; name: string; status: string }> = linkedProcesses?.linked_processes || []

@@ -43,12 +43,20 @@ class ModelingService:
                 ProtectionNeedSummary.business_process_id == relation.business_process_id,
                 ProtectionNeedSummary.tenant_id == tenant_id,
             ).first()
-            if not summary or not summary.approved_by:
-                bp_name = bp.name if bp else str(relation.business_process_id)
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Tõrge: Seotud äriprotsessi '{bp_name}' kaitsetarve ei ole veel kinnitatud.",
-                )
+            if summary and summary.approved_by:
+                continue
+            has_explicit_cia = bp and (
+                (bp.confidentiality_need and bp.confidentiality_need not in (None, "", "unknown")) or
+                (bp.integrity_need and bp.integrity_need not in (None, "", "unknown")) or
+                (bp.availability_need and bp.availability_need not in (None, "", "unknown"))
+            )
+            if has_explicit_cia:
+                continue
+            bp_name = bp.name if bp else str(relation.business_process_id)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Tõrge: Seotud äriprotsessi '{bp_name}' kaitsetarve ei ole veel kinnitatud.",
+            )
 
     @staticmethod
     def map_module_to_target(
