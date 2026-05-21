@@ -50,16 +50,13 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
     pass_rate = (passed / total * 100) if total > 0 else 0
     avg_time = (duration / total * 1000) if total > 0 else 0
 
-    print(f"\n{BOLD_WHITE}TOTAL:{RESET} {total} tests {BOLD_WHITE}|{RESET} {BOLD_WHITE}PASS RATE:{RESET} {pass_rate:.1f}% {BOLD_WHITE}|{RESET} {BOLD_WHITE}TIME:{RESET} {duration:.2f}s ({avg_time:.1f}ms avg)")
-
-    print(f"  {GREEN}✓ {passed} passed{RESET} ({passed/total*100:.1f}%)" if total > 0 else f"  {GREEN}✓ 0 passed{RESET}")
-    print(f"  {YELLOW}~ {skipped} skipped{RESET} ({skipped/total*100:.1f}%)" if total > 0 else f"  {YELLOW}~ 0 skipped{RESET}")
-    if failed > 0:
-        print(f"  {RED}✗ {failed} failed{RESET} ({failed/total*100:.1f}%)" if total > 0 else f"  {RED}✗ 0 failed{RESET}")
-    if xfailed > 0:
-        print(f"  {YELLOW}⚠ {xfailed} xfailed{RESET}")
-    if xpassed > 0:
-        print(f"  {GREEN}⚠ {xpassed} xpassed{RESET}")
+    print(f"\n{BOLD_CYAN}╔{'═' * 68}╗{RESET}")
+    print(f"{BOLD_CYAN}║{RESET} {BOLD_WHITE}TEST SUMMARY{RESET}".center(69) + f"{BOLD_CYAN}║{RESET}")
+    print(f"{BOLD_CYAN}╠{'═' * 68}╣{RESET}")
+    print(f"{BOLD_CYAN}║{RESET} {BOLD_WHITE}Total:{RESET} {total} tests  {BOLD_WHITE}│{RESET} {GREEN}Pass Rate:{RESET} {pass_rate:.1f}%  {BOLD_WHITE}│{RESET} {BOLD_WHITE}Time:{RESET} {duration:.2f}s ({avg_time:.1f}ms) {BOLD_CYAN}║{RESET}")
+    print(f"{BOLD_CYAN}╠{'═' * 68}╣{RESET}")
+    print(f"{BOLD_CYAN}║{RESET}  {GREEN}✓ {passed} Passed{RESET}  {YELLOW}~ {skipped} Skipped{RESET}  {RED}✗ {failed} Failed{RESET}" + " " * max(0, 42 - len(f"{passed}{skipped}{failed}")) + f"{BOLD_CYAN}║{RESET}")
+    print(f"{BOLD_CYAN}╚{'═' * 68}╝{RESET}")
 
     if warning_list:
         print(f"\n{BOLD_MAGENTA}WARNINGS ({len(warning_list)}):{RESET}")
@@ -78,10 +75,6 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
                 source = "pytest"
                 desc = clean_msg
             print(f"  {YELLOW}⚠{RESET} {source}: {desc}")
-
-    print(f"\n{YELLOW}{'-' * 70}{RESET}")
-    print(f"{BOLD_BLUE}BY CATEGORY (with actual results):{RESET}".ljust(70))
-    print(f"{YELLOW}{'-' * 70}{RESET}")
 
     file_stats = {}
     for test_list, key in [(stats.get("passed", []), "passed"), (stats.get("skipped", []), "skipped"), (stats.get("failed", []), "failed")]:
@@ -103,6 +96,14 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         "Protection Mode": ["tests/integration/test_protection_mode.py"],
     }
 
+    print(f"\n{BOLD_BLUE}╔{'─' * 68}╗{RESET}")
+    print(f"{BOLD_BLUE}║{RESET} {BOLD_BLUE}BY CATEGORY (with actual results){RESET}".ljust(69) + f"{BOLD_BLUE}║{RESET}")
+    print(f"{BOLD_BLUE}╠{'─' * 68}╣{RESET}")
+
+    header = f"{BOLD_BLUE}║{RESET} {'Category':<26} {'P':>5} {'S':>5} {'F':>5} {'Tot':>5} {'%':>6} {BOLD_BLUE}║{RESET}"
+    print(header)
+    print(f"{BOLD_BLUE}╠{'─' * 68}╣{RESET}")
+
     for cat_name, files in cat_files.items():
         cat_passed = 0
         cat_skipped = 0
@@ -123,14 +124,13 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
         else:
             icon = f"{GREEN}✓{RESET}"
 
-        print(f"\n{icon} {cat_name}")
-        print(f"    {GREEN}✓ {cat_passed} passed{RESET} | {YELLOW}~ {cat_skipped} skipped{RESET} | {RED}✗ {cat_failed} failed{RESET} | {cat_total} total ({cat_pct:.1f}%)")
+        p_str = f"{GREEN}{cat_passed}{RESET}" if cat_passed > 0 else "0"
+        s_str = f"{YELLOW}{cat_skipped}{RESET}" if cat_skipped > 0 else "0"
+        f_str = f"{RED}{cat_failed}{RESET}" if cat_failed > 0 else "0"
+        pct_str = f"{cat_pct:.1f}%"
+        print(f"{BOLD_BLUE}║{RESET} {icon} {cat_name:<24} {p_str:>5} {s_str:>5} {f_str:>5} {cat_total:>5} {pct_str:>6} {BOLD_BLUE}║{RESET}")
 
-        for f in files:
-            if f in file_stats:
-                fs = file_stats[f]
-                short_path = f.replace("tests/", "")
-                print(f"    → {short_path}: {GREEN}{fs['passed']}{RESET}/{YELLOW}{fs['skipped']}{RESET}/{RED}{fs['failed']}{RESET}")
+    print(f"{BOLD_BLUE}╚{'─' * 68}╝{RESET}")
 
     if failed > 0:
         print(f"\n{RED}{'-' * 70}{RESET}")
