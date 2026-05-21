@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
-import { Shield, FileIcon, Link2, Unlink, CheckCircle } from "lucide-react"
+import { Shield, FileIcon, Link2, Unlink, CheckCircle, AlertTriangle } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -62,6 +62,7 @@ export default function TurbeviisPage() {
   const [showEvidenceDialog, setShowEvidenceDialog] = useState(false)
   const [selectedSelection, setSelectedSelection] = useState<TurbeviisSelection | null>(null)
   const [availableEvidences, setAvailableEvidences] = useState<EvidenceItem[]>([])
+  const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
 
   interface EvidenceItem {
     id: string
@@ -101,13 +102,17 @@ export default function TurbeviisPage() {
   }
 
   const handleSelectApproach = async (approachCode: string) => {
+    console.log("handleSelectApproach called with:", approachCode)
     try {
       const response = await apiClient.post("/turbeviis/", {
         security_approach: approachCode,
       })
-      setSelections([response.data, ...selections])
+      console.log("Response data:", response.data)
+      console.log("Current selections before fetch:", selections)
+      fetchSelections()
+      console.log("After fetchSelections call")
     } catch (err: any) {
-      console.error("Failed to create selection:", err)
+      console.error("Failed to select approach:", err)
       alert(err.response?.data?.detail || "Failed to select approach")
     }
   }
@@ -134,6 +139,26 @@ export default function TurbeviisPage() {
       console.error("Failed to unlink evidence:", err)
       alert(err.response?.data?.detail || "Failed to unlink evidence")
     }
+  }
+
+  const handleDeactivateClick = (selectionId: string) => {
+    setDeactivatingId(selectionId)
+  }
+
+  const handleDeactivateConfirm = async () => {
+    if (!deactivatingId) return
+    try {
+      await apiClient.patch(`/turbeviis/${deactivatingId}`, { is_active: false })
+      setDeactivatingId(null)
+      fetchSelections()
+    } catch (err: any) {
+      console.error("Failed to deactivate:", err)
+      alert(err.response?.data?.detail || "Failed to deactivate")
+    }
+  }
+
+  const handleDeactivateCancel = () => {
+    setDeactivatingId(null)
   }
 
   const openEvidenceDialog = async (selection: TurbeviisSelection) => {
@@ -184,7 +209,7 @@ export default function TurbeviisPage() {
         </Card>
       )}
 
-      {approachCodes && (
+      {approachCodes && approachCodes.approaches && (
         <div className="grid gap-6 md:grid-cols-3">
           {approachCodes.approaches.map((approach) => {
             const approachKey = approachCodeToKey(approach.code)
@@ -219,52 +244,63 @@ export default function TurbeviisPage() {
                     </p>
                   </div>
 
-                  {selection ? (
-                    <div className="space-y-3 pt-2 border-t">
-                      <div className="flex items-center gap-2">
-                        {isActive && (
-                          <Badge variant="default" className="bg-green-600">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            {t("turbeviis.isActive")}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {hasEvidence ? (
-                        <div className="flex items-center justify-between bg-muted p-3 rounded-lg">
-                          <div className="flex items-center gap-2">
-                            <FileIcon className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">{selection.evidence?.title}</span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleUnlinkEvidence(selection.id)}
-                          >
-                            <Unlink className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="w-full"
-                          onClick={() => openEvidenceDialog(selection)}
-                        >
-                          <Link2 className="h-4 w-4 mr-2" />
-                          {t("turbeviis.linkEvidence")}
-                        </Button>
+                  <div className="space-y-3 pt-2 border-t">
+                    <div className="flex items-center gap-2">
+                      {isActive && (
+                        <Badge variant="default" className="bg-green-600">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          {t("turbeviis.isActive")}
+                        </Badge>
                       )}
                     </div>
-                  ) : (
-                    <Button
-                      variant="default"
-                      className="w-full"
-                      onClick={() => handleSelectApproach(approach.code)}
-                    >
-                      {t("turbeviis.selectApproach")}
-                    </Button>
-                  )}
+
+                    {isActive ? (
+                      <>
+                        {hasEvidence ? (
+                          <div className="flex items-center justify-between bg-muted p-3 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <FileIcon className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">{selection.evidence?.title}</span>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleUnlinkEvidence(selection.id)}
+                            >
+                              <Unlink className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => openEvidenceDialog(selection)}
+                          >
+                            <Link2 className="h-4 w-4 mr-2" />
+                            {t("turbeviis.linkEvidence")}
+                          </Button>
+                        )}
+
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => handleDeactivateClick(selection.id)}
+                        >
+                          {t("turbeviis.deactivate")}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        variant="default"
+                        className="w-full"
+                        onClick={() => handleSelectApproach(approach.code)}
+                      >
+                        {t("turbeviis.selectApproach")}
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             )
@@ -351,6 +387,36 @@ export default function TurbeviisPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEvidenceDialog(false)}>
               {t("common.cancel")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deactivatingId !== null} onOpenChange={(open) => {
+        if (!open) {
+          handleDeactivateCancel()
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-red-500 mr-2" />
+              {t("turbeviis.confirmDeactivateTitle")}
+            </DialogTitle>
+            <DialogDescription className="space-y-3 pt-2">
+              <p>{t("turbeviis.confirmDeactivateDesc")}</p>
+              <p className="font-medium text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded border border-yellow-200 dark:border-yellow-800">
+                {t("turbeviis.confirmDeactivateWarning")}
+              </p>
+              <p className="font-semibold text-foreground">{t("turbeviis.confirmDeactivateAssurance")}</p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={handleDeactivateCancel}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="destructive" onClick={handleDeactivateConfirm}>
+              {t("turbeviis.confirmDeactivateButton")}
             </Button>
           </DialogFooter>
         </DialogContent>
