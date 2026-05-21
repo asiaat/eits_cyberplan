@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS eits_catalog_measures (
     module_id UUID NOT NULL REFERENCES eits_modules(id) ON DELETE CASCADE,
     code VARCHAR(30) NOT NULL,                -- nt 'SYS.1.1.M22', 'ORP.1.M8'
     name TEXT NOT NULL,                       -- meetme nimetus
-    measure_level VARCHAR(10) NOT NULL        -- E-ITS turbeviisi tase
+    measure_level VARCHAR(10) NOT NULL        -- E-ITS protection mode level
         CHECK (measure_level IN ('BASE', 'STANDARD', 'HIGH')),
     description TEXT,
     responsible_role VARCHAR(100),            -- nt 'Infoturbejuht', 'IT-juht'
@@ -117,14 +117,14 @@ ON CONFLICT (code) DO NOTHING;
 -- ============================================
 
 -- -----------------------------------------------
--- 7. Turbeviisi valik (organisatsiooni tasemel)
+-- 7. Protection mode selection (organizational level)
 -- E-ITS ISMS nõuded p 6.2.3(c)
 -- -----------------------------------------------
 CREATE TABLE IF NOT EXISTS security_profiles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     tenant_id UUID NOT NULL REFERENCES app_tenants(id) ON DELETE CASCADE,
     catalog_version_id UUID REFERENCES catalog_versions(id),
-    security_approach VARCHAR(20) NOT NULL    -- turbeviis
+    security_approach VARCHAR(20) NOT NULL    -- protection mode
         CHECK (security_approach IN ('BASIC', 'STANDARD', 'CORE')),
     approved_by UUID REFERENCES local_users(id),
     approved_at TIMESTAMP,

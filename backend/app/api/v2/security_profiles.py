@@ -37,7 +37,7 @@ def create_security_profile(
     current_user: LocalUser = Depends(get_current_user_v2),
     data: SecurityProfileCreate = None,
 ):
-    """Create a security profile (turbeviisi valik)."""
+    """Create a security profile (protection mode)."""
     if data is None:
         raise HTTPException(status_code=400, detail="Request body required")
 

@@ -26,4 +26,4 @@ class EitsCatalogVersion(Base):
     measures = relationship("EitsMeasure", back_populates="catalog_version")
     threats = relationship("EitsThreat", back_populates="version")
     security_profiles = relationship("SecurityProfile", back_populates="catalog_version")
-    turbeviis_selections = relationship("TurbeviisSelection", back_populates="catalog_version")
+    protectionmode_selections = relationship("ProtectionModeSelection", back_populates="catalog_version")

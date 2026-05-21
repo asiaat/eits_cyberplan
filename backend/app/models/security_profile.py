@@ -1,4 +1,4 @@
-"""SecurityProfile model - turbeviisi valik."""
+"""SecurityProfile model - protection mode selection."""
 import uuid
 
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey

@@ -1,4 +1,4 @@
-"""Turbeviis (Mode of Protection) API v2."""
+"""ProtectionMode (Mode of Protection) API v2."""
 from typing import Optional, List
 from uuid import UUID
 
@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import DB
 from app.api.v2.auth import get_current_user_v2, LocalUser
-from app.models.turbeviis_selection import TurbeviisSelection
+from app.models.protectionmode_selection import ProtectionModeSelection
 from app.models.evidence import Evidence
 from app.models.eits_catalog_version import EitsCatalogVersion
 from enum import Enum
@@ -30,7 +30,7 @@ class LinkedEvidenceInfo(BaseModel):
     file_hash: Optional[str] = None
 
 
-class TurbeviisSelectionResponse(BaseModel):
+class ProtectionModeSelectionResponse(BaseModel):
     id: UUID
     tenant_id: UUID
     catalog_version_id: Optional[UUID] = None
@@ -50,13 +50,13 @@ class TurbeviisSelectionResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class TurbeviisSelectionCreate(BaseModel):
+class ProtectionModeSelectionCreate(BaseModel):
     catalog_version_id: Optional[UUID] = None
     security_approach: SecurityApproach = SecurityApproach.BASIC
     notes: Optional[str] = None
 
 
-class TurbeviisSelectionUpdate(BaseModel):
+class ProtectionModeSelectionUpdate(BaseModel):
     security_approach: Optional[SecurityApproach] = None
     evidence_id: Optional[UUID] = None
     notes: Optional[str] = None
@@ -67,7 +67,7 @@ class EvidenceLinkRequest(BaseModel):
     evidence_id: UUID
 
 
-def _build_selection_response(sel: TurbeviisSelection, db: DB) -> TurbeviisSelectionResponse:
+def _build_selection_response(sel: ProtectionModeSelection, db: DB) -> ProtectionModeSelectionResponse:
     """Helper to build selection response from model."""
     catalog_name = None
     if sel.catalog_version_id:
@@ -93,7 +93,7 @@ def _build_selection_response(sel: TurbeviisSelection, db: DB) -> TurbeviisSelec
         if user:
             approved_by_name = user.full_name
 
-    return TurbeviisSelectionResponse(
+    return ProtectionModeSelectionResponse(
         id=sel.id,
         tenant_id=sel.tenant_id,
         catalog_version_id=sel.catalog_version_id,
@@ -126,65 +126,65 @@ def list_approaches(
     }
 
 
-@router.get("/", response_model=List[TurbeviisSelectionResponse])
-def list_turbeviis_selections(
+@router.get("/", response_model=List[ProtectionModeSelectionResponse])
+def list_protectionmode_selections(
     db: DB,
     current_user: LocalUser = Depends(get_current_user_v2),
     catalog_version_id: Optional[UUID] = None,
 ):
-    """List all turbeviis selections for the current tenant."""
-    query = db.query(TurbeviisSelection).filter(
-        TurbeviisSelection.tenant_id == current_user.tenant_id
+    """List all protection mode selections for the current tenant."""
+    query = db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.tenant_id == current_user.tenant_id
     )
 
     if catalog_version_id:
-        query = query.filter(TurbeviisSelection.catalog_version_id == catalog_version_id)
+        query = query.filter(ProtectionModeSelection.catalog_version_id == catalog_version_id)
 
-    selections = query.order_by(TurbeviisSelection.created_at.desc()).all()
+    selections = query.order_by(ProtectionModeSelection.created_at.desc()).all()
 
     return [_build_selection_response(sel, db) for sel in selections]
 
 
-@router.post("/", response_model=TurbeviisSelectionResponse, status_code=status.HTTP_201_CREATED)
-def create_or_activate_turbeviis(
+@router.post("/", response_model=ProtectionModeSelectionResponse, status_code=status.HTTP_201_CREATED)
+def create_or_activate_protectionmode(
     db: DB,
     current_user: LocalUser = Depends(get_current_user_v2),
-    data: TurbeviisSelectionCreate = None,
+    data: ProtectionModeSelectionCreate = None,
 ):
-    """Create a new turbeviis selection OR activate existing one for this approach.
-    
+    """Create a new protection mode selection OR activate existing one for this approach.
+
     If a selection for this security_approach already exists (in any state),
     this will activate it and deactivate all others.
     """
     approach_code = data.security_approach.value if data else SecurityApproach.BASIC.value
-    
+
     # Check if selection for this approach already exists
-    existing = db.query(TurbeviisSelection).filter(
-        TurbeviisSelection.tenant_id == current_user.tenant_id,
-        TurbeviisSelection.security_approach == approach_code,
+    existing = db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
+        ProtectionModeSelection.security_approach == approach_code,
     ).first()
-    
+
     if existing:
         # Deactivate ALL other selections for this tenant
-        db.query(TurbeviisSelection).filter(
-            TurbeviisSelection.tenant_id == current_user.tenant_id,
-            TurbeviisSelection.id != existing.id,
+        db.query(ProtectionModeSelection).filter(
+            ProtectionModeSelection.tenant_id == current_user.tenant_id,
+            ProtectionModeSelection.id != existing.id,
         ).update({"is_active": False})
-        
+
         # Activate the existing selection
         existing.is_active = True
         db.commit()
         db.refresh(existing)
-        
+
         return _build_selection_response(existing, db)
-    
+
     # Deactivate ALL other selections for this tenant (no catalog filter - full deactivation)
-    db.query(TurbeviisSelection).filter(
-        TurbeviisSelection.tenant_id == current_user.tenant_id,
+    db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
     ).update({"is_active": False})
-    
+
     # Create new selection
-    new_sel = TurbeviisSelection(
+    new_sel = ProtectionModeSelection(
         tenant_id=current_user.tenant_id,
         catalog_version_id=data.catalog_version_id if data else None,
         security_approach=approach_code,
@@ -194,49 +194,49 @@ def create_or_activate_turbeviis(
     db.add(new_sel)
     db.commit()
     db.refresh(new_sel)
-    
+
     return _build_selection_response(new_sel, db)
 
 
-@router.get("/{selection_id}", response_model=TurbeviisSelectionResponse)
-def get_turbeviis_selection(
+@router.get("/{selection_id}", response_model=ProtectionModeSelectionResponse)
+def get_protectionmode_selection(
     db: DB,
     current_user: LocalUser = Depends(get_current_user_v2),
     selection_id: UUID = None,
 ):
-    """Get a specific turbeviis selection."""
-    sel = db.query(TurbeviisSelection).filter(
-        TurbeviisSelection.id == selection_id,
-        TurbeviisSelection.tenant_id == current_user.tenant_id,
+    """Get a specific protection mode selection."""
+    sel = db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.id == selection_id,
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
     ).first()
 
     if not sel:
-        raise HTTPException(status_code=404, detail="Turbeviis selection not found")
+        raise HTTPException(status_code=404, detail="Protection mode selection not found")
 
     return _build_selection_response(sel, db)
 
 
-@router.patch("/{selection_id}", response_model=TurbeviisSelectionResponse)
-def update_turbeviis_selection(
+@router.patch("/{selection_id}", response_model=ProtectionModeSelectionResponse)
+def update_protectionmode_selection(
     db: DB,
     current_user: LocalUser = Depends(get_current_user_v2),
     selection_id: UUID = None,
-    data: TurbeviisSelectionUpdate = None,
+    data: ProtectionModeSelectionUpdate = None,
 ):
-    """Update a turbeviis selection (e.g., link evidence, change approach, activate/deactivate)."""
-    sel = db.query(TurbeviisSelection).filter(
-        TurbeviisSelection.id == selection_id,
-        TurbeviisSelection.tenant_id == current_user.tenant_id,
+    """Update a protection mode selection (e.g., link evidence, change approach, activate/deactivate)."""
+    sel = db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.id == selection_id,
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
     ).first()
 
     if not sel:
-        raise HTTPException(status_code=404, detail="Turbeviis selection not found")
+        raise HTTPException(status_code=404, detail="Protection mode selection not found")
 
     # If activating this selection, deactivate ALL others first
     if data.is_active is True:
-        db.query(TurbeviisSelection).filter(
-            TurbeviisSelection.tenant_id == current_user.tenant_id,
-            TurbeviisSelection.id != selection_id,
+        db.query(ProtectionModeSelection).filter(
+            ProtectionModeSelection.tenant_id == current_user.tenant_id,
+            ProtectionModeSelection.id != selection_id,
         ).update({"is_active": False})
 
     if data.security_approach is not None:
@@ -255,39 +255,39 @@ def update_turbeviis_selection(
 
 
 @router.delete("/{selection_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_turbeviis_selection(
+def delete_protectionmode_selection(
     db: DB,
     current_user: LocalUser = Depends(get_current_user_v2),
     selection_id: UUID = None,
 ):
-    """Delete a turbeviis selection."""
-    sel = db.query(TurbeviisSelection).filter(
-        TurbeviisSelection.id == selection_id,
-        TurbeviisSelection.tenant_id == current_user.tenant_id,
+    """Delete a protection mode selection."""
+    sel = db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.id == selection_id,
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
     ).first()
 
     if not sel:
-        raise HTTPException(status_code=404, detail="Turbeviis selection not found")
+        raise HTTPException(status_code=404, detail="Protection mode selection not found")
 
     db.delete(sel)
     db.commit()
 
 
-@router.post("/{selection_id}/link-evidence", response_model=TurbeviisSelectionResponse)
-def link_evidence_to_turbeviis(
+@router.post("/{selection_id}/link-evidence", response_model=ProtectionModeSelectionResponse)
+def link_evidence_to_protectionmode(
     db: DB,
     current_user: LocalUser = Depends(get_current_user_v2),
     selection_id: UUID = None,
     data: EvidenceLinkRequest = None,
 ):
-    """Link an evidence document to a turbeviis selection."""
-    sel = db.query(TurbeviisSelection).filter(
-        TurbeviisSelection.id == selection_id,
-        TurbeviisSelection.tenant_id == current_user.tenant_id,
+    """Link an evidence document to a protection mode selection."""
+    sel = db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.id == selection_id,
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
     ).first()
 
     if not sel:
-        raise HTTPException(status_code=404, detail="Turbeviis selection not found")
+        raise HTTPException(status_code=404, detail="Protection mode selection not found")
 
     evidence = db.query(Evidence).filter(
         Evidence.id == data.evidence_id,
@@ -304,20 +304,20 @@ def link_evidence_to_turbeviis(
     return _build_selection_response(sel, db)
 
 
-@router.delete("/{selection_id}/unlink-evidence", response_model=TurbeviisSelectionResponse)
-def unlink_evidence_from_turbeviis(
+@router.delete("/{selection_id}/unlink-evidence", response_model=ProtectionModeSelectionResponse)
+def unlink_evidence_from_protectionmode(
     db: DB,
     current_user: LocalUser = Depends(get_current_user_v2),
     selection_id: UUID = None,
 ):
-    """Unlink evidence from a turbeviis selection."""
-    sel = db.query(TurbeviisSelection).filter(
-        TurbeviisSelection.id == selection_id,
-        TurbeviisSelection.tenant_id == current_user.tenant_id,
+    """Unlink evidence from a protection mode selection."""
+    sel = db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.id == selection_id,
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
     ).first()
 
     if not sel:
-        raise HTTPException(status_code=404, detail="Turbeviis selection not found")
+        raise HTTPException(status_code=404, detail="Protection mode selection not found")
 
     sel.evidence_id = None
     db.commit()

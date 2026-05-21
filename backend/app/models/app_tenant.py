@@ -30,7 +30,7 @@ class AppTenant(Base):
     audit_logs = relationship("AuditLog", back_populates="tenant")
     business_processes = relationship("BusinessProcess", back_populates="tenant")
     security_profiles = relationship("SecurityProfile", back_populates="tenant")
-    turbeviis_selections = relationship("TurbeviisSelection", back_populates="tenant")
+    protectionmode_selections = relationship("ProtectionModeSelection", back_populates="tenant")
 
 
 class GlobalUser(Base):
