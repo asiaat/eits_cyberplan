@@ -14,6 +14,7 @@ class ImrItem(Base):
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     tenant_id = Column(UUID(as_uuid=True), ForeignKey("app_tenants.id", ondelete="CASCADE"), nullable=False)
     asset_module_mapping_id = Column(UUID(as_uuid=True), ForeignKey("asset_module_mappings.id", ondelete="CASCADE"), nullable=True)
+    bp_module_mapping_id = Column(UUID(as_uuid=True), ForeignKey("bp_module_mappings.id", ondelete="CASCADE"), nullable=True)
     measure_id = Column(UUID(as_uuid=True), ForeignKey("eits_catalog_measures.id", ondelete="CASCADE"), nullable=False)
     is_process_module_measure = Column(Boolean, default=False)
     pearo_status = Column(String(1), nullable=False, default="E")
@@ -33,6 +34,7 @@ class ImrItem(Base):
 
     tenant = relationship("AppTenant")
     asset_module_mapping = relationship("AssetModuleMapping", back_populates="imr_items")
+    bp_module_mapping = relationship("BusinessProcessModuleMapping", back_populates="imr_items")
     measure = relationship("EitsCatalogMeasure", back_populates="imr_items")
     responsible_user = relationship("LocalUser", foreign_keys=[responsible_user_id])
     risk_acceptance_approver = relationship("LocalUser", foreign_keys=[risk_acceptance_approved_by])

@@ -4,7 +4,7 @@ from fastapi import APIRouter
 from app.api.v2 import auth, tenants, users, organizations, alerts, roles, persons, organization
 from app.api.v2 import business_processes, assets, targets
 from app.api.v2 import catalog, security_profiles, damage_assessments, asset_module_mappings, imr_items, risks_v2
-from app.api.v2 import bp_evidences, evidence_upload, protection_mode
+from app.api.v2 import bp_evidences, evidence_upload, protection_mode, modeling
 
 api_router = APIRouter()
 
@@ -28,3 +28,4 @@ api_router.include_router(risks_v2.router, prefix="/risks", tags=["v2-risks"])
 api_router.include_router(bp_evidences.router, tags=["v2-bp-evidences"])
 api_router.include_router(evidence_upload.router, tags=["v2-evidence"])
 api_router.include_router(protection_mode.router, prefix="/protection-mode", tags=["v2-protection-mode"])
+api_router.include_router(modeling.router, prefix="/modeling", tags=["v2-modeling"])

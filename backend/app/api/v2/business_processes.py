@@ -34,6 +34,7 @@ from app.services.business_process_service import (
     build_dependency_tree,
 )
 from app.core.audit import log_audit as audit_log
+from app.models.protectionmode_selection import ProtectionModeSelection
 
 router = APIRouter()
 
@@ -214,6 +215,22 @@ def update_business_process_v2(
 
     if not bp:
         raise HTTPException(status_code=404, detail="Business process not found")
+
+    # Lockout: block C-I-A changes when protection mode is active
+    needs_changing = any(
+        getattr(data, f, None) is not None
+        for f in ("confidentiality_need", "integrity_need", "availability_need")
+    )
+    if needs_changing:
+        active = db.query(ProtectionModeSelection).filter(
+            ProtectionModeSelection.tenant_id == current_user.tenant_id,
+            ProtectionModeSelection.is_active == True,
+        ).first()
+        if active:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Cannot modify protection needs when mode of protection ({active.security_approach}) has been set. Deactivate the protection mode first.",
+            )
 
     before = {
         "name": bp.name,
