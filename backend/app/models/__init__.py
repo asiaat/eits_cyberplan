@@ -37,6 +37,7 @@ from app.models.asset_module_mapping import AssetModuleMapping
 from app.models.imr_item import ImrItem
 from app.models.risk_measure_link import RiskMeasureLink, DamageCategoryThreshold, ProcessModuleAssignment
 from app.models.business_process_dependency import BusinessProcessDependency
+from app.models.turbeviis_selection import TurbeviisSelection
 
 __all__ = [
     # Tier A - Subscription Layer
@@ -90,4 +91,5 @@ __all__ = [
     "RiskMeasureLink",
     "DamageCategoryThreshold",
     "ProcessModuleAssignment",
+    "TurbeviisSelection",
 ]
