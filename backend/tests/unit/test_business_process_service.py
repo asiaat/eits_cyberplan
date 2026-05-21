@@ -117,11 +117,10 @@ class TestCircularDependencyCheck:
         from app.services.business_process_service import check_circular_dependency
 
         process_id = uuid4()
-        would_cycle, msg = check_circular_dependency(
-            None, uuid4(), process_id, process_id
+        would_cycle = check_circular_dependency(
+            None, process_id, process_id
         )
         assert would_cycle is True
-        assert "cannot depend on itself" in msg.lower()
 
     def test_function_signature(self):
         """check_circular_dependency has correct signature."""
@@ -130,7 +129,7 @@ class TestCircularDependencyCheck:
 
         sig = inspect.signature(check_circular_dependency)
         params = list(sig.parameters.keys())
-        assert params == ['db', 'tenant_id', 'primary_process_id', 'depends_on_process_id']
+        assert params == ['db', 'business_process_id', 'new_dependency_id']
 
 
 class TestGetLinkedAssetIds:

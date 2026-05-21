@@ -12,6 +12,8 @@ from app.models.business_process import BusinessProcess
 from app.models.eits_catalog_measure import EitsCatalogMeasure
 from app.models.eits_module import EitsModule
 from app.models.imr_item import ImrItem
+from app.models.process_asset import ProcessAsset
+from app.models.protection_need_summary import ProtectionNeedSummary
 from app.models.protectionmode_selection import ProtectionModeSelection
 
 
@@ -23,6 +25,30 @@ LEVEL_FILTERS = {
 
 
 class ModelingService:
+
+    @staticmethod
+    def validate_asset_ready_for_modeling(db: Session, tenant_id: uuid.UUID, asset_id: uuid.UUID) -> None:
+        process_relations = db.query(ProcessAsset).filter(
+            ProcessAsset.asset_id == asset_id,
+        ).all()
+        if not process_relations:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Tõrge: Seda vara ei saa modelleerida, sest see on seostamata ühegi äriprotsessiga.",
+            )
+
+        for relation in process_relations:
+            bp = db.query(BusinessProcess).filter(BusinessProcess.id == relation.business_process_id).first()
+            summary = db.query(ProtectionNeedSummary).filter(
+                ProtectionNeedSummary.business_process_id == relation.business_process_id,
+                ProtectionNeedSummary.tenant_id == tenant_id,
+            ).first()
+            if not summary or not summary.approved_by:
+                bp_name = bp.name if bp else str(relation.business_process_id)
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Tõrge: Seotud äriprotsessi '{bp_name}' kaitsetarve ei ole veel kinnitatud.",
+                )
 
     @staticmethod
     def map_module_to_target(
@@ -38,6 +64,7 @@ class ModelingService:
             raise HTTPException(status_code=404, detail="Module not found")
 
         if target_type == "asset":
+            ModelingService.validate_asset_ready_for_modeling(db, tenant_id, target_id)
             target = db.query(Asset).filter(Asset.id == target_id, Asset.tenant_id == tenant_id).first()
             if not target:
                 raise HTTPException(status_code=404, detail="Asset not found")

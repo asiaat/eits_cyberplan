@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.services.v2.modeling_service import ModelingService
 
 MOCK_TENANT_ID = uuid4()
 MOCK_USER_ID = uuid4()
@@ -78,13 +79,16 @@ class TestModelingAuth:
     @pytest.mark.parametrize("endpoint,method", [
         ("/api/v2/modeling/map?module_id={m}&target_type=asset&target_id={t}", "POST"),
         ("/api/v2/modeling/map/{id}?target_type=asset", "DELETE"),
+        ("/api/v2/modeling/bp-mappings", "GET"),
         ("/api/v2/modeling/business-process/{id}/protection-need?confidentiality=high&integrity=high&availability=high", "PATCH"),
     ])
     def test_401(self, endpoint, method):
         uid = str(uuid4())
         ep = endpoint.replace("{m}", str(uuid4())).replace("{t}", str(uuid4())).replace("{id}", uid)
         with TestClient(app) as client:
-            if method == "POST":
+            if method == "GET":
+                resp = client.get(ep)
+            elif method == "POST":
                 resp = client.post(ep)
             elif method == "DELETE":
                 resp = client.delete(ep)
@@ -110,26 +114,42 @@ class TestModelingService:
 
             app.dependency_overrides.clear()
 
+
+
     def _client(self):
         return TestClient(app)
 
-    def _mock_queries(self, first_values, all_values=None):
-        """Setup mock query chain with side_effect for .first() and optional .all()."""
+    def _mock_queries(self, first_values, all_values=None, all_side_effect=None):
+        """Setup mock query chain with side_effect for .first() and .all().
+        
+        all_values: single fixed return for .all() (backward compat)
+        all_side_effect: list of return values for consecutive .all() calls
+        """
         mock_filter = MagicMock()
         mock_filter.first.side_effect = first_values
-        if all_values is not None:
+        if all_side_effect is not None:
+            mock_filter.all.side_effect = all_side_effect
+        elif all_values is not None:
             mock_filter.all.return_value = all_values
         self.mock_session.query.return_value.filter.return_value = mock_filter
         return mock_filter
+
+    def _setup_validation_mocks(self):
+        """Pre-configure validation-passing mocks for asset queries."""
+        fake_pa = FakeModel(id=uuid4(), asset_id=MOCK_TARGET_ID, business_process_id=uuid4())
+        fake_bp = FakeModel(id=uuid4(), tenant_id=MOCK_TENANT_ID, name="Asset BP")
+        fake_pns = FakeModel(id=uuid4(), approved_by=uuid4())
+        return fake_pa, fake_bp, fake_pns
 
     def test_map_module_to_asset(self):
         module = _make_module()
         asset = _make_asset()
         measure = _make_measure()
+        fake_pa, fake_bp, fake_pns = self._setup_validation_mocks()
 
         self._mock_queries(
-            first_values=[module, asset, None, None, None],
-            all_values=[measure],
+            first_values=[module, fake_bp, fake_pns, asset, None, None, None],
+            all_side_effect=[[fake_pa], [measure]],
         )
 
         resp = self._client().post(
@@ -170,7 +190,11 @@ class TestModelingService:
 
     def test_map_module_asset_not_found(self):
         module = _make_module()
-        self._mock_queries(first_values=[module, None])
+        fake_pa, fake_bp, fake_pns = self._setup_validation_mocks()
+        self._mock_queries(
+            first_values=[module, fake_bp, fake_pns, None],
+            all_side_effect=[[fake_pa]],
+        )
         resp = self._client().post(
             f"/api/v2/modeling/map",
             params={"module_id": str(MOCK_MODULE_ID), "target_type": "asset", "target_id": str(uuid4())},
@@ -189,7 +213,11 @@ class TestModelingService:
     def test_map_module_duplicate_asset(self):
         module = _make_module()
         asset = _make_asset()
-        self._mock_queries(first_values=[module, asset, _make_asset()])
+        fake_pa, fake_bp, fake_pns = self._setup_validation_mocks()
+        self._mock_queries(
+            first_values=[module, fake_bp, fake_pns, asset, _make_asset()],
+            all_side_effect=[[fake_pa]],
+        )
         resp = self._client().post(
             f"/api/v2/modeling/map",
             params={"module_id": str(MOCK_MODULE_ID), "target_type": "asset", "target_id": str(MOCK_TARGET_ID)},
@@ -287,16 +315,100 @@ class TestModelingService:
         )
         assert resp.status_code == 404
 
+    def test_list_bp_mappings_empty(self):
+        self._mock_queries(first_values=[], all_values=[])
+        resp = self._client().get("/api/v2/modeling/bp-mappings")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    def test_validate_asset_missing_bp_link(self):
+        """Asset without ProcessAsset relation → 400."""
+        self._mock_queries(
+            first_values=[_make_module()],
+            all_side_effect=[[]],  # ProcessAsset.all() returns empty
+        )
+        resp = self._client().post(
+            f"/api/v2/modeling/map",
+            params={"module_id": str(MOCK_MODULE_ID), "target_type": "asset", "target_id": str(MOCK_TARGET_ID)},
+        )
+        assert resp.status_code == 400
+        assert "seostamata" in resp.json()["detail"]
+
+    def test_validate_asset_unapproved_bp(self):
+        """Asset linked to BP without approved protection need → 400."""
+        module = _make_module()
+        process_asset = FakeModel(id=uuid4(), asset_id=MOCK_TARGET_ID, business_process_id=uuid4())
+        bp = FakeModel(id=uuid4(), name="Test BP")
+        self._mock_queries(
+            first_values=[module, bp, None],  # PNS .first() returns None
+            all_side_effect=[[process_asset]],
+        )
+        resp = self._client().post(
+            f"/api/v2/modeling/map",
+            params={"module_id": str(MOCK_MODULE_ID), "target_type": "asset", "target_id": str(MOCK_TARGET_ID)},
+        )
+        assert resp.status_code == 400
+        assert "kinnitatud" in resp.json()["detail"]
+
+    def test_validate_asset_ready(self):
+        """Asset with linked + approved BP → 201."""
+        module = _make_module()
+        asset = _make_asset()
+        process_asset = FakeModel(id=uuid4(), asset_id=MOCK_TARGET_ID, business_process_id=uuid4())
+        bp = FakeModel(id=uuid4(), name="Test BP")
+        pns = FakeModel(id=uuid4(), approved_by=uuid4())
+        measure = _make_measure()
+        self._mock_queries(
+            first_values=[module, bp, pns, asset, None, None, None],
+            all_side_effect=[[process_asset], [measure]],
+        )
+        resp = self._client().post(
+            f"/api/v2/modeling/map",
+            params={"module_id": str(MOCK_MODULE_ID), "target_type": "asset", "target_id": str(MOCK_TARGET_ID)},
+        )
+        assert resp.status_code == 201
+
+    def test_validate_asset_ready_for_modeling_estonian_error_no_bp(self):
+        """Direct call: no process relations → Estonian error."""
+        from fastapi import HTTPException
+        from app.services.v2.modeling_service import ModelingService
+
+        mock_filter = MagicMock()
+        mock_filter.all.return_value = []
+        self.mock_session.query.return_value.filter.return_value = mock_filter
+
+        with pytest.raises(HTTPException) as exc:
+            ModelingService.validate_asset_ready_for_modeling(self.mock_session, MOCK_TENANT_ID, MOCK_TARGET_ID)
+        assert exc.value.status_code == 400
+        assert "seostamata" in exc.value.detail
+
+    def test_validate_asset_ready_for_modeling_estonian_error_unapproved(self):
+        """Direct call: unapproved BP → Estonian error."""
+        from app.services.v2.modeling_service import ModelingService
+        process_asset = FakeModel(id=uuid4(), asset_id=MOCK_TARGET_ID, business_process_id=uuid4())
+        bp = FakeModel(id=uuid4(), name="Test BP")
+        self.mock_session.query.return_value.filter.return_value.all.side_effect = [
+            [process_asset],  # ProcessAsset.all()
+        ]
+        self.mock_session.query.return_value.filter.return_value.first.side_effect = [
+            bp,              # BusinessProcess.first()
+            None,            # ProtectionNeedSummary.first() → no summary
+        ]
+        with pytest.raises(Exception) as exc:
+            ModelingService.validate_asset_ready_for_modeling(self.mock_session, MOCK_TENANT_ID, MOCK_TARGET_ID)
+        assert "kinnitatud" in str(exc.value)
+
     def test_map_module_baseline_level_filter(self):
         """BASIC mode → only BASE measures."""
         module = _make_module()
         asset = _make_asset()
         base_measure = _make_measure(measure_level="BASE")
+        fake_pa, fake_bp, fake_pns = self._setup_validation_mocks()
 
         # Mock only returns BASE measure (simulating SQL-level filter)
         self._mock_queries(
-            first_values=[module, asset, None, None, None],
-            all_values=[base_measure],
+            first_values=[module, fake_bp, fake_pns, asset, None, None, None],
+            all_side_effect=[[fake_pa], [base_measure]],
         )
 
         resp = self._client().post(

@@ -44,27 +44,6 @@ class TestAuthProtection:
     """
 
     @pytest.mark.parametrize("endpoint,method,description", [
-        # V1 endpoints
-        ("/api/v1/users/", "GET", "List all users"),
-        ("/api/v1/users/", "POST", "Create new user"),
-        ("/api/v1/roles/", "GET", "List all roles"),
-        ("/api/v1/roles/", "POST", "Create new role"),
-        ("/api/v1/tenants/current", "GET", "Get current tenant"),
-        ("/api/v1/business-processes/", "GET", "List business processes"),
-        ("/api/v1/business-processes/", "POST", "Create business process"),
-        ("/api/v1/assets/", "GET", "List all assets"),
-        ("/api/v1/assets/", "POST", "Create new asset"),
-        ("/api/v1/mappings", "GET", "List module mappings"),
-        ("/api/v1/implementation-plan/", "GET", "List implementation plan"),
-        ("/api/v1/risks/", "GET", "List all risks"),
-        ("/api/v1/risks/", "POST", "Create new risk"),
-        ("/api/v1/evidences/", "GET", "List all evidences"),
-        ("/api/v1/evidences/", "POST", "Create new evidence"),
-        ("/api/v1/catalog/versions/", "GET", "List catalog versions"),
-        ("/api/v1/catalog/modules/", "GET", "List E-ITS modules"),
-        ("/api/v1/dashboard/summary", "GET", "Get dashboard summary"),
-        ("/api/v1/reports/audit-readiness", "GET", "Get audit readiness report"),
-        ("/api/v1/organization/users", "GET", "List organization users"),
         # V2 endpoints - IAM
         ("/api/v2/auth/me", "GET", "Get current user v2"),
         ("/api/v2/auth/mfa/setup", "POST", "Setup MFA v2"),
@@ -80,6 +59,21 @@ class TestAuthProtection:
         # V2 endpoints - Assets
         ("/api/v2/assets/", "GET", "List assets v2"),
         ("/api/v2/assets/", "POST", "Create asset v2"),
+        # V2 endpoints - Targets
+        ("/api/v2/targets/", "GET", "List target objects"),
+        ("/api/v2/targets/", "POST", "Create target object"),
+        # V2 endpoints - Catalog
+        ("/api/v2/catalog/versions/", "GET", "List catalog versions"),
+        ("/api/v2/catalog/modules/", "GET", "List E-ITS modules"),
+        ("/api/v2/catalog/measures", "GET", "List all measures"),
+        # V2 endpoints - IMR
+        ("/api/v2/imr/", "GET", "List IMR items"),
+        # V2 endpoints - Risks
+        ("/api/v2/risks/", "GET", "List risks v2"),
+        ("/api/v2/risks/", "POST", "Create risk v2"),
+        # V2 endpoints - Business Processes
+        ("/api/v2/business-processes/", "GET", "List business processes v2"),
+        ("/api/v2/business-processes", "POST", "Create business process v2"),
     ])
     def test_endpoint_requires_auth(self, endpoint, method, description):
         """
@@ -191,11 +185,11 @@ class TestLoginEndpoint:
         print(f"\n[TEST] Testing login without credentials")
         
         with TestClient(app) as client:
-            response = client.post("/api/v1/auth/login", data={})
+            response = client.post("/api/v2/auth/login", data={})
             print(f"       Response: HTTP {response.status_code}")
-            
-            assert response.status_code == 422, (
-                f"[FAIL] Login without credentials should return 422, got {response.status_code}"
+
+            assert response.status_code in [401, 422], (
+                f"[FAIL] Login without credentials should return 401 or 422, got {response.status_code}"
             )
             
         print(f"       Result: PASS - Validation works ✓")

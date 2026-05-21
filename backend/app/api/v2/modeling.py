@@ -1,11 +1,33 @@
 """Scope Modeling API v2 - E-ITS modelleerimine."""
+from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from app.api.deps import DB
 from app.api.v2.auth import get_current_user_v2, LocalUser
+from app.models.bp_module_mapping import BusinessProcessModuleMapping
+from app.models.eits_module import EitsModule
+from app.models.business_process import BusinessProcess
 from app.services.v2.modeling_service import ModelingService
+
+
+class BpModuleMappingResponse(BaseModel):
+    id: UUID
+    business_process_id: UUID
+    business_process_name: str
+    module_id: UUID
+    module_code: str
+    module_name: str
+    module_group: Optional[str] = None
+    justification: Optional[str] = None
+    modeled_by: Optional[UUID] = None
+    modeled_at: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
 
 router = APIRouter()
 
@@ -43,6 +65,36 @@ def unmap_module(
         mapping_id=mapping_id,
         target_type=target_type,
     )
+
+
+@router.get("/bp-mappings", response_model=list[BpModuleMappingResponse])
+def list_bp_mappings(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """List all BP-module mappings for the current tenant."""
+    mappings = db.query(BusinessProcessModuleMapping).filter(
+        BusinessProcessModuleMapping.tenant_id == current_user.tenant_id,
+    ).all()
+
+    result = []
+    for m in mappings:
+        bp = db.query(BusinessProcess).filter(BusinessProcess.id == m.business_process_id).first()
+        mod = db.query(EitsModule).filter(EitsModule.id == m.module_id).first()
+        result.append(BpModuleMappingResponse(
+            id=m.id,
+            business_process_id=m.business_process_id,
+            business_process_name=bp.name if bp else "Unknown",
+            module_id=m.module_id,
+            module_code=mod.code if mod else "???",
+            module_name=mod.name if mod else "Unknown",
+            module_group=mod.module_group if mod else None,
+            justification=m.justification,
+            modeled_by=m.modeled_by,
+            modeled_at=str(m.modeled_at) if m.modeled_at else None,
+        ))
+
+    return result
 
 
 @router.patch("/business-process/{process_id}/protection-need", status_code=status.HTTP_200_OK)

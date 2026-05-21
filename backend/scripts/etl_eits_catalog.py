@@ -159,31 +159,31 @@ def detect_columns(df: pd.DataFrame) -> dict:
     lower_cols = {str(c).lower().strip(): c for c in df.columns}
 
     col_map["module_group"] = next(
-        (lower_cols[k] for k in lower_cols if "moodulgrupp" in k), None
+        (lower_cols[k] for k in lower_cols if "moodulgrupp" in k or "module group" in k or "mooduli rühm" in k or "moodulirühm" in k), None
     )
     col_map["module_code"] = next(
-        (lower_cols[k] for k in lower_cols if "moodul: 1" in k or "moodul: 1. taseme" in k), None
+        (lower_cols[k] for k in lower_cols if "moodul: 1" in k or "moodul: 1. taseme" in k or "module code" in k or "mooduli kood" in k), None
     )
     col_map["module_name"] = next(
-        (lower_cols[k] for k in lower_cols if "moodul: 2" in k or "moodul: 3" in k), None
+        (lower_cols[k] for k in lower_cols if "moodul: 2" in k or "moodul: 3" in k or "module name" in k or "mooduli nimi" in k), None
     )
     col_map["module_category"] = next(
         (lower_cols[k] for k in lower_cols if any(x in k for x in ["kategooria", "category", "valdkond"])), None
     )
     col_map["measure_code"] = next(
-        (lower_cols[k] for k in lower_cols if "meetme tunnus" in k), None
+        (lower_cols[k] for k in lower_cols if "meetme tunnus" in k or "measure code" in k or "meetme kood" in k), None
     )
     col_map["measure_name"] = next(
-        (lower_cols[k] for k in lower_cols if "meetme nimetus" in k), None
+        (lower_cols[k] for k in lower_cols if "meetme nimetus" in k or "measure title" in k or "measure name" in k or "meetme nimi" in k), None
     )
     col_map["measure_level"] = next(
-        (lower_cols[k] for k in lower_cols if "meetme tase" in k), None
+        (lower_cols[k] for k in lower_cols if "meetme tase" in k or "level" in k or "tase" in k), None
     )
     col_map["description"] = next(
-        (lower_cols[k] for k in lower_cols if "meetme sisu" in k), None
+        (lower_cols[k] for k in lower_cols if "meetme sisu" in k or "description" in k or "kirjeldus" in k), None
     )
     col_map["responsible"] = next(
-        (lower_cols[k] for k in lower_cols if "mooduli vastutaja" in k), None
+        (lower_cols[k] for k in lower_cols if "mooduli vastutaja" in k or "responsible" in k or "vastutav roll" in k), None
     )
 
     found = {k: v for k, v in col_map.items() if v is not None}
@@ -204,13 +204,21 @@ def transform(df: pd.DataFrame, col_map: dict, year: str) -> dict:
 
         raw_module_code = str(row_dict.get(col_map["module_code"], "")).strip() if col_map.get("module_code") else ""
 
-        code_match = raw_module_code.split(":")[0].strip() if ":" in raw_module_code else raw_module_code.split(".")[0].strip()
-        if not code_match or "." not in code_match:
+        if ":" in raw_module_code:
+            parts = raw_module_code.split(":")
+            module_code = parts[0].strip()
+            module_name = parts[-1].strip()
+        elif "." in raw_module_code:
+            parts = raw_module_code.split(".")
+            module_code = parts[0] + "." + parts[1] if len(parts) > 1 else parts[0]
+            module_name = str(row_dict.get(col_map["module_name"], "")).strip() if col_map.get("module_name") else module_code
+        else:
+            module_code = raw_module_code
+            module_name = str(row_dict.get(col_map["module_name"], "")).strip() if col_map.get("module_name") else raw_module_code
+
+        if not module_code:
             logger.debug("Row %d: no valid module code ('%s'), skipping", idx, raw_module_code)
             continue
-
-        module_code = code_match.strip()
-        module_name = raw_module_code.split(":")[-1].strip() if ":" in raw_module_code else module_code
 
         module_group = module_code.split(".")[0].strip() if module_code else ""
         module_category = str(row_dict.get(col_map["module_category"], "")).strip() if col_map.get("module_category") else ""

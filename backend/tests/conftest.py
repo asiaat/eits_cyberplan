@@ -182,17 +182,41 @@ def eits_module_id():
 
 @pytest.fixture
 def client():
-    """Create a test client for API testing."""
+    """Create a test client for API testing with mocked database and auth."""
     from fastapi.testclient import TestClient
-    from app.main import app
-    return TestClient(app)
+    from unittest.mock import patch, MagicMock
+
+    mock_engine = MagicMock()
+    mock_conn = MagicMock()
+    mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+    mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+    with patch("app.db.session.get_engine", return_value=mock_engine):
+        with patch("app.db.session.get_session_maker") as mock_maker:
+            mock_maker.return_value = MagicMock(return_value=MagicMock())
+            from app.main import app
+            from app.api.v2.auth import get_current_user_v2
+            from uuid import uuid4
+
+            mock_user = MagicMock()
+            mock_user.id = uuid4()
+            mock_user.tenant_id = uuid4()
+            mock_user.global_user_id = uuid4()
+            mock_user.full_name = "Test User"
+            mock_user.is_active = True
+            mock_user.email = "test@example.com"
+            mock_user.roles = []
+
+            app.dependency_overrides[get_current_user_v2] = lambda: mock_user
+            client = TestClient(app)
+            yield client
+            if get_current_user_v2 in app.dependency_overrides:
+                del app.dependency_overrides[get_current_user_v2]
 
 
 @pytest.fixture
 def auth_headers(client):
     """Create authentication headers for test client."""
-    # For now, return empty headers - actual auth would need a valid token
-    # In real tests, this would authenticate and get a token
     return {"Authorization": "Bearer test-token-placeholder"}
 
 

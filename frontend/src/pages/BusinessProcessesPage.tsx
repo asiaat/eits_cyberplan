@@ -162,26 +162,6 @@ export default function BusinessProcessesPage() {
   const [linkEvidenceId, setLinkEvidenceId] = useState("")
   const [searchEvidence, setSearchEvidence] = useState("")
 
-  const getProtectionLevel = (c: string, i: string, a: string): string => {
-    const levels = { normal: 0, unknown: 1, high: 2, very_high: 3 }
-    const max = Math.max(levels[c] || 0, levels[i] || 0, levels[a] || 0)
-    return Object.entries(levels).find(([, v]) => v === max)?.[0] || "normal"
-  }
-
-  const isHighOrVeryHigh = (level: string) => level === "high" || level === "very_high"
-
-  const fetchApprovers = async () => {
-    const token = localStorage.getItem("access_token")
-    if (!token || !selectedOrgIdRef.current) return
-    try {
-      const res = await apiClient.get(`/users/`, { params: { tenant_id: selectedOrgIdRef.current } })
-      const users = res.data?.filter((u: any) => u.roles?.some((r: any) => ["admin", "ism"].includes(r.role_name))) || []
-      setApprovers(users.map((u: any) => ({ id: u.id, full_name: u.full_name || u.email, email: u.email })))
-    } catch (err) {
-      console.error("Failed to fetch approvers:", err)
-    }
-  }
-
   const fetchDivisions = async () => {
     if (!selectedOrgIdRef.current) return
     const token = localStorage.getItem("access_token")
