@@ -28,7 +28,7 @@ class ImrService:
         validation_errors = []
         
         # Check implementation_details
-        if not imr_item.implementation_details or len(imr_item.implementation_details.strip()) < 15:
+        if not imr_item.implementation_description or len(imr_item.implementation_description.strip()) < 15:
             validation_errors.append(
                 "Tõrge: Meedet ei saa märkida rakendatuks (R) ilma piisava teostuskirjelduseta (min 15 tähemärki)."
             )
@@ -208,8 +208,8 @@ class ImrService:
             "validation_errors": validation["errors"],
             "linked_evidence_count": evidence_count,
             "has_sufficient_implementation_details": bool(
-                item.implementation_details and 
-                len(item.implementation_details.strip()) >= 15
+                item.implementation_description and 
+                len(item.implementation_description.strip()) >= 15
             )
         }
 
@@ -268,7 +268,7 @@ class ImrService:
         
         # Update items
         for item in items:
-            item.status = new_status
+            item.pearo_status = new_status
             item.updated_by = user_id
             item.updated_at = datetime.datetime.utcnow()
         

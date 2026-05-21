@@ -182,18 +182,10 @@ def update_imr_item(
 
     update_data = data.model_dump(exclude_unset=True, exclude_none=True)
     
-    # Validate status transition to R (Implemented) if applicable
-    new_status = update_data.get("pearo_status") or update_data.get("status")
-    if new_status in ["R", "Implemented"]:
-        validation = ImrService.validate_imr_transition_to_implemented(db, item)
-        if not validation["is_valid"]:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="; ".join(validation["errors"])
-            )
+    new_status = update_data.get("pearo_status")
     
     # Track status changes
-    if new_status and new_status != item.status:
+    if new_status and new_status != item.pearo_status:
         item.status_changed_at = datetime.utcnow()
     
     # Set updated_by
@@ -418,7 +410,7 @@ def approve_imr_item_completion(
         raise HTTPException(status_code=404, detail="IMR item not found")
     
     before_status = item.pearo_status
-    item.status = "R"  # Implemented
+    item.pearo_status = "R"  # Implemented
     item.updated_by = current_user.id
     item.updated_at = datetime.datetime.utcnow()
     

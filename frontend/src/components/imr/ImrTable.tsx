@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { ImrItem, ImrValidationStatus } from "@/lib/imr-types"
 import { useImrApi } from "@/lib/use-imr-api"
+import { useTranslation } from "@/lib/i18n"
 import { ImrStatusBadge, ImrPriorityBadge, ImrValidationIndicator } from "./ImrStatusBadge"
 
 interface ImrTableProps {
@@ -14,6 +15,7 @@ interface ImrTableProps {
 }
 
 export function ImrTable({ onEditItem, filters }: ImrTableProps) {
+  const { t } = useTranslation()
   const { loading, error, fetchImrItems } = useImrApi()
   const [items, setItems] = useState<ImrItem[]>([])
   const [validationStatuses, setValidationStatuses] = useState<Record<string, ImrValidationStatus>>({})
@@ -45,17 +47,17 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
   }
 
   if (loading) {
-    return <div className="text-center py-8">Laadimine...</div>
+    return <div className="text-center py-8">{t("common.loading")}</div>
   }
 
   if (error) {
-    return <div className="text-red-600 py-4">Viga: {error}</div>
+    return <div className="text-red-600 py-4">{t("common.info")}: {error}</div>
   }
 
   if (items.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
-        IMR itemsid ei leitud
+        {t("implementationPlan.table.noData")}
       </div>
     )
   }
@@ -65,14 +67,13 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider">
-            <th className="p-3">Kood</th>
-            <th className="p-3">Meede</th>
-            <th className="p-3">Olek</th>
-            <th className="p-3">Prioriteet</th>
-            <th className="p-3">Tähtaeg</th>
-            <th className="p-3">Vastutaja</th>
-            <th className="p-3 text-center">Valideerimine</th>
-            <th className="p-3 text-right">Tegevus</th>
+            <th className="p-3">{t("implementationPlan.table.code")}</th>
+            <th className="p-3">{t("implementationPlan.table.measure")}</th>
+            <th className="p-3">{t("implementationPlan.table.status")}</th>
+            <th className="p-3">{t("implementationPlan.table.priority")}</th>
+            <th className="p-3">{t("implementationPlan.table.dueDate")}</th>
+            <th className="p-3">{t("implementationPlan.table.responsible")}</th>
+            <th className="p-3 text-center">{t("implementationPlan.table.validation")}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -83,7 +84,8 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
             return (
               <tr 
                 key={item.id} 
-                className="hover:bg-slate-50/50 transition-colors border-b border-slate-100"
+                onClick={() => onEditItem?.(item)}
+                className="hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-100"
               >
                 <td className="p-3">
                   <span className="font-bold text-blue-800 text-sm">
@@ -115,7 +117,7 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
                 </td>
                 <td className="p-3">
                   <span className="text-sm text-slate-600">
-                    {item.responsible_user_id || "Määramata"}
+                    {item.responsible_user_id || t("implementationPlan.table.unassigned")}
                   </span>
                 </td>
                 <td className="p-3 text-center">
@@ -129,14 +131,6 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
                   {item.pearo_status === "R" && (
                     <span className="text-emerald-600">✓</span>
                   )}
-                </td>
-                <td className="p-3 text-right">
-                  <button
-                    onClick={() => onEditItem?.(item)}
-                    className="text-xs text-indigo-600 hover:text-indigo-900 font-medium hover:underline"
-                  >
-                    Täida meedet
-                  </button>
                 </td>
               </tr>
             )
