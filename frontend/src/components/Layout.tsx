@@ -63,7 +63,7 @@ function getNavSections(t: (key: string) => string): NavSection[] {
     {
       key: "support",
       items: [
-        { path: "/audit", label: t("nav.auditView"), icon: Shield },
+        // { path: "/audit", label: t("nav.auditView"), icon: Shield }, // hidden — keep route + page for future use
         { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
         { path: "/organization", label: t("nav.organization"), icon: Building2 },
         { path: "/support/people", label: t("nav.supportPeople"), icon: UserCog },
