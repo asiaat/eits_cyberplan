@@ -132,55 +132,55 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto bg-card">
       <table className="w-full text-left border-collapse text-xs">
         <thead>
-          <tr className="bg-muted border-b border-border font-semibold text-muted-foreground uppercase tracking-wider">
+          <tr className="bg-slate-100 dark:bg-slate-800 border-b border-border font-semibold text-muted-foreground uppercase tracking-wider">
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-20"
+              className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-20"
               onClick={() => handleSort("code")}
             >
               {t("implementationPlan.table.code")}<SortIcon field="code" />
             </th>
-            <th className="py-2 px-2 w-40">{t("implementationPlan.table.measure")}</th>
+            <th className="py-2 px-2">{t("implementationPlan.table.measure")}</th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-24"
+              className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-24"
               onClick={() => handleSort("status")}
             >
               {t("implementationPlan.table.status")}<SortIcon field="status" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-20"
+              className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-20"
               onClick={() => handleSort("priority")}
             >
               {t("implementationPlan.table.priority")}<SortIcon field="priority" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-24"
+              className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-24"
               onClick={() => handleSort("dueDate")}
             >
               {t("implementationPlan.table.dueDate")}<SortIcon field="dueDate" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-28"
+              className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none"
               onClick={() => handleSort("responsible")}
             >
               {t("implementationPlan.table.responsible")}<SortIcon field="responsible" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-20"
+              className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-20"
               onClick={() => handleSort("profile")}
             >
               {t("implementationPlan.table.profile")}<SortIcon field="profile" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-32"
+              className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none"
               onClick={() => handleSort("todo")}
             >
               {t("implementationPlan.modal.todoDescription")}<SortIcon field="todo" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-20 text-right"
+              className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-20 text-right"
               onClick={() => handleSort("cost")}
             >
               {t("implementationPlan.modal.costEur")}<SortIcon field="cost" />
@@ -188,7 +188,7 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
             <th className="py-2 px-2 text-center w-16">{t("implementationPlan.table.validation")}</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-border">
+        <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
           {sortedItems.map((item) => {
             const validation = validationStatuses[item.id]
             const canTransition = validation?.can_transition_to_implemented ?? false
@@ -197,10 +197,10 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
               <tr 
                 key={item.id} 
                 onClick={() => onEditItem?.(item)}
-                className="hover:bg-muted cursor-pointer transition-colors border-b border-border"
+                className="hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border-b border-slate-200 dark:border-slate-700"
               >
                 <td className="py-2 px-2">
-                  <span className="font-bold text-blue-800">
+                  <span className="font-bold text-blue-600 dark:text-blue-300">
                     {item.measure?.code || "N/A"}
                   </span>
                 </td>

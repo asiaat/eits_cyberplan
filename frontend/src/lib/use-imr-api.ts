@@ -138,6 +138,39 @@ export function useImrApi() {
     }
   }, [])
 
+  const exportImrItems = useCallback(async (
+    filters?: {
+      pearo_status?: string
+      priority?: string
+      overdue_only?: boolean
+    }
+  ): Promise<void> => {
+    setLoading(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams()
+      if (filters?.pearo_status) params.append("pearo_status", filters.pearo_status)
+      if (filters?.priority) params.append("priority", filters.priority)
+      if (filters?.overdue_only) params.append("overdue_only", "true")
+
+      const response = await apiClient.get(`/imr/export?${params.toString()}`, {
+        responseType: "blob",
+      })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", `IMR_${new Date().toISOString().split("T")[0]}.xlsx`)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Failed to export IMR items")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   return {
     loading,
     error,
@@ -148,6 +181,7 @@ export function useImrApi() {
     linkEvidenceToImr,
     bulkUpdateStatus,
     getImrSummary,
+    exportImrItems,
     fetchUsers,
   }
 }

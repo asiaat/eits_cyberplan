@@ -330,3 +330,101 @@ class ImrService:
             "ready_for_completion_count": ready_for_completion,
             "total_items": sum(status_dict.values())
         }
+
+    @staticmethod
+    def export_imr_to_excel(
+        db: Session,
+        tenant_id: uuid.UUID,
+        pearo_status: Optional[str] = None,
+        priority: Optional[str] = None,
+        overdue_only: bool = False,
+    ) -> bytes:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+
+        query = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id)
+        if pearo_status:
+            query = query.filter(ImrItem.pearo_status == pearo_status)
+        if priority:
+            query = query.filter(ImrItem.priority == priority)
+        if overdue_only:
+            from datetime import date
+            query = query.filter(
+                ImrItem.due_date < date.today(),
+                ImrItem.pearo_status.in_(["E", "O"]),
+            )
+        items = query.order_by(ImrItem.created_at.desc()).all()
+
+        peero_labels = {"P": "Kavandatud", "E": "Rakendamisel", "A": "Risk aktsepteeritud", "R": "Rakendatud", "O": "Osaliselt rakendatud"}
+        priority_labels = {"P1": "Kõrge", "P2": "Keskmine", "P3": "Madal"}
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "IMR"
+
+        headers = ["Kood", "Meede", "Staatus", "Prioriteet", "Tähtaeg", "Vastutaja", "Profiil", "Tegevused (TODO)", "Maksumus (EUR)", "Kirjeldus", "Verifitseerimine", "Järgmine ülevaade"]
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        thin_border = Border(
+            left=Side(style="thin"), right=Side(style="thin"),
+            top=Side(style="thin"), bottom=Side(style="thin"),
+        )
+
+        for col_idx, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_idx, value=header)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+            cell.border = thin_border
+
+        for row_idx, item in enumerate(items, 2):
+            measure = db.query(EitsCatalogMeasure).filter(EitsCatalogMeasure.id == item.measure_id).first()
+            user_name = ""
+            if item.responsible_user_id:
+                user = db.query(LocalUser).filter(LocalUser.id == item.responsible_user_id).first()
+                if user:
+                    user_name = user.full_name
+
+            profile = item.requirement_profile
+            if not profile and measure:
+                profile = "PÕHIMEEDE" if measure.measure_level == "BASE" else "PIIRATULT"
+
+            row_data = [
+                measure.code if measure else "",
+                measure.name if measure else "",
+                peero_labels.get(item.pearo_status, item.pearo_status),
+                priority_labels.get(item.priority, item.priority),
+                str(item.due_date) if item.due_date else "",
+                user_name,
+                profile or "",
+                item.todo_description or "",
+                float(item.cost_eur) if item.cost_eur else "",
+                item.implementation_description or "",
+                item.verification_method or "",
+                str(item.next_review_date) if item.next_review_date else "",
+            ]
+
+            for col_idx, value in enumerate(row_data, 1):
+                cell = ws.cell(row=row_idx, column=col_idx, value=value)
+                cell.border = thin_border
+                cell.alignment = Alignment(wrap_text=True, vertical="top")
+
+        ws.column_dimensions["A"].width = 14
+        ws.column_dimensions["B"].width = 50
+        ws.column_dimensions["C"].width = 22
+        ws.column_dimensions["D"].width = 14
+        ws.column_dimensions["E"].width = 14
+        ws.column_dimensions["F"].width = 24
+        ws.column_dimensions["G"].width = 14
+        ws.column_dimensions["H"].width = 40
+        ws.column_dimensions["I"].width = 16
+        ws.column_dimensions["J"].width = 50
+        ws.column_dimensions["K"].width = 30
+        ws.column_dimensions["L"].width = 16
+
+        from io import BytesIO
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer.getvalue()

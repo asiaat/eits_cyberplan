@@ -542,6 +542,7 @@ organization: {
       pageTitle: "Information Security Measures Implementation Plan (IMR)",
       pageSubtitle: "Monitoring implementation of measures from scope modeling",
       noData: "No implementation items yet.",
+      exportExcel: "Export Excel",
       table: {
         code: "Code",
         measure: "Measure",
@@ -1319,6 +1320,7 @@ inactive: "Mitteaktiivne",
       pageTitle: "Infoturbe meetmete rakenduskava (IMR)",
       pageSubtitle: "Skoobi modelleerimisel loodud meetmete rakenduse jälgimine",
       noData: "Rakenduskavas objekte veel ei ole.",
+      exportExcel: "Ekspordi Excel",
       table: {
         code: "Kood",
         measure: "Meede",

@@ -4,7 +4,9 @@ from uuid import UUID
 from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from io import BytesIO
 
 from app.api.deps import DB
 from app.api.v2.auth import get_current_user_v2, LocalUser
@@ -67,6 +69,32 @@ def _build_imr_response(db: Session, item: ImrItem) -> ImrItemResponse:
         requirement_profile=profile,
         todo_description=item.todo_description,
         cost_eur=float(item.cost_eur) if item.cost_eur else None,
+    )
+
+
+@router.get("/export")
+def export_imr_to_excel(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+    pearo_status: Optional[str] = Query(None, alias="pearo_status"),
+    priority: Optional[str] = Query(None, alias="priority"),
+    overdue_only: bool = Query(False, alias="overdue_only"),
+):
+    """Export IMR items as Excel file (filtered by current query params)."""
+    excel_bytes = ImrService.export_imr_to_excel(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        pearo_status=pearo_status,
+        priority=priority,
+        overdue_only=overdue_only,
+    )
+    buffer = BytesIO(excel_bytes)
+    buffer.seek(0)
+    filename = f"IMR_{date.today().isoformat()}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

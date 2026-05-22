@@ -27,11 +27,11 @@ export function ImrDashboardStats() {
   }
 
   const statusColors: Record<string, string> = {
-    P: "bg-muted text-foreground",
-    E: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
-    A: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
-    R: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
-    O: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+    P: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+    E: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+    A: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+    R: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
+    O: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
   }
 
   return (
@@ -77,7 +77,7 @@ export function ImrDashboardStats() {
       </div>
 
       {/* Status Breakdown */}
-      <div className="col-span-2 md:col-span-4 bg-white rounded-lg border border-slate-200 p-3">
+      <div className="col-span-2 md:col-span-4 bg-card rounded-lg border border-border p-3">
         <div className="flex flex-wrap gap-2">
           {IMR_STATUS_OPTIONS.map((option) => {
             const count = stats.pearo_status_counts[option.value] || 0

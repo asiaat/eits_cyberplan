@@ -4,6 +4,7 @@ import { ImrItemModal } from "@/components/imr/ImrItemModal"
 import { ImrDashboardStats } from "@/components/imr/ImrDashboardStats"
 import { ImrItem, IMR_STATUS_OPTIONS } from "@/lib/imr-types"
 import { useTranslation } from "@/lib/i18n"
+import { useImrApi } from "@/lib/use-imr-api"
 
 export default function ImplementationPlanPage() {
   const { t } = useTranslation()
@@ -25,9 +26,15 @@ export default function ImplementationPlanPage() {
     setSelectedItem(null)
   }
 
+  const { exportImrItems, loading: exporting, error: exportError } = useImrApi()
+
   const handleSaveItem = (updatedItem: ImrItem) => {
     // Refresh the table by closing modal - parent will re-fetch
     console.log("Item saved:", updatedItem.id)
+  }
+
+  const handleExport = () => {
+    exportImrItems(filter)
   }
 
   return (
@@ -42,6 +49,16 @@ export default function ImplementationPlanPage() {
             {t("implementationPlan.pageSubtitle")}
           </p>
         </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          {exporting ? t("common.loading") : t("implementationPlan.exportExcel")}
+        </button>
       </div>
 
       {/* Dashboard Statistics */}
@@ -93,6 +110,13 @@ export default function ImplementationPlanPage() {
           )}
         </div>
       </div>
+
+      {/* Error display */}
+      {exportError && (
+        <div className="mb-3 p-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
+          {exportError}
+        </div>
+      )}
 
       {/* IMR Table */}
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
