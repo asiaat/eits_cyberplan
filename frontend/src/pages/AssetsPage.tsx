@@ -19,6 +19,7 @@ import { AlertTriangle, Search, ChevronDown, ChevronRight, Unlink, Link2, Layout
 import {
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
   type SortingState,
 } from "@tanstack/react-table"
@@ -281,7 +282,23 @@ export default function AssetsPage() {
       },
       {
         id: "protection",
-        header: t("assets.protection"),
+        accessorFn: (row: any) => `${row.confidentiality_need}${row.integrity_need}${row.availability_need}`,
+        header: ({ column }: any) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-4 h-8"
+          >
+            {t("assets.protection")}
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
         cell: ({ row }: any) => {
           const asset = row.original
           return (
@@ -300,16 +317,47 @@ export default function AssetsPage() {
         },
       },
       {
-        accessorKey: "owner",
-        header: t("assets.owner"),
+        id: "owner",
+        accessorFn: (row: any) => row.owner?.name || "",
+        header: ({ column }: any) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-4 h-8"
+          >
+            {t("assets.owner")}
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
         cell: ({ row }: any) => {
-          const owner = row.getValue("owner") as OwnerInfo | null
+          const owner = row.original.owner as OwnerInfo | null
           return owner?.name || "-"
         },
       },
       {
         accessorKey: "linked_process_count",
-        header: t("assets.linkedProcesses"),
+        header: ({ column }: any) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-4 h-8"
+          >
+            {t("assets.linkedProcesses")}
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
         cell: ({ row }: any) => {
           const count = row.getValue("linked_process_count") as number
           return (
@@ -321,7 +369,22 @@ export default function AssetsPage() {
       },
       {
         accessorKey: "module_mapping_count",
-        header: t("assets.modules"),
+        header: ({ column }: any) => (
+          <Button
+            variant="ghost"
+            onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            className="-ml-4 h-8"
+          >
+            {t("assets.modules")}
+            {column.getIsSorted() === "asc" ? (
+              <ArrowUp className="ml-2 h-4 w-4" />
+            ) : column.getIsSorted() === "desc" ? (
+              <ArrowDown className="ml-2 h-4 w-4" />
+            ) : (
+              <ArrowUpDown className="ml-2 h-4 w-4" />
+            )}
+          </Button>
+        ),
         cell: ({ row }: any) => {
           const count = row.original.module_mapping_count as number
           return count > 0 ? (
@@ -356,6 +419,7 @@ export default function AssetsPage() {
       },
     ], [t]),
     getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
     state: { sorting },
     onSortingChange: setSorting,
   })
