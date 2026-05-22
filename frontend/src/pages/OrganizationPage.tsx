@@ -459,7 +459,7 @@ export default function OrganizationPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Divisions</CardTitle>
+                  <CardTitle>{t("organization.divisions")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="flex gap-2">
