@@ -6,6 +6,7 @@ from datetime import date, datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy import func, distinct
 from io import BytesIO
 
 from app.api.deps import DB
@@ -30,7 +31,7 @@ from app.core.audit import log_audit as audit_log
 router = APIRouter()
 
 
-def _build_imr_response(db: Session, item: ImrItem) -> ImrItemResponse:
+def _build_imr_response(db: Session, item: ImrItem, linked_asset_count: int = 0) -> ImrItemResponse:
     measure = db.query(EitsCatalogMeasure).filter(EitsCatalogMeasure.id == item.measure_id).first()
     measure_info = None
     if measure:
@@ -69,6 +70,7 @@ def _build_imr_response(db: Session, item: ImrItem) -> ImrItemResponse:
         requirement_profile=profile,
         todo_description=item.todo_description,
         cost_eur=float(item.cost_eur) if item.cost_eur else None,
+        linked_asset_count=linked_asset_count,
     )
 
 
@@ -124,7 +126,29 @@ def list_imr_items(
             ImrItem.pearo_status.in_(["E", "O"]),
         )
     items = query.order_by(ImrItem.created_at.desc()).offset(skip).limit(limit).all()
-    return [_build_imr_response(db, item) for item in items]
+    
+    # Batch compute linked asset counts per measure
+    measure_ids = list(set(item.measure_id for item in items))
+    if measure_ids:
+        counts = (
+            db.query(
+                ImrItem.measure_id,
+                func.count(distinct(AssetModuleMapping.asset_id)).label("cnt")
+            )
+            .join(AssetModuleMapping, AssetModuleMapping.id == ImrItem.asset_module_mapping_id)
+            .filter(
+                ImrItem.measure_id.in_(measure_ids),
+                ImrItem.tenant_id == current_user.tenant_id,
+                ImrItem.asset_module_mapping_id.isnot(None),
+            )
+            .group_by(ImrItem.measure_id)
+            .all()
+        )
+        count_map = {str(r.measure_id): r.cnt for r in counts}
+    else:
+        count_map = {}
+    
+    return [_build_imr_response(db, item, count_map.get(str(item.measure_id), 0)) for item in items]
 
 
 @router.post("/", response_model=ImrItemResponse, status_code=status.HTTP_201_CREATED)

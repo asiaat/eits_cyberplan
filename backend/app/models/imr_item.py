@@ -54,6 +54,7 @@ class ImrItem(Base):
     @property
     def pearo_status_display(self):
         return {
+            "U": "Unknown",
             "P": "Not applicable",
             "E": "Not implemented",
             "A": "Accepted risk",

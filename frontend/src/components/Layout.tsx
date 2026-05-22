@@ -43,27 +43,21 @@ function getNavSections(t: (key: string) => string): NavSection[] {
     {
       key: "eits",
       items: [
-        { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
+        // { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard }, // hidden
         { path: "/processes", label: t("nav.businessProcesses"), icon: FolderKanban },
         { path: "/assets", label: t("nav.assets"), icon: Boxes },
-        { path: "/targets", label: t("nav.targets"), icon: Target },
+        // { path: "/targets", label: t("nav.targets"), icon: Target }, // hidden
         { path: "/protection-mode", label: t("nav.protectionmode"), icon: Shield },
-        { path: "/catalog", label: t("nav.catalog"), icon: BookMarked },
         { path: "/mappings", label: t("nav.mappings"), icon: Link2 },
         { path: "/implementation-plan", label: t("nav.implementationPlan"), icon: ListTodo },
-      ]
-    },
-    {
-      key: "risk",
-      items: [
-        { path: "/risks", label: t("nav.risks"), icon: AlertTriangle },
         { path: "/evidences", label: t("nav.evidence"), icon: FileText },
       ]
     },
     {
       key: "support",
       items: [
-        { path: "/audit", label: t("nav.auditView"), icon: Shield },
+        { path: "/catalog", label: t("nav.catalog"), icon: BookMarked },
+        // { path: "/audit", label: t("nav.auditView"), icon: Shield }, // hidden — keep route + page for future use
         { path: "/terminology", label: t("nav.terminology"), icon: BookOpen },
         { path: "/organization", label: t("nav.organization"), icon: Building2 },
         { path: "/support/people", label: t("nav.supportPeople"), icon: UserCog },

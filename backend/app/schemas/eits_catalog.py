@@ -289,6 +289,7 @@ class AssetModuleMappingResponse(AssetModuleMappingBase):
 
 
 class PearoStatus(str, Enum):
+    U = "U"
     P = "P"
     E = "E"
     A = "A"
@@ -369,6 +370,7 @@ class ImrItemResponse(ImrItemBase):
     created_at: datetime
     updated_at: datetime
     measure: Optional[MeasureInfo] = None
+    linked_asset_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

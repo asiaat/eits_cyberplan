@@ -1,4 +1,4 @@
-export type PearoStatus = "P" | "E" | "A" | "R" | "O"
+export type PearoStatus = "U" | "P" | "E" | "A" | "R" | "O"
 
 export type ImrPriority = "P1" | "P2" | "P3"
 
@@ -31,6 +31,7 @@ export interface ImrItem {
   requirement_profile?: string
   todo_description?: string
   cost_eur?: number
+  linked_asset_count?: number
 }
 
 export interface MeasureInfo {
@@ -81,6 +82,7 @@ export interface ImrStatusOption {
 }
 
 export const IMR_STATUS_OPTIONS: ImrStatusOption[] = [
+  { value: "U", label: "U - Teadmata (Unknown)", color: "gray" },
   { value: "P", label: "P - Kavandatud (Planned)", color: "slate" },
   { value: "E", label: "E - Rakendamisel (In Progress)", color: "amber" },
   { value: "A", label: "A - Risk aktsepteeritud (Accepted Risk)", color: "orange" },

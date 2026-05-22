@@ -4,7 +4,7 @@ import { useImrApi } from "@/lib/use-imr-api"
 import { useTranslation } from "@/lib/i18n"
 import { ImrStatusBadge, ImrPriorityBadge, ImrValidationIndicator } from "./ImrStatusBadge"
 
-type SortField = "code" | "status" | "priority" | "dueDate" | "profile" | "responsible" | "todo" | "cost"
+type SortField = "code" | "status" | "priority" | "assetCount" | "dueDate" | "profile" | "responsible" | "todo" | "cost"
 type SortOrder = "asc" | "desc"
 
 interface ImrTableProps {
@@ -75,6 +75,9 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
         case "priority":
           const priorityOrder = { P1: 1, P2: 2, P3: 3 }
           cmp = (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2)
+          break
+        case "assetCount":
+          cmp = (a.linked_asset_count || 0) - (b.linked_asset_count || 0)
           break
         case "dueDate":
           cmp = (a.due_date || "").localeCompare(b.due_date || "")
@@ -156,6 +159,12 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
               {t("implementationPlan.table.priority")}<SortIcon field="priority" />
             </th>
             <th 
+              className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-16"
+              onClick={() => handleSort("assetCount")}
+            >
+              {t("implementationPlan.table.assetCount")}<SortIcon field="assetCount" />
+            </th>
+            <th 
               className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-24"
               onClick={() => handleSort("dueDate")}
             >
@@ -214,6 +223,15 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
                 </td>
                 <td className="py-2 px-2">
                   <ImrPriorityBadge priority={item.priority} />
+                </td>
+                <td className="py-2 px-2 text-center">
+                  {item.linked_asset_count && item.linked_asset_count > 0 ? (
+                    <span className="inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 text-xs font-bold rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900 dark:text-blue-200">
+                      {item.linked_asset_count}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
                 </td>
                 <td className="py-2 px-2">
                   <span className={`${isOverdue(item) ? "text-red-600 font-medium" : "text-muted-foreground"}`}>

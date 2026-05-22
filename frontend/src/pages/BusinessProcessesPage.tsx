@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useTranslation } from "@/lib/i18n"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
-import { AlertTriangle, Link2, Unlink, Plus, ExternalLink, Trash2, ArrowRight, ArrowLeft } from "lucide-react"
+import { AlertTriangle, Link2, Unlink, Plus, ExternalLink, Trash2, ArrowRight, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type SortingState,
+} from "@tanstack/react-table"
 
 interface OwnerInfo {
   id: string
@@ -125,6 +132,8 @@ export default function BusinessProcessesPage() {
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("")
   const [divisionFilter, setDivisionFilter] = useState<string>("")
+  const [viewMode, setViewMode] = useState<"cards" | "list">("cards")
+  const [sorting, setSorting] = useState<SortingState>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   
@@ -397,18 +406,216 @@ export default function BusinessProcessesPage() {
     return division?.name || null
   }
 
-  const filteredProcesses = processes.filter((p) =>
+  const filteredProcesses = useMemo(() => processes.filter((p) =>
     p.name.toLowerCase().includes(search.toLowerCase())
-  )
+  ), [processes, search])
 
-  const availableProcessesForDep = processes.filter(
+  const availableProcessesForDep = useMemo(() => processes.filter(
     p => p.id !== selectedBP?.id && !dependencies.upstream.some(d => d.depends_on_process_id === p.id)
-  )
+  ), [processes, selectedBP?.id, dependencies.upstream])
 
-  const filteredAllEvidences = allEvidences.filter(e =>
+  const filteredAllEvidences = useMemo(() => allEvidences.filter(e =>
     e.title.toLowerCase().includes(searchEvidence.toLowerCase()) &&
     !evidences.some(ev => ev.id === e.id)
-  )
+  ), [allEvidences, searchEvidence, evidences])
+
+  const columns = useMemo(() => [
+    {
+      accessorKey: "name",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("common.name")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => (
+        <span className="font-medium">{row.getValue("name")}</span>
+      ),
+    },
+    {
+      accessorKey: "status",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("common.status")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const status = row.getValue("status") as string
+        return (
+          <Badge variant="outline" className={`${statusColors[status] || statusColors.unknown}`}>
+            {t(`common.${status}`) || status}
+          </Badge>
+        )
+      },
+    },
+    {
+      id: "protection",
+      accessorFn: (row: any) => `${row.confidentiality_need}${row.integrity_need}${row.availability_need}`,
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("businessProcesses.protectionNeeds")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const p = row.original
+        return (
+          <div className="flex gap-1">
+            <Badge variant="outline" className={`${protectionNeedColors[p.confidentiality_need]} text-xs`}>
+              C:{t(`protectionNeed.${p.confidentiality_need}`)?.charAt(0) || p.confidentiality_need?.charAt(0)}
+            </Badge>
+            <Badge variant="outline" className={`${protectionNeedColors[p.integrity_need]} text-xs`}>
+              I:{t(`protectionNeed.${p.integrity_need}`)?.charAt(0) || p.integrity_need?.charAt(0)}
+            </Badge>
+            <Badge variant="outline" className={`${protectionNeedColors[p.availability_need]} text-xs`}>
+              A:{t(`protectionNeed.${p.availability_need}`)?.charAt(0) || p.availability_need?.charAt(0)}
+            </Badge>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "division_id",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("common.division")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const divId = row.getValue("division_id") as string | null
+        const name = getDivisionName(divId)
+        return name ? (
+          <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900 dark:text-purple-200">
+            {name}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-sm">-</span>
+        )
+      },
+    },
+    {
+      id: "owner",
+      accessorFn: (row: any) => row.owner?.name || "",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("businessProcesses.owner")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const owner = row.original.owner as OwnerInfo | null
+        return owner?.name || "-"
+      },
+    },
+    {
+      accessorKey: "asset_count",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("businessProcesses.assetCount")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const count = row.getValue("asset_count") as number
+        return (
+          <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900 dark:text-blue-200">
+            {count}
+          </Badge>
+        )
+      },
+    },
+    {
+      id: "actions",
+      header: t("common.actions"),
+      cell: ({ row }: any) => {
+        const process = row.original
+        return (
+          <div className="flex gap-1">
+            <Button variant="ghost" size="sm" onClick={() => handleView(process)}>
+              {t("common.view")}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => handleEdit(process)}>
+              {t("common.edit")}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => confirmDelete(process.id)} className="text-destructive">
+              {t("common.delete")}
+            </Button>
+          </div>
+        )
+      },
+    },
+  ], [t])
+
+  const table = useReactTable({
+    data: filteredProcesses,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    state: { sorting },
+    onSortingChange: setSorting,
+  })
 
   if (loading) {
     return (
@@ -471,6 +678,24 @@ export default function BusinessProcessesPage() {
             ))}
           </select>
         )}
+        <div className="ml-auto flex items-center border rounded-md">
+          <Button
+            variant={viewMode === "cards" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("cards")}
+            className="rounded-r-none"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === "list" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("list")}
+            className="rounded-l-none"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {filteredProcesses.length === 0 && !error && (
@@ -481,7 +706,7 @@ export default function BusinessProcessesPage() {
         </Card>
       )}
 
-      {filteredProcesses.length > 0 && (
+      {viewMode === "cards" && filteredProcesses.length > 0 && (
         <div className="space-y-4">
           {filteredProcesses.map((process) => (
             <Card key={process.id} className="hover:shadow-md transition-shadow">
@@ -562,6 +787,37 @@ export default function BusinessProcessesPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {viewMode === "list" && filteredProcesses.length > 0 && (
+        <div className="border rounded-md overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-muted">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th key={header.id} className="px-4 py-3 text-left text-sm font-medium">
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row) => (
+                <tr key={row.id} className="border-t hover:bg-muted/50">
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3 text-sm">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
