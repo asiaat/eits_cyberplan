@@ -33,9 +33,25 @@ router = APIRouter()
 
 def _build_imr_response(db: Session, item: ImrItem, linked_asset_count: int = 0) -> ImrItemResponse:
     measure = db.query(EitsCatalogMeasure).filter(EitsCatalogMeasure.id == item.measure_id).first()
+    module_group = None
     measure_info = None
-    if measure:
-        measure_info = {"id": measure.id, "code": measure.code, "name": measure.name, "measure_level": measure.measure_level}
+    if measure and measure.module:
+        module_group = measure.module.module_group
+        measure_info = {
+            "id": measure.id,
+            "code": measure.code,
+            "name": measure.name,
+            "measure_level": measure.measure_level,
+            "module_group": module_group,
+        }
+    elif measure:
+        measure_info = {
+            "id": measure.id,
+            "code": measure.code,
+            "name": measure.name,
+            "measure_level": measure.measure_level,
+            "module_group": None,
+        }
     
     # Derive requirement_profile from measure level if not set
     profile = item.requirement_profile
@@ -108,6 +124,7 @@ def list_imr_items(
     priority: Optional[str] = Query(None, alias="priority"),
     asset_id: Optional[UUID] = Query(None, alias="asset_id"),
     overdue_only: bool = Query(False, alias="overdue_only"),
+    module_group: Optional[str] = Query(None, alias="module_group"),
     skip: int = Query(0, ge=0),
     limit: int = Query(200, ge=1, le=500),
 ):
@@ -125,6 +142,10 @@ def list_imr_items(
             ImrItem.due_date < date.today(),
             ImrItem.pearo_status.in_(["E", "O"]),
         )
+    if module_group:
+        query = query.join(EitsCatalogMeasure, EitsCatalogMeasure.id == ImrItem.measure_id)
+        query = query.join(EitsModule, EitsModule.id == EitsCatalogMeasure.module_id)
+        query = query.filter(EitsModule.module_group == module_group)
     items = query.order_by(ImrItem.created_at.desc()).offset(skip).limit(limit).all()
     
     # Batch compute linked asset counts per measure

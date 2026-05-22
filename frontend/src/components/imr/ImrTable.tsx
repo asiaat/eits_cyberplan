@@ -14,6 +14,7 @@ interface ImrTableProps {
     priority?: string
     asset_id?: string
     overdue_only?: boolean
+    module_group?: string
   }
 }
 
@@ -31,12 +32,17 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
   const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
+    setPage(1)
+  }, [filters])
+
+  useEffect(() => {
     loadItems()
   }, [filters, page])
 
   const loadItems = async () => {
     const skip = (page - 1) * PAGE_SIZE
     const fetchedItems = await fetchImrItems({ ...filters, skip, limit: PAGE_SIZE })
+    
     setItems(fetchedItems)
     setHasMore(fetchedItems.length === PAGE_SIZE)
     

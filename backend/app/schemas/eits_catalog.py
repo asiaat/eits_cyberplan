@@ -354,6 +354,7 @@ class MeasureInfo(BaseModel):
     code: str
     name: str
     measure_level: str
+    module_group: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -29,6 +29,7 @@ export function useImrApi() {
       priority?: string
       asset_id?: string
       overdue_only?: boolean
+      module_group?: string
       skip?: number
       limit?: number
     }
@@ -41,6 +42,7 @@ export function useImrApi() {
       if (filters?.priority) params.append("priority", filters.priority)
       if (filters?.asset_id) params.append("asset_id", filters.asset_id)
       if (filters?.overdue_only) params.append("overdue_only", "true")
+      if (filters?.module_group) params.append("module_group", filters.module_group)
       if (filters?.skip) params.append("skip", String(filters.skip))
       if (filters?.limit) params.append("limit", String(filters.limit))
       

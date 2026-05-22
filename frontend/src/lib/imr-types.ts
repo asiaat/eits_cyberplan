@@ -39,6 +39,7 @@ export interface MeasureInfo {
   code: string
   name: string
   measure_level: string
+  module_group?: string
 }
 
 export interface ImrItemUpdate {
