@@ -94,6 +94,32 @@ make test-frontend
 make quality
 ```
 
+## Managing Docker Services
+
+```bash
+# Restart all services (backend + frontend)
+docker compose restart backend frontend
+
+# Restart only backend
+docker compose restart backend
+
+# Restart only frontend
+docker compose restart frontend
+
+# Stop all services
+docker compose stop
+
+# Start all services
+docker compose start
+
+# View logs
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# Full restart (stop + start)
+docker compose stop backend frontend && docker compose start backend frontend
+```
+
 ## Project Structure
 
 ```

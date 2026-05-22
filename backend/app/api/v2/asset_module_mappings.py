@@ -195,7 +195,12 @@ def generate_imr_from_mappings(
     current_user: LocalUser = Depends(get_current_user_v2),
     asset_id: Optional[UUID] = Query(None, alias="asset_id"),
 ):
-    """Generate IMR items from asset-module mappings."""
+    """Generate IMR items from asset-module mappings.
+    
+    For CORE mode:
+    - Assets marked as is_core=True get BASE + STANDARD measures (PÕHIMEEDE + PIIRATULT)
+    - Assets not marked as core get only BASE measures (PÕHIMEEDE only)
+    """
     if asset_id:
         mappings = db.query(AssetModuleMapping).filter(
             AssetModuleMapping.tenant_id == current_user.tenant_id,
@@ -211,10 +216,20 @@ def generate_imr_from_mappings(
     ).order_by(SecurityProfile.created_at.desc()).first()
 
     approach = security_profile.security_approach if security_profile else "BASIC"
-    level_filter = {"BASIC": ["BASE"], "STANDARD": ["BASE", "STANDARD"], "CORE": ["BASE", "STANDARD", "HIGH"]}[approach]
+    level_filter = {"BASIC": ["BASE"], "STANDARD": ["BASE", "STANDARD"], "CORE": ["BASE", "STANDARD"]}[approach]
 
     items_created = []
     for mapping in mappings:
+        # For CORE mode, filter by asset is_core status
+        if approach == "CORE":
+            asset = db.query(Asset).filter(Asset.id == mapping.asset_id).first()
+            if asset and not asset.is_core:
+                # Non-core assets in CORE mode only get BASE measures
+                level_filter = ["BASE"]
+            else:
+                # Core assets get BASE + STANDARD
+                level_filter = ["BASE", "STANDARD"]
+        
         measures = db.query(EitsCatalogMeasure).filter(
             EitsCatalogMeasure.module_id == mapping.module_id,
             EitsCatalogMeasure.measure_level.in_(level_filter),
@@ -234,6 +249,7 @@ def generate_imr_from_mappings(
                 measure_id=measure.id,
                 pearo_status="E",
                 priority="P2",
+                requirement_profile="PÕHIMEEDE" if measure.measure_level == "BASE" else "PIIRATULT",
             )
             db.add(item)
             items_created.append(item)

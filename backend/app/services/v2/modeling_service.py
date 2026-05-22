@@ -142,6 +142,9 @@ class ModelingService:
                 "measure_id": measure.id,
                 "pearo_status": "P",
                 "priority": "P2",
+                "mapped_module_id": mapping.id,
+                "created_by": user_id,
+                "updated_by": user_id,
             }
             if target_type == "asset":
                 kwargs["asset_module_mapping_id"] = mapping.id

@@ -1,10 +1,12 @@
 """IMR Items API v2 - E-ITS implementation plan with PEARO."""
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
-from datetime import date
+from datetime import date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from io import BytesIO
 
 from app.api.deps import DB
 from app.api.v2.auth import get_current_user_v2, LocalUser
@@ -13,6 +15,9 @@ from app.models.asset_module_mapping import AssetModuleMapping
 from app.models.eits_catalog_measure import EitsCatalogMeasure
 from app.models.eits_module import EitsModule
 from app.models.asset import Asset
+from app.models.evidence import Evidence
+from app.models.evidence_link import EvidenceLink
+from app.services.v2.imr_service import ImrService
 from app.schemas.eits_catalog import (
     ImrItemCreate,
     ImrItemUpdate,
@@ -30,6 +35,12 @@ def _build_imr_response(db: Session, item: ImrItem) -> ImrItemResponse:
     measure_info = None
     if measure:
         measure_info = {"id": measure.id, "code": measure.code, "name": measure.name, "measure_level": measure.measure_level}
+    
+    # Derive requirement_profile from measure level if not set
+    profile = item.requirement_profile
+    if not profile and measure:
+        profile = "PÕHIMEEDE" if measure.measure_level == "BASE" else "PIIRATULT"
+    
     return ImrItemResponse(
         id=item.id,
         tenant_id=item.tenant_id,
@@ -51,6 +62,39 @@ def _build_imr_response(db: Session, item: ImrItem) -> ImrItemResponse:
         created_at=item.created_at,
         updated_at=item.updated_at,
         measure=measure_info,
+        mapped_module_id=item.mapped_module_id,
+        created_by=item.created_by,
+        updated_by=item.updated_by,
+        status_changed_at=item.status_changed_at,
+        requirement_profile=profile,
+        todo_description=item.todo_description,
+        cost_eur=float(item.cost_eur) if item.cost_eur else None,
+    )
+
+
+@router.get("/export")
+def export_imr_to_excel(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+    pearo_status: Optional[str] = Query(None, alias="pearo_status"),
+    priority: Optional[str] = Query(None, alias="priority"),
+    overdue_only: bool = Query(False, alias="overdue_only"),
+):
+    """Export IMR items as Excel file (filtered by current query params)."""
+    excel_bytes = ImrService.export_imr_to_excel(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        pearo_status=pearo_status,
+        priority=priority,
+        overdue_only=overdue_only,
+    )
+    buffer = BytesIO(excel_bytes)
+    buffer.seek(0)
+    filename = f"IMR_{date.today().isoformat()}.xlsx"
+    return StreamingResponse(
+        buffer,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -119,6 +163,9 @@ def create_imr_item(
         next_review_date=data.next_review_date,
         priority=data.priority.value if hasattr(data.priority, 'value') else data.priority,
         verification_method=data.verification_method,
+        requirement_profile=data.requirement_profile,
+        todo_description=data.todo_description,
+        cost_eur=data.cost_eur,
     )
     db.add(item)
     db.commit()
@@ -174,6 +221,16 @@ def update_imr_item(
     before = {"pearo_status": item.pearo_status, "priority": item.priority}
 
     update_data = data.model_dump(exclude_unset=True, exclude_none=True)
+    
+    new_status = update_data.get("pearo_status")
+    
+    # Track status changes
+    if new_status and new_status != item.pearo_status:
+        item.status_changed_at = datetime.utcnow()
+    
+    # Set updated_by
+    item.updated_by = current_user.id
+    
     for field, value in update_data.items():
         if hasattr(value, 'value'):
             value = value.value
@@ -297,3 +354,118 @@ def get_asset_protection_overview(
         implemented_count=row.implemented_count or 0,
         not_implemented_count=row.not_implemented_count or 0,
     ) for row in rows]
+
+
+@router.post("/items/{item_id}/evidence", status_code=status.HTTP_201_CREATED)
+def link_evidence_to_imr_item(
+    item_id: UUID,
+    db: DB,
+    evidence_id: UUID = Query(..., description="Evidence ID to link"),
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """Link evidence to an IMR item."""
+    result = ImrService.link_evidence_to_imr(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        user_id=current_user.id,
+        imr_item_id=item_id,
+        evidence_id=evidence_id,
+    )
+    
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="link_evidence",
+        entity_type="imr_item",
+        entity_id=str(item_id),
+        after_json={"evidence_id": str(evidence_id)},
+    )
+    
+    return result
+
+
+@router.get("/items/{item_id}/validation", response_model=dict)
+def get_imr_item_validation_status(
+    item_id: UUID,
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """Get validation status for IMR item (can it transition to Implemented?)."""
+    validation_data = ImrService.get_imr_item_with_validation_status(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        imr_item_id=item_id,
+    )
+    
+    return {
+        "can_transition_to_implemented": validation_data["can_transition_to_implemented"],
+        "validation_errors": validation_data["validation_errors"],
+        "linked_evidence_count": validation_data["linked_evidence_count"],
+        "has_sufficient_implementation_details": validation_data["has_sufficient_implementation_details"],
+        "imr_item_id": str(item_id),
+        "current_status": validation_data["imr_item"].pearo_status if validation_data["imr_item"] else None
+    }
+
+
+@router.get("/reports/imr-summary-v2", response_model=dict)
+def get_imr_summary_v2(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """Get enhanced IMR summary statistics for dashboard."""
+    return ImrService.get_imr_summary_statistics(
+        db=db,
+        tenant_id=current_user.tenant_id,
+    )
+
+
+@router.patch("/items/{item_id}/approve", response_model=ImrItemResponse)
+def approve_imr_item_completion(
+    item_id: UUID,
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """Approve IMR item completion (transition to Implemented status with validation)."""
+    # First validate that it can transition to Implemented
+    validation_data = ImrService.get_imr_item_with_validation_status(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        imr_item_id=item_id,
+    )
+    
+    if not validation_data["can_transition_to_implemented"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="; ".join(validation_data["validation_errors"])
+        )
+    
+    # Update the item to Implemented status
+    item = db.query(ImrItem).filter(
+        ImrItem.id == item_id,
+        ImrItem.tenant_id == current_user.tenant_id,
+    ).first()
+    
+    if not item:
+        raise HTTPException(status_code=404, detail="IMR item not found")
+    
+    before_status = item.pearo_status
+    item.pearo_status = "R"  # Implemented
+    item.updated_by = current_user.id
+    item.updated_at = datetime.datetime.utcnow()
+    
+    db.commit()
+    db.refresh(item)
+    
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="approve_completion",
+        entity_type="imr_item",
+        entity_id=str(item_id),
+        before_json={"pearo_status": before_status},
+        after_json={"pearo_status": item.pearo_status},
+    )
+    
+    return _build_imr_response(db, item)
