@@ -320,6 +320,8 @@ organization: {
       inputsPlaceholder: "What inputs does this process need?",
       outputsPlaceholder: "What outputs does this process produce?",
       noDivision: "No division",
+      owner: "Owner",
+      assetCount: "Assets",
     },
     assets: {
       title: "Assets",
@@ -1107,6 +1109,8 @@ inactive: "Mitteaktiivne",
       inputsPlaceholder: "Milliseid sisendeid see protsess vajab?",
       outputsPlaceholder: "Milliseid väljundeid see protsess toodab?",
       noDivision: "Jaotist pole",
+      owner: "Omanik",
+      assetCount: "Varad",
     },
     assets: {
       title: "Varad",
