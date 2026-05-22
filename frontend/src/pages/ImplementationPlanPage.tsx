@@ -3,8 +3,10 @@ import { ImrTable } from "@/components/imr/ImrTable"
 import { ImrItemModal } from "@/components/imr/ImrItemModal"
 import { ImrDashboardStats } from "@/components/imr/ImrDashboardStats"
 import { ImrItem, IMR_STATUS_OPTIONS } from "@/lib/imr-types"
+import { useTranslation } from "@/lib/i18n"
 
 export default function ImplementationPlanPage() {
+  const { t } = useTranslation()
   const [selectedItem, setSelectedItem] = useState<ImrItem | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [filter, setFilter] = useState<{
@@ -29,15 +31,15 @@ export default function ImplementationPlanPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-4 lg:p-6">
+    <div>
       {/* Page Header */}
       <div className="mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">
-            Infoturbe meetmete rakenduskava (IMR)
+          <h1 className="text-2xl font-bold text-foreground">
+            {t("implementationPlan.pageTitle")}
           </h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Skoobi modelleerimisel loodud meetmete rakenduse jälgimine
+          <p className="text-xs text-muted-foreground mt-1">
+            {t("implementationPlan.pageSubtitle")}
           </p>
         </div>
       </div>
@@ -46,18 +48,18 @@ export default function ImplementationPlanPage() {
       <ImrDashboardStats />
 
       {/* Filter Bar */}
-      <div className="mb-3 bg-white rounded-lg border border-slate-200 p-3">
+      <div className="mb-3 bg-card rounded-lg border border-border p-3">
         <div className="flex flex-wrap gap-4 items-center">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">
-              Oleku filter
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">
+              {t("implementationPlan.dashboard.filterByStatusLabel")}
             </label>
             <select
               value={filter.pearo_status || ""}
               onChange={(e) => setFilter({ ...filter, pearo_status: e.target.value || undefined })}
-              className="border border-slate-200 rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500"
+              className="border border-border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-background"
             >
-              <option value="">Kõik olekud</option>
+              <option value="">{t("implementationPlan.dashboard.allStatuses")}</option>
               {IMR_STATUS_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.value} - {option.label.split(" - ")[1]}
@@ -67,17 +69,17 @@ export default function ImplementationPlanPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-500 mb-1">
-              Üleatekohad
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">
+              {t("implementationPlan.dashboard.overdueSection")}
             </label>
             <label className="inline-flex items-center">
               <input
                 type="checkbox"
                 checked={filter.overdue_only || false}
                 onChange={(e) => setFilter({ ...filter, overdue_only: e.target.checked || undefined })}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                className="rounded border-border text-indigo-600 focus:ring-indigo-500"
               />
-              <span className="ml-2 text-sm text-slate-600">Näita ainult ületähtajaga</span>
+              <span className="ml-2 text-sm text-muted-foreground">{t("implementationPlan.dashboard.showOverdueOnly")}</span>
             </label>
           </div>
 
@@ -86,14 +88,14 @@ export default function ImplementationPlanPage() {
               onClick={() => setFilter({})}
               className="text-sm text-indigo-600 hover:text-indigo-900 underline"
             >
-              Eemalda filtrid
+                {t("implementationPlan.dashboard.clearFilters")}
             </button>
           )}
         </div>
       </div>
 
       {/* IMR Table */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
         <ImrTable onEditItem={handleEditItem} filters={filter} />
       </div>
 

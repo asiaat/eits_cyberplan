@@ -34,11 +34,7 @@ const I18nContext = createContext<I18nContextType | null>(null);
 const STORAGE_KEY = "eits-language";
 
 function getBrowserLanguage(): Language {
-  const browserLang = navigator.language.toLowerCase();
-  if (browserLang.startsWith("ee") || browserLang.startsWith("et")) {
-    return "ee";
-  }
-  return "en";
+  return "ee";
 }
 
 function getInitialLanguage(): Language {

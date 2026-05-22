@@ -135,52 +135,52 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
     <div className="overflow-x-auto">
       <table className="w-full text-left border-collapse text-xs">
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-200 font-semibold text-slate-600 uppercase tracking-wider">
+          <tr className="bg-muted border-b border-border font-semibold text-muted-foreground uppercase tracking-wider">
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-20"
+              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-20"
               onClick={() => handleSort("code")}
             >
               {t("implementationPlan.table.code")}<SortIcon field="code" />
             </th>
-            <th className="py-2 px-2 w-48">{t("implementationPlan.table.measure")}</th>
+            <th className="py-2 px-2 w-40">{t("implementationPlan.table.measure")}</th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-24"
+              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-24"
               onClick={() => handleSort("status")}
             >
               {t("implementationPlan.table.status")}<SortIcon field="status" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-20"
+              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-20"
               onClick={() => handleSort("priority")}
             >
               {t("implementationPlan.table.priority")}<SortIcon field="priority" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-24"
+              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-24"
               onClick={() => handleSort("dueDate")}
             >
               {t("implementationPlan.table.dueDate")}<SortIcon field="dueDate" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-28"
+              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-28"
               onClick={() => handleSort("responsible")}
             >
               {t("implementationPlan.table.responsible")}<SortIcon field="responsible" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-20"
+              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-20"
               onClick={() => handleSort("profile")}
             >
               {t("implementationPlan.table.profile")}<SortIcon field="profile" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-32"
+              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-32"
               onClick={() => handleSort("todo")}
             >
               {t("implementationPlan.modal.todoDescription")}<SortIcon field="todo" />
             </th>
             <th 
-              className="py-2 px-2 cursor-pointer hover:bg-slate-100 select-none w-20 text-right"
+              className="py-2 px-2 cursor-pointer hover:bg-muted select-none w-20 text-right"
               onClick={() => handleSort("cost")}
             >
               {t("implementationPlan.modal.costEur")}<SortIcon field="cost" />
@@ -188,7 +188,7 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
             <th className="py-2 px-2 text-center w-16">{t("implementationPlan.table.validation")}</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-border">
           {sortedItems.map((item) => {
             const validation = validationStatuses[item.id]
             const canTransition = validation?.can_transition_to_implemented ?? false
@@ -197,7 +197,7 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
               <tr 
                 key={item.id} 
                 onClick={() => onEditItem?.(item)}
-                className="hover:bg-slate-100 cursor-pointer transition-colors border-b border-slate-100"
+                className="hover:bg-muted cursor-pointer transition-colors border-b border-border"
               >
                 <td className="py-2 px-2">
                   <span className="font-bold text-blue-800">
@@ -205,7 +205,7 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
                   </span>
                 </td>
                 <td className="py-2 px-2">
-                  <span className="font-medium text-slate-900 truncate block" title={item.measure?.name}>
+                  <span className="font-medium text-foreground truncate block" title={item.measure?.name}>
                     {item.measure?.name || "N/A"}
                   </span>
                 </td>
@@ -216,12 +216,12 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
                   <ImrPriorityBadge priority={item.priority} />
                 </td>
                 <td className="py-2 px-2">
-                  <span className={`${isOverdue(item) ? "text-red-600 font-medium" : "text-slate-600"}`}>
+                  <span className={`${isOverdue(item) ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
                     {item.due_date ? formatDate(item.due_date) : "—"}
                   </span>
                 </td>
                 <td className="py-2 px-2">
-                  <span className="text-slate-600 truncate block" title={item.responsible_user_id ? users[item.responsible_user_id] : undefined}>
+                  <span className="text-muted-foreground truncate block" title={item.responsible_user_id ? users[item.responsible_user_id] : undefined}>
                     {item.responsible_user_id ? (users[item.responsible_user_id] || "—") : t("implementationPlan.table.unassigned")}
                   </span>
                 </td>
@@ -235,12 +235,12 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
                       {item.requirement_profile}
                     </span>
                   ) : (
-                    <span className="text-xs text-slate-400">—</span>
+                    <span className="text-xs text-muted-foreground">—</span>
                   )}
                 </td>
                 <td className="py-2 px-2">
                   {item.todo_description ? (
-                    <span className="text-slate-600 truncate block max-w-[120px]" title={item.todo_description}>
+                    <span className="text-muted-foreground truncate block max-w-[120px]" title={item.todo_description}>
                       {item.todo_description.substring(0, 20)}...
                     </span>
                   ) : (
@@ -249,7 +249,7 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
                 </td>
                 <td className="py-2 px-2 text-right">
                   {item.cost_eur !== undefined && item.cost_eur !== null ? (
-                    <span className="text-slate-600">{item.cost_eur.toFixed(0)}</span>
+                    <span className="text-muted-foreground">{item.cost_eur.toFixed(0)}</span>
                   ) : (
                     <span className="text-slate-400">—</span>
                   )}
@@ -273,25 +273,25 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
       </table>
 
       {/* Pagination Controls */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-slate-300 bg-slate-100">
-        <div className="text-sm font-bold text-slate-700">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted">
+        <div className="text-sm font-bold text-foreground">
           {startItem} - {endItem}
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="px-4 py-2 text-sm font-bold border-2 border-slate-400 rounded-lg bg-white text-slate-700 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-bold border-2 border-border rounded-lg bg-card text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
           >
             ← {t("implementationPlan.pagination.previous")}
           </button>
-          <span className="px-4 py-2 text-sm font-bold text-slate-800 bg-slate-200 rounded-lg border-2 border-slate-300">
+          <span className="px-4 py-2 text-sm font-bold text-foreground bg-muted rounded-lg border-2 border-border">
             {t("implementationPlan.pagination.page")} {page}
           </span>
           <button
             onClick={() => setPage(p => p + 1)}
             disabled={!hasMore}
-            className="px-4 py-2 text-sm font-bold border-2 border-slate-400 rounded-lg bg-white text-slate-700 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-4 py-2 text-sm font-bold border-2 border-border rounded-lg bg-card text-foreground hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {t("implementationPlan.pagination.next")} →
           </button>

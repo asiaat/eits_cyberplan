@@ -139,18 +139,18 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-card rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex justify-between items-start border-b border-slate-200 p-6">
+        <div className="flex justify-between items-start border-b border-border p-6">
           <div>
-            <h2 className="text-xl font-bold text-slate-900">
+            <h2 className="text-xl font-bold text-foreground">
               {t("implementationPlan.modal.title")}: <span className="text-blue-800">{item.measure?.code}</span>
             </h2>
-            <p className="text-sm text-slate-500 mt-1">{item.measure?.name}</p>
+            <p className="text-sm text-muted-foreground mt-1">{item.measure?.name}</p>
           </div>
           <button 
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 text-2xl"
+            className="text-muted-foreground hover:text-foreground text-2xl"
           >
             ×
           </button>
@@ -184,33 +184,33 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Status and Priority Row */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-              <label className="block text-sm font-bold text-slate-800 mb-2">
+            <div className="bg-muted p-4 rounded-lg border border-border">
+              <label className="block text-sm font-bold text-foreground mb-2">
                 {t("implementationPlan.table.status")}
               </label>
               <select
                 value={formData.pearo_status || ""}
                 onChange={(e) => handleStatusChange(e.target.value)}
-                className="w-full border border-slate-400 bg-white rounded-lg p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full border border-border bg-background rounded-lg p-2.5 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 {IMR_STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value} className="text-slate-900">
+                  <option key={option.value} value={option.value} className="text-foreground">
                     {option.label}
                   </option>
                 ))}
               </select>
             </div>
-            <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-              <label className="block text-sm font-bold text-slate-800 mb-2">
+            <div className="bg-muted p-4 rounded-lg border border-border">
+              <label className="block text-sm font-bold text-foreground mb-2">
                 {t("implementationPlan.table.priority")}
               </label>
               <select
                 value={formData.priority || ""}
                 onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                className="w-full border border-slate-400 bg-white rounded-lg p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full border border-border bg-background rounded-lg p-2.5 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 {IMR_PRIORITY_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value} className="text-slate-900">
+                  <option key={option.value} value={option.value} className="text-foreground">
                     {option.label}
                   </option>
                 ))}
@@ -219,31 +219,31 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
           </div>
 
           {/* Due Date */}
-          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-            <label className="block text-sm font-bold text-slate-800 mb-2">
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <label className="block text-sm font-bold text-foreground mb-2">
               {t("implementationPlan.table.dueDate")}
             </label>
             <input
               type="date"
               value={formData.due_date || ""}
               onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-              className="w-full border border-slate-400 bg-white rounded-lg p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full border border-border bg-background rounded-lg p-2.5 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
 
           {/* Responsible Person */}
-          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-            <label className="block text-sm font-bold text-slate-800 mb-2">
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <label className="block text-sm font-bold text-foreground mb-2">
               {t("implementationPlan.table.responsible")}
             </label>
             <select
               value={formData.responsible_user_id || ""}
               onChange={(e) => setFormData({ ...formData, responsible_user_id: e.target.value || undefined })}
-              className="w-full border border-slate-400 bg-white rounded-lg p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full border border-border bg-background rounded-lg p-2.5 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
-              <option value="" className="text-slate-900">Vali vastutaja...</option>
+              <option value="" className="text-foreground">Vali vastutaja...</option>
               {availableUsers.map((user) => (
-                <option key={user.id} value={user.id} className="text-slate-900">
+                <option key={user.id} value={user.id} className="text-foreground">
                   {user.full_name} {user.department ? `(${user.department})` : ""}
                 </option>
               ))}
@@ -251,8 +251,8 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
           </div>
 
           {/* Implementation Description */}
-          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-            <label className="block text-sm font-bold text-slate-800 mb-2">
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <label className="block text-sm font-bold text-foreground mb-2">
               {t("implementationPlan.modal.implementationDescription")} {formData.pearo_status === "R" && <span className="text-red-500">*</span>}
             </label>
             <textarea
@@ -260,16 +260,16 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
               onChange={(e) => setFormData({ ...formData, implementation_description: e.target.value })}
               rows={5}
               placeholder="Kirjelda tegevused, mis tõendavad meetme toimimist..."
-              className="w-full border border-slate-400 bg-white rounded-lg p-3 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full border border-border bg-background rounded-lg p-3 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
-            <p className="mt-1 text-xs text-slate-600">
+            <p className="mt-1 text-xs text-muted-foreground">
               {formData.implementation_description?.length || 0}/15 {t("implementationPlan.modal.charactersMin")}
             </p>
           </div>
 
           {/* Verification Method */}
-          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-            <label className="block text-sm font-bold text-slate-800 mb-2">
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <label className="block text-sm font-bold text-foreground mb-2">
               {t("implementationPlan.modal.verificationMethod")}
             </label>
             <input
@@ -277,30 +277,30 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
               value={formData.verification_method || ""}
               onChange={(e) => setFormData({ ...formData, verification_method: e.target.value })}
               placeholder="nt Kontrollitud dokumentatsioon, Test, Inspektsioon"
-              className="w-full border border-slate-400 bg-white rounded-lg p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full border border-border bg-background rounded-lg p-2.5 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
 
           {/* Requirement Profile - Auto-set from module */}
-          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-            <label className="block text-sm font-bold text-slate-800 mb-2">
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <label className="block text-sm font-bold text-foreground mb-2">
               {t("implementationPlan.modal.requirementProfile") || "Profiil"}
             </label>
             <select
               value={formData.requirement_profile || ""}
               disabled
-              className="w-full border border-slate-400 bg-slate-200 rounded-lg p-2.5 text-sm text-slate-600 cursor-not-allowed"
+              className="w-full border border-border bg-muted rounded-lg p-2.5 text-sm text-muted-foreground cursor-not-allowed"
             >
               <option value="">Vali profiil...</option>
               <option value="PÕHIMEEDE">PÕHIMEEDE (Basic)</option>
               <option value="PIIRATULT">PIIRATULT (Limited)</option>
             </select>
-            <p className="mt-1 text-xs text-slate-500">Profiil määratakse automaatselt moodulist</p>
+            <p className="mt-1 text-xs text-muted-foreground">Profiil määratakse automaatselt moodulist</p>
           </div>
 
           {/* Todo Description */}
-          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-            <label className="block text-sm font-bold text-slate-800 mb-2">
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <label className="block text-sm font-bold text-foreground mb-2">
               {t("implementationPlan.modal.todoDescription") || "Veel teha"}
             </label>
             <textarea
@@ -308,13 +308,13 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
               onChange={(e) => setFormData({ ...formData, todo_description: e.target.value })}
               rows={3}
               placeholder="Kirjelda, mis veel tuleb teha..."
-              className="w-full border border-slate-400 bg-white rounded-lg p-3 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full border border-border bg-background rounded-lg p-3 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
 
           {/* Cost EUR */}
-          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-            <label className="block text-sm font-bold text-slate-800 mb-2">
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <label className="block text-sm font-bold text-foreground mb-2">
               {t("implementationPlan.modal.costEur") || "Maksumus (EUR)"}
             </label>
             <input
@@ -327,26 +327,26 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
               step="0.01"
               min="0"
               placeholder="0.00"
-              className="w-full border border-slate-400 bg-white rounded-lg p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full border border-border bg-background rounded-lg p-2.5 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
 
           {/* Next Review Date */}
-          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-            <label className="block text-sm font-bold text-slate-800 mb-2">
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <label className="block text-sm font-bold text-foreground mb-2">
               {t("implementationPlan.modal.nextReviewDate") || "Järgmine ülevaade"}
             </label>
             <input
               type="date"
               value={formData.next_review_date || ""}
               onChange={(e) => setFormData({ ...formData, next_review_date: e.target.value })}
-              className="w-full border border-slate-400 bg-white rounded-lg p-2.5 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full border border-border bg-background rounded-lg p-2.5 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
 
           {/* Non-implementation Justification */}
-          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-            <label className="block text-sm font-bold text-slate-800 mb-2">
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <label className="block text-sm font-bold text-foreground mb-2">
               {t("implementationPlan.modal.nonImplementationJustification") || "Mitterakendamise põhjendus"}
             </label>
             <textarea
@@ -354,13 +354,13 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
               onChange={(e) => setFormData({ ...formData, non_implementation_justification: e.target.value })}
               rows={3}
               placeholder="Kui meetmeid ei rakendata, selgita põhjuseid..."
-              className="w-full border border-slate-400 bg-white rounded-lg p-3 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full border border-border bg-background rounded-lg p-3 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
 
           {/* Partial Scope Description */}
-          <div className="bg-slate-100 p-4 rounded-lg border border-slate-300">
-            <label className="block text-sm font-bold text-slate-800 mb-2">
+          <div className="bg-muted p-4 rounded-lg border border-border">
+            <label className="block text-sm font-bold text-foreground mb-2">
               {t("implementationPlan.modal.partialScopeDescription") || "Osaline rakendamine"}
             </label>
             <textarea
@@ -368,7 +368,7 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
               onChange={(e) => setFormData({ ...formData, partial_scope_description: e.target.value })}
               rows={3}
               placeholder="Kui meetmeid rakendatakse osaliselt, kirjelda ulatust..."
-              className="w-full border border-slate-400 bg-white rounded-lg p-3 text-sm text-slate-900 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full border border-border bg-background rounded-lg p-3 text-sm text-foreground focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
 
@@ -396,13 +396,13 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
           {/* Evidence Indicator */}
           <div className={`p-4 rounded-lg border ${
             validationStatus?.linked_evidence_count && validationStatus.linked_evidence_count > 0 
-              ? "bg-emerald-100 border-emerald-300" 
-              : "bg-slate-100 border-slate-300"
+              ? "bg-emerald-100 border-emerald-300 dark:bg-emerald-900/30 dark:border-emerald-700" 
+              : "bg-muted border-border"
           }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-lg">{validationStatus?.linked_evidence_count && validationStatus.linked_evidence_count > 0 ? "✓" : "○"}</span>
-                <span className="text-sm font-bold text-slate-800">
+                <span className="text-sm font-bold text-foreground">
                   {t("implementationPlan.modal.evidenceCount")}: {validationStatus?.linked_evidence_count || 0}
                 </span>
               </div>
@@ -412,7 +412,7 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
                   setShowEvidenceSelector(true)
                   loadAvailableEvidences()
                 }}
-                className="text-sm font-bold text-indigo-600 hover:text-indigo-900 bg-white px-3 py-1 rounded border border-indigo-300"
+                className="text-sm font-bold text-indigo-600 hover:text-indigo-900 bg-card px-3 py-1 rounded border border-indigo-300"
               >
                 {t("evidences.linkExisting") || "Link Evidence"}
               </button>
@@ -423,29 +423,29 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
         {/* Evidence Selector Modal */}
         {showEvidenceSelector && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <div className="bg-card rounded-xl shadow-xl w-full max-w-md p-6">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-bold">{t("evidences.selectEvidence")}</h3>
-                <button onClick={() => setShowEvidenceSelector(false)} className="text-slate-400 hover:text-slate-600 text-2xl">×</button>
+                <h3 className="text-lg font-bold text-foreground">{t("evidences.selectEvidence")}</h3>
+                <button onClick={() => setShowEvidenceSelector(false)} className="text-muted-foreground hover:text-foreground text-2xl">×</button>
               </div>
               <div className="max-h-60 overflow-y-auto space-y-2">
                 {availableEvidences.length === 0 ? (
-                  <p className="text-sm text-slate-500 text-center py-4">{t("evidences.noAvailable") || "No evidence available"}</p>
+                  <p className="text-sm text-muted-foreground text-center py-4">{t("evidences.noAvailable") || "No evidence available"}</p>
                 ) : (
                   availableEvidences.map((evidence) => (
                     <div
                       key={evidence.id}
                       onClick={() => handleLinkEvidence(evidence.id)}
-                      className="p-3 border border-slate-300 rounded-lg hover:bg-slate-100 cursor-pointer bg-slate-50"
+                      className="p-3 border border-border rounded-lg hover:bg-muted cursor-pointer bg-card"
                     >
-                      <span className="text-sm font-medium">{evidence.title}</span>
-                      <span className="text-xs text-slate-500 ml-2">{evidence.evidence_type}</span>
+                      <span className="text-sm font-medium text-foreground">{evidence.title}</span>
+                      <span className="text-xs text-muted-foreground ml-2">{evidence.evidence_type}</span>
                     </div>
                   ))
                 )}
               </div>
               {linkingLoading && (
-                <div className="text-center py-4 text-sm text-slate-500">
+                <div className="text-center py-4 text-sm text-muted-foreground">
                   {t("common.loading")}
                 </div>
               )}
@@ -454,11 +454,11 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
         )}
 
         {/* Footer */}
-        <div className="flex justify-end gap-3 border-t border-slate-200 p-4 bg-slate-50">
+        <div className="flex justify-end gap-3 border-t border-border p-4 bg-muted">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100"
+            className="px-4 py-2 text-sm font-medium text-foreground bg-card border border-border rounded-lg hover:bg-muted"
           >
             {t("common.cancel")}
           </button>

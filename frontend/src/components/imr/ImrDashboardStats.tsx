@@ -27,27 +27,27 @@ export function ImrDashboardStats() {
   }
 
   const statusColors: Record<string, string> = {
-    P: "bg-slate-100 text-slate-700",
-    E: "bg-amber-100 text-amber-700",
-    A: "bg-orange-100 text-orange-700",
-    R: "bg-emerald-100 text-emerald-700",
-    O: "bg-blue-100 text-blue-700",
+    P: "bg-muted text-foreground",
+    E: "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
+    A: "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
+    R: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+    O: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
   }
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
       {/* Total Items */}
-      <div className="bg-white rounded-lg border border-slate-200 p-3">
-        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+      <div className="bg-card rounded-lg border border-border p-3">
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
           {t("implementationPlan.dashboard.totalItems")}
         </div>
-        <div className="text-2xl font-bold text-slate-900 mt-1">
+        <div className="text-2xl font-bold text-foreground mt-1">
           {stats.total_items}
         </div>
       </div>
 
       {/* Overdue */}
-      <div className="bg-white rounded-lg border border-slate-200 p-3">
+      <div className="bg-card rounded-lg border border-border p-3">
         <div className="text-xs font-semibold text-red-600 uppercase tracking-wide">
           {t("implementationPlan.dashboard.overdue")}
         </div>
@@ -57,7 +57,7 @@ export function ImrDashboardStats() {
       </div>
 
       {/* Implemented */}
-      <div className="bg-white rounded-lg border border-slate-200 p-3">
+      <div className="bg-card rounded-lg border border-border p-3">
         <div className="text-xs font-semibold text-emerald-600 uppercase tracking-wide">
           {t("implementationPlan.dashboard.implemented")}
         </div>
@@ -67,7 +67,7 @@ export function ImrDashboardStats() {
       </div>
 
       {/* In Progress */}
-      <div className="bg-white rounded-lg border border-slate-200 p-3">
+      <div className="bg-card rounded-lg border border-border p-3">
         <div className="text-xs font-semibold text-amber-600 uppercase tracking-wide">
           {t("implementationPlan.dashboard.inProgress")}
         </div>
