@@ -833,7 +833,7 @@ organization: {
       section: {
         eits: "E-ITS",
         risk: "Risk ja vastavus",
-        support: "Toetus",
+        support: "Tugiteenused",
       },
       dashboard: "Töölaud",
       businessProcesses: "Äriprotsessid",
