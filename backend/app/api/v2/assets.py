@@ -1,12 +1,22 @@
 """Assets API v2."""
+import csv
+import hashlib
+import io
+import uuid
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+import boto3
+from botocore.config import Config
+from botocore.exceptions import ClientError
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, status
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from app.api.deps import DB
 from app.api.v2.auth import get_current_user_v2, CurrentUserV2, LocalUser
+from app.core.config import get_settings
 from app.models.asset import Asset
 from app.models.asset_module_mapping import AssetModuleMapping
 from app.models.process_asset import ProcessAsset
@@ -21,6 +31,19 @@ from app.schemas.asset import (
     LinkedProcessInfo,
 )
 from app.core.audit import log_audit as audit_log
+
+
+settings = get_settings()
+
+
+class AssetImportResult(BaseModel):
+    total: int = 0
+    created: int = 0
+    updated: int = 0
+    skipped_scoped: int = 0
+    duplicate_file: bool = False
+    file_storage_path: str = ""
+    errors: list[dict] = Field(default_factory=list)
 
 router = APIRouter()
 
@@ -248,6 +271,196 @@ def create_asset_v2(
     )
 
     return _build_response(db, asset, current_user)
+
+
+@router.post("/import-csv")
+def import_assets_csv(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+    file: UploadFile = File(...),
+    on_conflict: str = Form("update"),
+):
+    """Import assets from CSV file with MinIO storage and SHA-256 dedup.
+
+    CSV columns: name (required), asset_type (required), description,
+    criticality, confidentiality_need, integrity_need, availability_need,
+    lifecycle_status, quantity, group_name, remarks, is_core
+
+    Matching: by asset name (case-insensitive, per tenant).
+    - on_conflict="update" (default): overwrite fields on unscoped assets
+    - on_conflict="skip": skip any asset whose name already exists
+
+    Scoped assets (with module mappings) are never modified.
+
+    Files are stored in MinIO at imports/{tenant_id}/{sha256}.csv
+    to detect duplicate file uploads via SHA-256 hash.
+    """
+    result = AssetImportResult()
+
+    # Read raw bytes for hashing + MinIO storage
+    raw_bytes = file.file.read()
+    file_hash = hashlib.sha256(raw_bytes).hexdigest()
+    csv_content = raw_bytes.decode("utf-8-sig")
+
+    # MinIO setup
+    s3_config = Config(signature_version="s3")
+    s3 = boto3.client(
+        "s3",
+        endpoint_url=f"http://{settings.MINIO_ENDPOINT}",
+        aws_access_key_id=settings.MINIO_ACCESS_KEY,
+        aws_secret_access_key=settings.MINIO_SECRET_KEY,
+        config=s3_config,
+        region_name="us-east-1",
+    )
+    bucket = settings.MINIO_BUCKET
+    storage_key = f"imports/{current_user.tenant_id}/{file_hash}.csv"
+
+    # Ensure bucket exists
+    try:
+        s3.head_bucket(Bucket=bucket)
+    except ClientError:
+        try:
+            s3.create_bucket(Bucket=bucket)
+        except Exception:
+            pass
+
+    # Check if file was already imported (SHA-256 dedup)
+    try:
+        s3.head_object(Bucket=bucket, Key=storage_key)
+        result.duplicate_file = True
+        result.file_storage_path = storage_key
+        return result
+    except ClientError:
+        pass
+
+    # Store file in MinIO
+    try:
+        s3.put_object(
+            Bucket=bucket,
+            Key=storage_key,
+            Body=raw_bytes,
+            ContentType=file.content_type or "text/csv",
+            Metadata={"original_filename": file.filename or "import.csv", "imported_by": str(current_user.id)},
+        )
+        result.file_storage_path = storage_key
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to store file in MinIO: {str(e)}")
+
+    # Parse and process CSV rows
+    reader = csv.DictReader(io.StringIO(csv_content))
+
+    for row_idx, row in enumerate(reader, 2):
+        name = (row.get("name") or "").strip()
+        asset_type = (row.get("asset_type") or "").strip()
+
+        if not name or not asset_type:
+            result.errors.append({"row": row_idx, "message": "Missing required fields 'name' and 'asset_type'"})
+            continue
+
+        valid_asset_types = {"information_asset", "software", "hardware", "service", "data", "other", "APP", "SYS", "NET", "INF", "IND"}
+        valid_criticality = {"low", "normal", "high", "critical"}
+        valid_protection = {"normal", "high", "very_high", "unknown"}
+        valid_lifecycle = {"active", "inactive", "deprecated", "retired"}
+
+        asset_type = asset_type.lower().replace(" ", "_")
+        if asset_type not in valid_asset_types:
+            result.errors.append({"row": row_idx, "message": f"Invalid asset_type '{asset_type}'. Must be one of: {', '.join(sorted(valid_asset_types))}"})
+            continue
+
+        criticality = (row.get("criticality") or "normal").lower()
+        if criticality not in valid_criticality:
+            result.errors.append({"row": row_idx, "message": f"Invalid criticality '{criticality}'. Must be one of: {', '.join(valid_criticality)}"})
+            continue
+
+        confidentiality_need = (row.get("confidentiality_need") or "normal").lower()
+        integrity_need = (row.get("integrity_need") or "normal").lower()
+        availability_need = (row.get("availability_need") or "normal").lower()
+        protection_fields = [("confidentiality_need", confidentiality_need), ("integrity_need", integrity_need), ("availability_need", availability_need)]
+        has_invalid = False
+        for label, val in protection_fields:
+            if val not in valid_protection:
+                result.errors.append({"row": row_idx, "message": f"Invalid {label} '{val}'. Must be one of: {', '.join(valid_protection)}"})
+                has_invalid = True
+        if has_invalid:
+            continue
+
+        lifecycle_status = (row.get("lifecycle_status") or "active").lower()
+        if lifecycle_status not in valid_lifecycle:
+            result.errors.append({"row": row_idx, "message": f"Invalid lifecycle_status '{lifecycle_status}'. Must be one of: {', '.join(valid_lifecycle)}"})
+            continue
+
+        try:
+            existing = db.query(Asset).filter(
+                Asset.tenant_id == current_user.tenant_id,
+                func.lower(Asset.name) == name.lower(),
+            ).first()
+
+            if existing:
+                mapping_count = db.query(AssetModuleMapping).filter(
+                    AssetModuleMapping.asset_id == existing.id,
+                ).count()
+                if mapping_count > 0:
+                    result.skipped_scoped += 1
+                    continue
+
+                if on_conflict == "skip":
+                    result.skipped_scoped += 1
+                    continue
+
+                update_fields = {
+                    "asset_type": asset_type,
+                    "description": row.get("description") or None,
+                    "remarks": row.get("remarks") or None,
+                    "criticality": criticality,
+                    "confidentiality_need": confidentiality_need,
+                    "integrity_need": integrity_need,
+                    "availability_need": availability_need,
+                    "lifecycle_status": lifecycle_status,
+                    "quantity": int(row["quantity"]) if row.get("quantity", "").strip() else existing.quantity,
+                    "group_name": row.get("group_name") or None,
+                    "is_core": (row.get("is_core") or "false").lower() in ("true", "1", "yes"),
+                }
+                for key, value in update_fields.items():
+                    setattr(existing, key, value)
+                existing.updated_at = func.now()
+                db.commit()
+                result.updated += 1
+            else:
+                asset = Asset(
+                    tenant_id=current_user.tenant_id,
+                    name=name,
+                    asset_type=asset_type,
+                    description=row.get("description") or None,
+                    remarks=row.get("remarks") or None,
+                    criticality=criticality,
+                    confidentiality_need=confidentiality_need,
+                    integrity_need=integrity_need,
+                    availability_need=availability_need,
+                    lifecycle_status=lifecycle_status,
+                    quantity=int(row["quantity"]) if row.get("quantity", "").strip() else 1,
+                    group_name=row.get("group_name") or None,
+                    is_core=(row.get("is_core") or "false").lower() in ("true", "1", "yes"),
+                )
+                db.add(asset)
+                db.commit()
+                result.created += 1
+
+            result.total += 1
+        except Exception as e:
+            result.errors.append({"row": row_idx, "message": str(e)})
+            db.rollback()
+
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="import_csv",
+        entity_type="asset",
+        entity_id=str(uuid.uuid4()),
+        after_json=result.model_dump(),
+    )
+
+    return result
 
 
 @router.get("/{asset_id}", response_model=AssetResponse)

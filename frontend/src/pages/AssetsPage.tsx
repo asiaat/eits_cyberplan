@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
-import { AlertTriangle, Search, ChevronDown, ChevronRight, Unlink, Link2, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown, BookOpen, Loader2, X } from "lucide-react"
+import { AlertTriangle, Search, ChevronDown, ChevronRight, Unlink, Link2, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown, BookOpen, Loader2, X, Upload } from "lucide-react"
 import {
   flexRender,
   getCoreRowModel,
@@ -165,6 +165,18 @@ export default function AssetsPage() {
   const [editModuleJustification, setEditModuleJustification] = useState("")
   const [assetModules, setAssetModules] = useState<{id: string; module_id: string; module_code: string; module_name: string; module_group: string; justification: string | null}[]>([])
   const [loadingAssetModules, setLoadingAssetModules] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importResult, setImportResult] = useState<{
+    total: number
+    created: number
+    updated: number
+    skipped_scoped: number
+    duplicate_file: boolean
+    file_storage_path: string
+    errors: { row: number; message: string }[]
+  } | null>(null)
+  const [showImportResult, setShowImportResult] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const table = useReactTable({
     data: assets,
@@ -774,6 +786,35 @@ export default function AssetsPage() {
     { value: "unknown", label: t("protectionNeed.unknown") },
   ]
 
+  const handleImportCsv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setImporting(true)
+    setImportResult(null)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("on_conflict", "update")
+
+      const response = await apiClient.post("/assets/import-csv", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      })
+      setImportResult(response.data)
+    } catch (err: any) {
+      setImportResult({
+        total: 0, created: 0, updated: 0, skipped_scoped: 0,
+        duplicate_file: false, file_storage_path: "",
+        errors: [{ row: 0, message: err.response?.data?.detail || err.message || "Import failed" }],
+      })
+    } finally {
+      setShowImportResult(true)
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ""
+      fetchAssets()
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -786,8 +827,28 @@ export default function AssetsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">{t("assets.title")}</h1>
-        <Button onClick={handleCreate}>{t("common.add")}</Button>
-      </div>
+        <div className="flex items-center gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleImportCsv}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+          >
+            {importing ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t("common.loading")}</>
+            ) : (
+              <><Upload className="h-4 w-4 mr-2" />{t("assets.importCsv")}</>
+            )}
+          </Button>
+          <Button onClick={handleCreate}>{t("common.add")}</Button>
+        </div>
+        </div>
 
       {error && (
         <Card className="border-destructive">
@@ -1543,6 +1604,67 @@ export default function AssetsPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowModuleDialog(false)} disabled={assigningModule}>
               {t("common.cancel")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import CSV Result Dialog */}
+      <Dialog open={showImportResult} onOpenChange={setShowImportResult}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("assets.importResult")}</DialogTitle>
+            <DialogDescription>
+              {t("assets.importResultDesc")}
+            </DialogDescription>
+          </DialogHeader>
+          {importResult && (
+            <div className="space-y-3">
+              {importResult.duplicate_file ? (
+                <div className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800">
+                  <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                    {t("assets.importDuplicate")}
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-muted/30 text-center">
+                      <p className="text-2xl font-bold">{importResult.total}</p>
+                      <p className="text-xs text-muted-foreground">{t("assets.importTotal")}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950 text-center">
+                      <p className="text-2xl font-bold text-green-700 dark:text-green-300">{importResult.created}</p>
+                      <p className="text-xs text-green-600 dark:text-green-400">{t("assets.importCreated")}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950 text-center">
+                      <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{importResult.updated}</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400">{t("assets.importUpdated")}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950 text-center">
+                      <p className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{importResult.skipped_scoped}</p>
+                      <p className="text-xs text-yellow-600 dark:text-yellow-400">{t("assets.importSkipped")}</p>
+                    </div>
+                  </div>
+                  {importResult.errors.length > 0 && (
+                    <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+                      <p className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">{t("assets.importErrors")}</p>
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {importResult.errors.map((err, i) => (
+                          <p key={i} className="text-xs text-red-700 dark:text-red-300">
+                            Rida {err.row}: {err.message}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setShowImportResult(false)}>
+              OK
             </Button>
           </DialogFooter>
         </DialogContent>
