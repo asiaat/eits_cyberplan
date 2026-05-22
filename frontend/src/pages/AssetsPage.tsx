@@ -674,6 +674,9 @@ export default function AssetsPage() {
         module_id: moduleId,
         justification: editModuleJustification || null,
       })
+      await apiClient.post("/asset-module-mappings/generate-imr", null, {
+        params: { asset_id: editingId },
+      })
       setEditModuleSearch("")
       setEditModuleJustification("")
       setEditAvailableModules([])
@@ -713,6 +716,9 @@ export default function AssetsPage() {
         asset_id: selectedAssetForModule.id,
         module_id: moduleId,
         justification: moduleJustification || null,
+      })
+      await apiClient.post("/asset-module-mappings/generate-imr", null, {
+        params: { asset_id: selectedAssetForModule.id },
       })
       setShowModuleDialog(false)
       alert(t("assets.moduleAssignedSuccess", { code: "?", count: 0 }))

@@ -44,6 +44,13 @@ interface ApproachItem {
   code: string
 }
 
+interface EvidenceItem {
+  id: string
+  title: string
+  evidence_type: string
+  file_hash: string | null
+}
+
 const approachColors: Record<string, string> = {
   BASIC: "bg-green-100 text-green-800 border-green-200 dark:bg-green-900 dark:text-green-200",
   STANDARD: "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900 dark:text-yellow-200",
@@ -63,13 +70,10 @@ export default function ProtectionModePage() {
   const [selectedSelection, setSelectedSelection] = useState<ProtectionModeSelection | null>(null)
   const [availableEvidences, setAvailableEvidences] = useState<EvidenceItem[]>([])
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null)
-
-  interface EvidenceItem {
-    id: string
-    title: string
-    evidence_type: string
-    file_hash: string | null
-  }
+  const [showChangeConfirmDialog, setShowChangeConfirmDialog] = useState(false)
+  const [pendingApproach, setPendingApproach] = useState<string | null>(null)
+  const [imrPreviewStats, setImrPreviewStats] = useState<{ approach: string; measures_count: number } | null>(null)
+  const [changingMode, setChangingMode] = useState(false)
 
   useEffect(() => { selectedOrgIdRef.current = selectedOrgId }, [selectedOrgId])
 
@@ -78,7 +82,7 @@ export default function ProtectionModePage() {
     fetchApproachCodes()
   }, [selectedOrgId])
 
-const fetchSelections = async () => {
+  const fetchSelections = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -86,7 +90,6 @@ const fetchSelections = async () => {
       const response = await apiClient.get(`/protection-mode/?_=${timestamp}`)
       const data = response.data || []
       setSelections(data)
-      console.log("Fetched selections:", data.map((s: ProtectionModeSelection) => ({ approach: s.security_approach, isActive: s.is_active })))
     } catch (err: any) {
       console.error("Failed to fetch protection mode selections:", err)
       setError(err.response?.data?.detail || "Failed to load protection modes")
@@ -96,18 +99,43 @@ const fetchSelections = async () => {
   }
 
   const handleSelectApproach = async (approachCode: string) => {
+    setPendingApproach(approachCode)
+    try {
+      const response = await apiClient.get(`/protection-mode/imr-preview?approach=${approachCode}`)
+      setImrPreviewStats(response.data)
+    } catch {
+      setImrPreviewStats({ approach: approachCode, measures_count: 0 })
+    }
+    setShowChangeConfirmDialog(true)
+  }
+
+  const handleConfirmModeChange = async () => {
+    if (!pendingApproach) return
+    setChangingMode(true)
     try {
       await apiClient.post("/protection-mode/", {
-        security_approach: approachCode,
+        security_approach: pendingApproach,
       })
 
+      await apiClient.post("/protection-mode/regenerate-imr")
+
+      setShowChangeConfirmDialog(false)
+      setPendingApproach(null)
       setTimeout(() => {
         fetchSelections()
       }, 100)
     } catch (err: any) {
-      console.error("Failed to select approach:", err)
-      alert(err.response?.data?.detail || "Failed to select approach")
+      console.error("Failed to change protection mode:", err)
+      alert(err.response?.data?.detail || "Failed to change protection mode")
+    } finally {
+      setChangingMode(false)
     }
+  }
+
+  const handleCancelModeChange = () => {
+    setShowChangeConfirmDialog(false)
+    setPendingApproach(null)
+    setImrPreviewStats(null)
   }
 
   const fetchApproachCodes = async () => {
@@ -421,6 +449,38 @@ const fetchSelections = async () => {
             </Button>
             <Button variant="destructive" onClick={handleDeactivateConfirm}>
               {t("protectionmode.confirmDeactivateButton")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showChangeConfirmDialog} onOpenChange={(open) => {
+        if (!open) {
+          handleCancelModeChange()
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <AlertTriangle className="h-5 w-5 text-amber-500 mr-2" />
+              {t("protectionmode.confirmModeChangeTitle") || "Kaitse režiimi muutmine"}
+            </DialogTitle>
+            <DialogDescription className="space-y-3 pt-2">
+              <p>{t("protectionmode.confirmModeChangeDesc") || "Kaitse režiimi muutmine kustutab kõik olemasolevad IMR kirjed ja loob uued vastavalt uuele režiimile."}</p>
+              {imrPreviewStats && (
+                <p className="font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-200 dark:border-blue-800">
+                  {t("protectionmode.imrWillBeGenerated") || "Luuakse"} {imrPreviewStats.measures_count} {t("protectionmode.measures") || "meedet"} ({pendingApproach})
+                </p>
+              )}
+              <p className="font-semibold text-destructive">{t("protectionmode.confirmModeChangeWarning") || "See toiming ei ole tagasivõetav!"}</p>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={handleCancelModeChange} disabled={changingMode}>
+              {t("common.cancel")}
+            </Button>
+            <Button variant="default" onClick={handleConfirmModeChange} disabled={changingMode}>
+              {changingMode ? (t("common.loading") || "Loading...") : (t("protectionmode.confirmModeChangeButton") || " Kinnita ja jätka ")}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -567,6 +567,7 @@ organization: {
         fillMeasure: "Fill Measure",
         noData: "No IMR items found",
         unassigned: "Unassigned",
+        assetCount: "Assets",
       },
       status: {
         P: "Planned",
@@ -1356,6 +1357,7 @@ inactive: "Mitteaktiivne",
         fillMeasure: "Täida meedet",
         noData: "IMR kirjeid ei leitud",
         unassigned: "Määramata",
+        assetCount: "Varad",
       },
       status: {
         P: "Kavandatud",

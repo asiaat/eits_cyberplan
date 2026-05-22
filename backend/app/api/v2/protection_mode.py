@@ -11,6 +11,7 @@ from app.api.v2.auth import get_current_user_v2, LocalUser
 from app.models.protectionmode_selection import ProtectionModeSelection
 from app.models.evidence import Evidence
 from app.models.eits_catalog_version import EitsCatalogVersion
+from app.services.v2.imr_regeneration_service import ImrRegenerationService
 from enum import Enum
 
 
@@ -324,3 +325,45 @@ def unlink_evidence_from_protectionmode(
     db.refresh(sel)
 
     return _build_selection_response(sel, db)
+
+
+@router.post("/regenerate-imr")
+def regenerate_imr_after_mode_change(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """Regenerate all IMR items based on active protection mode.
+
+    When protection mode changes, this endpoint clears all existing IMR items
+    for the tenant and creates new ones based on the active protection approach.
+    PEARO status is set to 'U' (Unknown) for all generated items.
+    """
+    active = db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
+        ProtectionModeSelection.is_active == True,
+    ).first()
+
+    if not active:
+        raise HTTPException(status_code=400, detail="No active protection mode set")
+
+    result = ImrRegenerationService.regenerate_for_tenant(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        approach=active.security_approach,
+    )
+
+    return result
+
+
+@router.get("/imr-preview")
+def get_imr_preview_for_approach(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+    approach: str = None,
+):
+    """Get preview of how many IMR items would be generated for a given approach."""
+    if approach not in ("BASIC", "STANDARD", "CORE"):
+        raise HTTPException(status_code=400, detail="Invalid approach. Use BASIC, STANDARD, or CORE")
+
+    stats = ImrRegenerationService.get_approach_stats(db, approach)
+    return stats
