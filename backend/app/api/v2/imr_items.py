@@ -263,7 +263,7 @@ def update_imr_item(
     if not item:
         raise HTTPException(status_code=404, detail="IMR item not found")
 
-    before = {"pearo_status": item.pearo_status, "priority": item.priority}
+    before = {"pearo_status": item.pearo_status, "priority": item.priority, "responsible_user_id": str(item.responsible_user_id) if item.responsible_user_id else None}
 
     update_data = data.model_dump(exclude_unset=True, exclude_none=True)
     
@@ -277,14 +277,12 @@ def update_imr_item(
     item.updated_by = current_user.id
     
     for field, value in update_data.items():
-        if hasattr(value, 'value'):
-            value = value.value
         if hasattr(item, field):
             setattr(item, field, value)
 
     db.commit()
     db.refresh(item)
-
+    
     audit_log(
         db=db,
         tenant_id=str(current_user.tenant_id),

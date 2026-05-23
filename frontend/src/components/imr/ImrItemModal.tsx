@@ -119,6 +119,7 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
     }
     
     const updatedItem = await updateImrItem(item.id, formData)
+    console.log("UPDATE RESPONSE:", updatedItem)
     if (updatedItem) {
       onSave(updatedItem)
       onClose()

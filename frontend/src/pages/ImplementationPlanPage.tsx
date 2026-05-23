@@ -36,7 +36,8 @@ export default function ImplementationPlanPage() {
   const { exportImrItems, loading: exporting, error: exportError } = useImrApi()
 
   const handleSaveItem = (updatedItem: ImrItem) => {
-    console.log("Item saved:", updatedItem.id)
+    console.log("Item saved:", updatedItem)
+    setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item))
   }
 
   const handleExport = () => {

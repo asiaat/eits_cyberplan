@@ -1357,7 +1357,7 @@ inactive: "Mitteaktiivne",
         fillMeasure: "Täida meedet",
         noData: "IMR kirjeid ei leitud",
         unassigned: "Määramata",
-        assetCount: "Varad",
+assetCount: "Vara",
       },
       status: {
         P: "Kavandatud",
