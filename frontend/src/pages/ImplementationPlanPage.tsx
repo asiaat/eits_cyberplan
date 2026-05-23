@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { ImrTable } from "@/components/imr/ImrTable"
 import { ImrItemModal } from "@/components/imr/ImrItemModal"
-import { ImrDashboardStats } from "@/components/imr/ImrDashboardStats"
+import { ImrDashboardStats, StatsFilter } from "@/components/imr/ImrDashboardStats"
 import { ImrItem, IMR_STATUS_OPTIONS } from "@/lib/imr-types"
 import { useTranslation } from "@/lib/i18n"
 import { useImrApi } from "@/lib/use-imr-api"
@@ -26,6 +26,7 @@ export default function ImplementationPlanPage() {
     priority?: string
     overdue_only?: boolean
   }>({})
+  const [statsFilter, setStatsFilter] = useState<StatsFilter>(null)
 
   const handleEditItem = (item: ImrItem) => {
     setSelectedItem(item)
@@ -45,6 +46,23 @@ export default function ImplementationPlanPage() {
 
   const handleExport = () => {
     exportImrItems(filter)
+  }
+
+  const handleStatsFilterChange = (newFilter: StatsFilter) => {
+    setStatsFilter(newFilter)
+    setFilter((prev) => {
+      if (!newFilter) {
+        if (prev.priority && prev.pearo_status) return prev
+        return { ...prev, priority: undefined, pearo_status: undefined }
+      }
+      if (newFilter.type === "priority") {
+        return { ...prev, priority: prev.priority === newFilter.value ? undefined : newFilter.value, pearo_status: undefined }
+      }
+      if (newFilter.type === "pearo_status") {
+        return { ...prev, pearo_status: prev.pearo_status === newFilter.value ? undefined : newFilter.value, priority: undefined }
+      }
+      return prev
+    })
   }
 
   const toggleStats = () => {
@@ -120,7 +138,7 @@ export default function ImplementationPlanPage() {
       </div>
 
       {/* Dashboard Statistics */}
-      {showStats && <ImrDashboardStats />}
+      {showStats && <ImrDashboardStats activeFilter={statsFilter} onFilterChange={handleStatsFilterChange} />}
 
       {/* Filter Bar */}
       <div className="mb-3 bg-card rounded-lg border border-border p-3">
@@ -131,7 +149,10 @@ export default function ImplementationPlanPage() {
             </label>
             <select
               value={filter.pearo_status || ""}
-              onChange={(e) => setFilter({ ...filter, pearo_status: e.target.value || undefined })}
+              onChange={(e) => {
+                setFilter({ ...filter, pearo_status: e.target.value || undefined })
+                setStatsFilter(null)
+              }}
               className="border border-border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-background"
             >
               <option value="">{t("implementationPlan.dashboard.allStatuses")}</option>
@@ -160,7 +181,10 @@ export default function ImplementationPlanPage() {
 
           {(filter.pearo_status || filter.overdue_only) && (
             <button
-              onClick={() => setFilter({})}
+              onClick={() => {
+                setFilter({})
+                setStatsFilter(null)
+              }}
               className="text-sm text-indigo-600 hover:text-indigo-900 underline"
             >
               {t("implementationPlan.dashboard.clearFilters")}
