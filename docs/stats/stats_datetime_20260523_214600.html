@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-ITS Cyberplan Project Statistics</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-card: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-purple: #a855f7;
+            --accent-yellow: #eab308;
+            --accent-cyan: #06b6d4;
+            --accent-orange: #f97316;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+
+        .stat-card .value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-card .label {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-card.commits .value { color: var(--accent-blue); }
+        .stat-card.insertions .value { color: var(--accent-green); }
+        .stat-card.deletions .value { color: var(--accent-red); }
+        .stat-card.net .value { color: var(--accent-purple); }
+        .stat-card.days .value { color: var(--accent-yellow); }
+
+        .section {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .section-title {
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 1.25rem;
+            background: var(--accent-blue);
+            border-radius: 2px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.875rem;
+        }
+
+        th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        tr:hover {
+            background: rgba(255,255,255,0.03);
+        }
+
+        .commits-badge {
+            background: var(--accent-blue);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.75rem;
+        }
+
+        .net-positive { color: var(--accent-green); }
+        .net-negative { color: var(--accent-red); }
+
+        .modules-cell {
+            font-size: 0.7rem;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .module-tag {
+            display: inline-block;
+            background: var(--bg-card);
+            padding: 0.125rem 0.5rem;
+            border-radius: 4px;
+            margin: 0.125rem;
+            font-size: 0.7rem;
+        }
+
+        .module-backend-api { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .module-backend-services { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); }
+        .module-backend-models { background: rgba(34, 197, 94, 0.2); color: var(--accent-green); }
+        .module-backend-alembic { background: rgba(234, 179, 8, 0.2); color: var(--accent-yellow); }
+        .module-frontend-pages { background: rgba(168, 85, 247, 0.2); color: var(--accent-purple); }
+        .module-frontend-components { background: rgba(249, 115, 22, 0.2); color: var(--accent-orange); }
+        .module-frontend-lib { background: rgba(236, 72, 153, 0.2); color: #ec4899; }
+        .module-other { background: rgba(148, 163, 184, 0.2); color: var(--text-secondary); }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 1rem;
+        }
+
+        .chart-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        @media (max-width: 1024px) {
+            .chart-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .action-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 0.25rem 0;
+        }
+
+        .action-label {
+            min-width: 80px;
+            font-weight: 600;
+        }
+
+        .action-bar-fill {
+            height: 24px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            padding: 0 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            min-width: 60px;
+        }
+
+        .action-feat .action-bar-fill { background: var(--accent-blue); }
+        .action-fix .action-bar-fill { background: var(--accent-red); }
+        .action-refactor .action-bar-fill { background: var(--accent-purple); }
+        .action-merge .action-bar-fill { background: var(--accent-cyan); }
+        .action-docs .action-bar-fill { background: var(--accent-green); }
+        .action-other .action-bar-fill { background: var(--text-secondary); }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--bg-card);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 0.5rem 0;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .growth-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.875rem;
+        }
+
+        .growth-up { color: var(--accent-green); }
+        .growth-down { color: var(--accent-red); }
+
+        .generated-at {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>E-ITS Cyberplan</h1>
+        <p class="subtitle">Project Development Statistics | May 2026</p>
+
+        <!-- Summary Cards -->
+        <div class="summary-grid">
+            <div class="stat-card commits">
+                <div class="value">121</div>
+                <div class="label">Total Commits</div>
+            </div>
+            <div class="stat-card insertions">
+                <div class="value">53,764</div>
+                <div class="label">Insertions</div>
+            </div>
+            <div class="stat-card deletions">
+                <div class="value">5,520</div>
+                <div class="label">Deletions</div>
+            </div>
+            <div class="stat-card net">
+                <div class="value">+48,244</div>
+                <div class="label">Net Growth</div>
+            </div>
+            <div class="stat-card days">
+                <div class="value">18</div>
+                <div class="label">Days Active</div>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="chart-row">
+            <div class="section">
+                <div class="section-title">Daily Commits</div>
+                <div class="chart-container">
+                    <canvas id="commitsChart"></canvas>
+                </div>
+            </div>
+            <div class="section">
+                <div class="section-title">Codebase Growth (Cumulative)</div>
+                <div class="chart-container">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Module Chart -->
+        <div class="section">
+            <div class="section-title">Module Distribution</div>
+            <div class="chart-container" style="height: 250px;">
+                <canvas id="moduleChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Actions Chart -->
+        <div class="section">
+            <div class="section-title">Commit Actions</div>
+            <div style="padding: 1rem 0;">
+                <div class="action-bar action-feat">
+                    <span class="action-label">feat:</span>
+                    <div class="progress-bar" style="flex: 1;"><div class="progress-bar-fill" style="width: 100%; background: var(--accent-blue);"></div></div>
+                    <span class="action-bar-fill">108</span>
+                </div>
+                <div class="action-bar action-fix">
+                    <span class="action-label">fix:</span>
+                    <div class="progress-bar" style="flex: 1;"><div class="progress-bar-fill" style="width: 2.8%; background: var(--accent-red);"></div></div>
+                    <span class="action-bar-fill">3</span>
+                </div>
+                <div class="action-bar action-other">
+                    <span class="action-label">other:</span>
+                    <div class="progress-bar" style="flex: 1;"><div class="progress-bar-fill" style="width: 8.3%; background: var(--text-secondary);"></div></div>
+                    <span class="action-bar-fill">9</span>
+                </div>
+                <div class="action-bar action-refactor">
+                    <span class="action-label">refactor:</span>
+                    <div class="progress-bar" style="flex: 1;"><div class="progress-bar-fill" style="width: 0.9%; background: var(--accent-purple);"></div></div>
+                    <span class="action-bar-fill">1</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Activity Table -->
+        <div class="section">
+            <div class="section-title">Daily Activity</div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Commits</th>
+                        <th>Insertions</th>
+                        <th>Deletions</th>
+                        <th>Net Change</th>
+                        <th>Modules</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>2026-05-23</td>
+                        <td><span class="commits-badge">8</span></td>
+                        <td>588</td>
+                        <td>147</td>
+                        <td class="net-positive">+441</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-api">backend/api</span>
+                            <span class="module-tag module-backend-alembic">backend/alembic</span>
+                            <span class="module-tag module-frontend-pages">frontend/pages</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-22</td>
+                        <td><span class="commits-badge">10</span></td>
+                        <td>1,542</td>
+                        <td>274</td>
+                        <td class="net-positive">+1,268</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-api">backend/api</span>
+                            <span class="module-tag module-frontend-pages">frontend/pages</span>
+                            <span class="module-tag module-frontend-components">frontend/components</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-21</td>
+                        <td><span class="commits-badge">15</span></td>
+                        <td>6,399</td>
+                        <td>1,304</td>
+                        <td class="net-positive">+5,095</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-api">backend/api</span>
+                            <span class="module-tag module-backend-services">backend/services</span>
+                            <span class="module-tag module-frontend-pages">frontend/pages</span>
+                            <span class="module-tag module-frontend-components">frontend/components</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-20</td>
+                        <td><span class="commits-badge">13</span></td>
+                        <td>4,185</td>
+                        <td>441</td>
+                        <td class="net-positive">+3,744</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-api">backend/api</span>
+                            <span class="module-tag module-frontend-pages">frontend/pages</span>
+                            <span class="module-tag module-frontend-lib">frontend/lib</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-19</td>
+                        <td><span class="commits-badge">5</span></td>
+                        <td>2,549</td>
+                        <td>62</td>
+                        <td class="net-positive">+2,487</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-api">backend/api</span>
+                            <span class="module-tag module-frontend-components">frontend/components</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-18</td>
+                        <td><span class="commits-badge">7</span></td>
+                        <td>6,765</td>
+                        <td>105</td>
+                        <td class="net-positive">+6,660</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-api">backend/api</span>
+                            <span class="module-tag module-frontend-pages">frontend/pages</span>
+                            <span class="module-tag module-frontend-lib">frontend/lib</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-17</td>
+                        <td><span class="commits-badge">4</span></td>
+                        <td>624</td>
+                        <td>77</td>
+                        <td class="net-positive">+547</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-api">backend/api</span>
+                            <span class="module-tag module-frontend-pages">frontend/pages</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-16</td>
+                        <td><span class="commits-badge">10</span></td>
+                        <td>2,746</td>
+                        <td>226</td>
+                        <td class="net-positive">+2,520</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-alembic">backend/alembic</span>
+                            <span class="module-tag module-backend-api">backend/api</span>
+                            <span class="module-tag module-frontend-pages">frontend/pages</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-15</td>
+                        <td><span class="commits-badge">3</span></td>
+                        <td>1,521</td>
+                        <td>65</td>
+                        <td class="net-positive">+1,456</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-alembic">backend/alembic</span>
+                            <span class="module-tag module-backend-api">backend/api</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-14</td>
+                        <td><span class="commits-badge">4</span></td>
+                        <td>1,071</td>
+                        <td>36</td>
+                        <td class="net-positive">+1,035</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-alembic">backend/alembic</span>
+                            <span class="module-tag module-backend-api">backend/api</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-13</td>
+                        <td><span class="commits-badge">8</span></td>
+                        <td>2,988</td>
+                        <td>769</td>
+                        <td class="net-positive">+2,219</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-alembic">backend/alembic</span>
+                            <span class="module-tag module-backend-api">backend/api</span>
+                            <span class="module-tag module-backend-services">backend/services</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-11</td>
+                        <td><span class="commits-badge">3</span></td>
+                        <td>1,776</td>
+                        <td>924</td>
+                        <td class="net-positive">+852</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-alembic">backend/alembic</span>
+                            <span class="module-tag module-backend-models">backend/models</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-10</td>
+                        <td><span class="commits-badge">4</span></td>
+                        <td>3,434</td>
+                        <td>368</td>
+                        <td class="net-positive">+3,066</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-alembic">backend/alembic</span>
+                            <span class="module-tag module-backend-models">backend/models</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-09</td>
+                        <td><span class="commits-badge">7</span></td>
+                        <td>1,374</td>
+                        <td>258</td>
+                        <td class="net-positive">+1,116</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-other">backend/other</span>
+                            <span class="module-tag module-frontend-components">frontend/components</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-08</td>
+                        <td><span class="commits-badge">6</span></td>
+                        <td>699</td>
+                        <td>87</td>
+                        <td class="net-positive">+612</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-other">backend/other</span>
+                            <span class="module-tag module-frontend-lib">frontend/lib</span>
+                            <span class="module-tag module-frontend-components">frontend/components</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-07</td>
+                        <td><span class="commits-badge">1</span></td>
+                        <td>2,032</td>
+                        <td>50</td>
+                        <td class="net-positive">+1,982</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-alembic">backend/alembic</span>
+                            <span class="module-tag module-backend-models">backend/models</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-06</td>
+                        <td><span class="commits-badge">7</span></td>
+                        <td>1,763</td>
+                        <td>123</td>
+                        <td class="net-positive">+1,640</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-alembic">backend/alembic</span>
+                            <span class="module-tag module-backend-models">backend/models</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2026-05-01</td>
+                        <td><span class="commits-badge">6</span></td>
+                        <td>11,708</td>
+                        <td>204</td>
+                        <td class="net-positive">+11,504</td>
+                        <td class="modules-cell">
+                            <span class="module-tag module-backend-alembic">backend/alembic</span>
+                            <span class="module-tag module-backend-models">backend/models</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Module Breakdown -->
+        <div class="grid-2">
+            <div class="section">
+                <div class="section-title">Module Breakdown</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>Insertions</th>
+                            <th>Deletions</th>
+                            <th>Net</th>
+                            <th>Files</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><span class="module-tag module-backend-other">backend/other</span></td>
+                            <td>11,587</td>
+                            <td>931</td>
+                            <td class="net-positive">+10,656</td>
+                            <td>51</td>
+                        </tr>
+                        <tr>
+                            <td><span class="module-tag module-frontend-pages">frontend/pages</span></td>
+                            <td>11,501</td>
+                            <td>2,209</td>
+                            <td class="net-positive">+9,292</td>
+                            <td>22</td>
+                        </tr>
+                        <tr>
+                            <td><span class="module-tag module-backend-api">backend/api</span></td>
+                            <td>8,293</td>
+                            <td>574</td>
+                            <td class="net-positive">+7,719</td>
+                            <td>24</td>
+                        </tr>
+                        <tr>
+                            <td><span class="module-tag module-frontend-lib">frontend/lib</span></td>
+                            <td>5,645</td>
+                            <td>313</td>
+                            <td class="net-positive">+5,332</td>
+                            <td>20</td>
+                        </tr>
+                        <tr>
+                            <td><span class="module-tag module-other">other</span></td>
+                            <td>4,899</td>
+                            <td>204</td>
+                            <td class="net-positive">+4,695</td>
+                            <td>44</td>
+                        </tr>
+                        <tr>
+                            <td><span class="module-tag module-frontend-components">frontend/components</span></td>
+                            <td>3,462</td>
+                            <td>752</td>
+                            <td class="net-positive">+2,710</td>
+                            <td>20</td>
+                        </tr>
+                        <tr>
+                            <td><span class="module-tag module-frontend-lib">frontend/lib</span></td>
+                            <td>2,991</td>
+                            <td>292</td>
+                            <td class="net-positive">+2,699</td>
+                            <td>10</td>
+                        </tr>
+                        <tr>
+                            <td><span class="module-tag module-backend-alembic">backend/alembic</span></td>
+                            <td>2,629</td>
+                            <td>21</td>
+                            <td class="net-positive">+2,608</td>
+                            <td>47</td>
+                        </tr>
+                        <tr>
+                            <td><span class="module-tag module-backend-models">backend/models</span></td>
+                            <td>1,418</td>
+                            <td>63</td>
+                            <td class="net-positive">+1,355</td>
+                            <td>43</td>
+                        </tr>
+                        <tr>
+                            <td><span class="module-tag module-backend-services">backend/services</span></td>
+                            <td>1,339</td>
+                            <td>161</td>
+                            <td class="net-positive">+1,178</td>
+                            <td>6</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <div class="section-title">Codebase Growth</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Cumulative Lines</th>
+                            <th>Daily Change</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>2026-05-01</td><td>11,504</td><td class="net-positive">+11,504</td></tr>
+                        <tr><td>2026-05-06</td><td>13,144</td><td class="net-positive">+1,640</td></tr>
+                        <tr><td>2026-05-07</td><td>15,126</td><td class="net-positive">+1,982</td></tr>
+                        <tr><td>2026-05-08</td><td>15,738</td><td class="net-positive">+612</td></tr>
+                        <tr><td>2026-05-09</td><td>16,854</td><td class="net-positive">+1,116</td></tr>
+                        <tr><td>2026-05-10</td><td>19,920</td><td class="net-positive">+3,066</td></tr>
+                        <tr><td>2026-05-11</td><td>20,772</td><td class="net-positive">+852</td></tr>
+                        <tr><td>2026-05-13</td><td>22,991</td><td class="net-positive">+2,219</td></tr>
+                        <tr><td>2026-05-14</td><td>24,026</td><td class="net-positive">+1,035</td></tr>
+                        <tr><td>2026-05-15</td><td>25,482</td><td class="net-positive">+1,456</td></tr>
+                        <tr><td>2026-05-16</td><td>28,002</td><td class="net-positive">+2,520</td></tr>
+                        <tr><td>2026-05-17</td><td>28,549</td><td class="net-positive">+547</td></tr>
+                        <tr><td>2026-05-18</td><td>35,209</td><td class="net-positive">+6,660</td></tr>
+                        <tr><td>2026-05-19</td><td>37,696</td><td class="net-positive">+2,487</td></tr>
+                        <tr><td>2026-05-20</td><td>41,440</td><td class="net-positive">+3,744</td></tr>
+                        <tr><td>2026-05-21</td><td>46,535</td><td class="net-positive">+5,095</td></tr>
+                        <tr><td>2026-05-22</td><td>47,803</td><td class="net-positive">+1,268</td></tr>
+                        <tr><td>2026-05-23</td><td>48,244</td><td class="net-positive">+441</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="generated-at">
+            Generated on 2026-05-23 | E-ITS Cyberplan Project Statistics
+        </div>
+    </div>
+
+    <script>
+        // Commits Chart
+        const commitsCtx = document.getElementById('commitsChart').getContext('2d');
+        new Chart(commitsCtx, {
+            type: 'bar',
+            data: {
+                labels: ['May 01', 'May 06', 'May 07', 'May 08', 'May 09', 'May 10', 'May 11', 'May 13', 'May 14', 'May 15', 'May 16', 'May 17', 'May 18', 'May 19', 'May 20', 'May 21', 'May 22', 'May 23'],
+                datasets: [{
+                    label: 'Commits',
+                    data: [6, 7, 1, 6, 7, 4, 3, 8, 4, 3, 10, 4, 7, 5, 13, 15, 10, 8],
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: '#3b82f6',
+                    borderWidth: 1,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        // Growth Chart
+        const growthCtx = document.getElementById('growthChart').getContext('2d');
+        new Chart(growthCtx, {
+            type: 'line',
+            data: {
+                labels: ['May 01', 'May 06', 'May 07', 'May 08', 'May 09', 'May 10', 'May 11', 'May 13', 'May 14', 'May 15', 'May 16', 'May 17', 'May 18', 'May 19', 'May 20', 'May 21', 'May 22', 'May 23'],
+                datasets: [{
+                    label: 'Cumulative Lines',
+                    data: [11504, 13144, 15126, 15738, 16854, 19920, 20772, 22991, 24026, 25482, 28002, 28549, 35209, 37696, 41440, 46535, 47803, 48244],
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#22c55e',
+                    pointRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#94a3b8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94a3b8' }
+                    }
+                }
+            }
+        });
+
+        // Module Chart
+        const moduleCtx = document.getElementById('moduleChart').getContext('2d');
+        new Chart(moduleCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['backend/other', 'frontend/pages', 'backend/api', 'frontend/other', 'other', 'frontend/components', 'frontend/lib', 'backend/alembic', 'backend/models', 'backend/services'],
+                datasets: [{
+                    data: [10656, 9292, 7719, 5332, 4695, 2710, 2699, 2608, 1355, 1178],
+                    backgroundColor: [
+                        '#475569',
+                        '#a855f7',
+                        '#3b82f6',
+                        '#f97316',
+                        '#94a3b8',
+                        '#f97316',
+                        '#ec4899',
+                        '#eab308',
+                        '#22c55e',
+                        '#06b6d4',
+                    ],
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { color: '#f1f5f9', padding: 12, font: { size: 11 } }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
