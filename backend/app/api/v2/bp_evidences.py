@@ -10,6 +10,8 @@ from app.api.v2.auth import get_current_user_v2, LocalUser
 from app.models.evidence import Evidence
 from app.models.evidence_link import EvidenceLink
 from app.models.business_process import BusinessProcess
+from app.models.imr_item import ImrItem
+from app.models.eits_catalog_measure import EitsCatalogMeasure
 from app.core.audit import log_audit as audit_log
 
 router = APIRouter()
@@ -41,6 +43,14 @@ class LinkedBPInfo(BaseModel):
     link_id: UUID
 
 
+class LinkedImrItemInfo(BaseModel):
+    """Schema for linked IMR item info."""
+    imr_item_id: UUID
+    measure_code: str
+    measure_name: str
+    link_id: UUID
+
+
 class EvidenceListItem(BaseModel):
     """Schema for evidence item in BP context."""
     id: UUID
@@ -54,6 +64,7 @@ class EvidenceListItem(BaseModel):
     review_due_date: Optional[str] = None
     link_id: UUID
     linked_business_processes: list[LinkedBPInfo] = []
+    linked_imr_items: list[LinkedImrItemInfo] = []
 
     model_config = {"from_attributes": True}
 
@@ -263,6 +274,25 @@ def list_evidences(
                     link_id=bp_link.id,
                 ))
 
+        imr_links = db.query(EvidenceLink).filter(
+            EvidenceLink.evidence_id == evidence.id,
+            EvidenceLink.target_type == "imr_item",
+        ).all()
+
+        linked_imr_items = []
+        for imr_link in imr_links:
+            imr_item = db.query(ImrItem).filter(ImrItem.id == imr_link.target_id).first()
+            if imr_item:
+                measure = db.query(EitsCatalogMeasure).filter(EitsCatalogMeasure.id == imr_item.measure_id).first()
+                measure_code = measure.code if measure else ""
+                measure_name = measure.name if measure else ""
+                linked_imr_items.append(LinkedImrItemInfo(
+                    imr_item_id=imr_item.id,
+                    measure_code=measure_code,
+                    measure_name=measure_name,
+                    link_id=imr_link.id,
+                ))
+
         result.append(EvidenceListItem(
             id=evidence.id,
             title=evidence.title,
@@ -275,6 +305,7 @@ def list_evidences(
             review_due_date=str(evidence.review_due_date) if evidence.review_due_date else None,
             link_id=evidence.id,
             linked_business_processes=linked_bps,
+            linked_imr_items=linked_imr_items,
         ))
 
     return result

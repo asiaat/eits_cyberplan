@@ -22,6 +22,13 @@ interface LinkedBP {
   link_id: string
 }
 
+interface LinkedImrItem {
+  imr_item_id: string
+  measure_code: string
+  measure_name: string
+  link_id: string
+}
+
 interface EvidenceItem {
   id: string
   title: string
@@ -37,6 +44,7 @@ interface EvidenceItem {
   created_at: string
   download_url: string | null
   linked_business_processes: LinkedBP[]
+  linked_imr_items: LinkedImrItem[]
 }
 
 interface UploadResult {
@@ -64,6 +72,7 @@ export default function EvidencesPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deletingEvidence, setDeletingEvidence] = useState<EvidenceItem | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [title, setTitle] = useState("")
   const [evidenceType, setEvidenceType] = useState("document")
@@ -239,7 +248,10 @@ export default function EvidencesPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setDeleteId(evidence.id)}
+                      onClick={() => {
+                        setDeleteId(evidence.id)
+                        setDeletingEvidence(evidence)
+                      }}
                       className="text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -275,6 +287,16 @@ export default function EvidencesPage() {
                     {evidence.linked_business_processes.map((bp) => (
                       <Badge key={bp.link_id} variant="outline" className="text-xs">
                         {bp.process_name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                {evidence.linked_imr_items && evidence.linked_imr_items.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">IMR:</span>
+                    {evidence.linked_imr_items.map((item) => (
+                      <Badge key={item.link_id} variant="outline" className="text-xs">
+                        {item.measure_code}
                       </Badge>
                     ))}
                   </div>
@@ -377,7 +399,9 @@ export default function EvidencesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+      <Dialog open={!!deleteId} onOpenChange={(open) => {
+        if (!open) { setDeleteId(null); setDeletingEvidence(null) }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center">
@@ -388,8 +412,41 @@ export default function EvidencesPage() {
               {t("evidences.deleteConfirm")}
             </DialogDescription>
           </DialogHeader>
+          {deletingEvidence && (
+            <div className="space-y-3 py-2">
+              {(deletingEvidence.linked_business_processes.length > 0 || deletingEvidence.linked_imr_items.length > 0) && (
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  {t("evidences.deleteWarning")}
+                </p>
+              )}
+              {deletingEvidence.linked_business_processes.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">{t("evidences.linkedTo") || "Linked to"}:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {deletingEvidence.linked_business_processes.map((bp) => (
+                      <Badge key={bp.link_id} variant="outline" className="text-xs">
+                        {bp.process_name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {deletingEvidence.linked_imr_items.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">IMR:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {deletingEvidence.linked_imr_items.map((item) => (
+                      <Badge key={item.link_id} variant="outline" className="text-xs">
+                        {item.measure_code}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>
+            <Button variant="outline" onClick={() => { setDeleteId(null); setDeletingEvidence(null) }}>
               {t("common.cancel")}
             </Button>
             <Button variant="destructive" onClick={() => deleteId && handleDelete(deleteId)}>
