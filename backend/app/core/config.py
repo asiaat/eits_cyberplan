@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = Field(default="redis://redis:6379/0", validation_alias="REDIS_URL")
 
     MINIO_ENDPOINT: str = Field(default="minio:9000", validation_alias="MINIO_ENDPOINT")
+    MINIO_PUBLIC_ENDPOINT: str = Field(default="", validation_alias="MINIO_PUBLIC_ENDPOINT")
     MINIO_ACCESS_KEY: str = Field(default="minioadmin", validation_alias="MINIO_ACCESS_KEY")
     MINIO_SECRET_KEY: str = Field(default="minioadmin", validation_alias="MINIO_SECRET_KEY")
     MINIO_BUCKET: str = Field(default="eits-evidence", validation_alias="MINIO_BUCKET")

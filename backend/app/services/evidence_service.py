@@ -101,11 +101,21 @@ class EvidenceService:
             file_hash=file_hash,
             owner_user_id=owner_user_id,
             version="1.0",
+            file_size=len(file_content),
+            mime_type=content_type,
         )
         db.add(evidence)
         db.flush()
 
         return evidence, True
+
+    def get_file(self, storage_uri: str) -> tuple[bytes, str]:
+        """Get file content and content type from MinIO."""
+        response = self.s3_client.get_object(
+            Bucket=settings.MINIO_BUCKET,
+            Key=storage_uri,
+        )
+        return response["Body"].read(), response.get("ContentType", "application/octet-stream")
 
     def get_presigned_url(self, storage_uri: str, expiration: int = 3600) -> Optional[str]:
         """Generate presigned URL for file download."""
@@ -118,6 +128,11 @@ class EvidenceService:
                 },
                 ExpiresIn=expiration
             )
+            if settings.MINIO_PUBLIC_ENDPOINT:
+                internal = f"http://{settings.MINIO_ENDPOINT}"
+                protocol = "https" if settings.MINIO_SECURE else "http"
+                public = f"{protocol}://{settings.MINIO_PUBLIC_ENDPOINT}"
+                url = url.replace(internal, public)
             return url
         except Exception:
             return None

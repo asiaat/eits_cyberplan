@@ -1,7 +1,7 @@
 """Evidence model."""
 import uuid
 
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, BigInteger, Integer
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -23,6 +23,9 @@ class Evidence(Base):
     valid_from = Column(DateTime)
     valid_until = Column(DateTime)
     review_due_date = Column(DateTime)
+    file_size = Column(BigInteger, nullable=True)
+    mime_type = Column(String(100), nullable=True)
+    download_count = Column(Integer, default=0)
     created_at = Column(DateTime, server_default="now()")
 
     tenant = relationship("Tenant", back_populates="evidences")

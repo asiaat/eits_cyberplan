@@ -13,6 +13,7 @@ from app.models.business_process import BusinessProcess
 from app.models.imr_item import ImrItem
 from app.models.eits_catalog_measure import EitsCatalogMeasure
 from app.core.audit import log_audit as audit_log
+from app.services.evidence_service import get_evidence_service
 
 router = APIRouter()
 
@@ -62,6 +63,10 @@ class EvidenceListItem(BaseModel):
     valid_from: Optional[str] = None
     valid_until: Optional[str] = None
     review_due_date: Optional[str] = None
+    file_size: Optional[int] = None
+    mime_type: Optional[str] = None
+    download_count: int = 0
+    download_url: Optional[str] = None
     link_id: UUID
     linked_business_processes: list[LinkedBPInfo] = []
     linked_imr_items: list[LinkedImrItemInfo] = []
@@ -114,6 +119,9 @@ def get_bp_evidences(
                 valid_from=str(evidence.valid_from) if evidence.valid_from else None,
                 valid_until=str(evidence.valid_until) if evidence.valid_until else None,
                 review_due_date=str(evidence.review_due_date) if evidence.review_due_date else None,
+                file_size=evidence.file_size,
+                mime_type=evidence.mime_type,
+                download_count=evidence.download_count or 0,
                 link_id=link.id,
             ))
 
@@ -250,6 +258,8 @@ def list_evidences(
 
     evidences = query.order_by(Evidence.created_at.desc()).limit(100).all()
 
+    service = get_evidence_service()
+
     result = []
     for evidence in evidences:
         from app.models.local_user import LocalUser as LU
@@ -293,6 +303,8 @@ def list_evidences(
                     link_id=imr_link.id,
                 ))
 
+        download_url = service.get_presigned_url(evidence.storage_uri) if evidence.storage_uri else None
+
         result.append(EvidenceListItem(
             id=evidence.id,
             title=evidence.title,
@@ -303,6 +315,10 @@ def list_evidences(
             valid_from=str(evidence.valid_from) if evidence.valid_from else None,
             valid_until=str(evidence.valid_until) if evidence.valid_until else None,
             review_due_date=str(evidence.review_due_date) if evidence.review_due_date else None,
+            file_size=evidence.file_size,
+            mime_type=evidence.mime_type,
+            download_count=evidence.download_count or 0,
+            download_url=download_url,
             link_id=evidence.id,
             linked_business_processes=linked_bps,
             linked_imr_items=linked_imr_items,
