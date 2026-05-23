@@ -7,7 +7,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
 import { Link2, Unlink, AlertTriangle, Shield, CheckCircle2, XCircle, CheckSquare, Loader2, GitBranch } from "lucide-react"
-import { RelationsTree, TreeNode } from "@/components/RelationsTree"
+import { Tree } from "react-arborist"
+import type { NodeRendererProps } from "react-arborist"
+
+interface TreeNode {
+  assetId: string
+  assetName: string
+  assetType: string
+  children?: TreeNode[]
+  relationType?: string
+  relationTypeName?: string
+  direction: "upstream" | "downstream"
+  relationId?: string
+}
 
 interface LinkedProcess {
   id: string
@@ -401,10 +413,34 @@ export default function MappingsPage() {
       for (const asset of assets) {
         const res = await apiClient.get(`/assets/${asset.id}/relations`)
         if (res.data?.length) {
-          allRelations.push(...res.data.map((r: any) => ({ ...r, source_asset_name: asset.name })))
+          for (const r of res.data) {
+            if (r.direction === "upstream") {
+              allRelations.push({
+                ...r,
+                source_asset_id: asset.id,
+                source_asset_name: asset.name,
+                source_asset_type: asset.asset_type,
+              })
+            } else {
+              allRelations.push({
+                ...r,
+                source_asset_id: r.source_asset_id,
+                source_asset_name: r.source_asset_name,
+                source_asset_type: r.source_asset_type,
+                target_asset_id: asset.id,
+                target_asset_name: asset.name,
+                target_asset_type: asset.asset_type,
+              })
+            }
+          }
         }
       }
-      setAssetRelations(allRelations)
+      const uniqueMap = new Map<string, any>()
+      allRelations.forEach(r => {
+        const key = r.id
+        if (!uniqueMap.has(key)) uniqueMap.set(key, r)
+      })
+      setAssetRelations(Array.from(uniqueMap.values()))
     } catch (err: any) {
       console.error("Failed to fetch asset relations:", err)
     } finally {
@@ -480,49 +516,111 @@ export default function MappingsPage() {
   const buildRelationTreeForDirection = (direction: "upstream" | "downstream"): TreeNode[] => {
     const directionRelations = assetRelations.filter(r => r.direction === direction)
 
-    const groups = new Map<string, typeof directionRelations>()
-    directionRelations.forEach(rel => {
-      const rootKey = rel.source_asset_id
-      if (!groups.has(rootKey)) groups.set(rootKey, [])
-      groups.get(rootKey)!.push(rel)
-    })
+    const childrenMap = new Map<string, { rel: any; childId: string; childName: string; childType: string }[]>()
 
-    const nodes: TreeNode[] = []
-    const processedIds = new Set<string>()
-
-    groups.forEach((relations, rootId) => {
-      if (processedIds.has(rootId)) return
-      processedIds.add(rootId)
-
-      const firstRel = relations[0]
-      const rootName = firstRel.source_asset_name || "Unknown"
-      const rootType = firstRel.source_asset_type || "unknown"
-      const rootNode: TreeNode = {
-        assetId: rootId,
-        assetName: rootName,
-        assetType: rootType,
-        direction,
-        children: [],
-      }
-
-      relations.forEach(rel => {
-        const childName = rel.target_asset_name || "Unknown"
-        const childType = rel.target_asset_type || "unknown"
-        const relTypeName = rel.relation_type_info?.name || rel.relation_type || ""
-
-        rootNode.children.push({
-          assetId: rel.target_asset_id,
-          assetName: childName,
-          assetType: childType,
-          direction,
-          relationType: rel.relation_type_info?.code || rel.relation_type,
-          relationTypeName: relTypeName,
-          relationId: rel.id,
-          children: [],
+    if (direction === "upstream") {
+      directionRelations.forEach(rel => {
+        const parentId = rel.source_asset_id
+        if (!childrenMap.has(parentId)) childrenMap.set(parentId, [])
+        childrenMap.get(parentId)!.push({
+          rel,
+          childId: rel.target_asset_id,
+          childName: rel.target_asset_name || "Unknown",
+          childType: rel.target_asset_type || "unknown",
         })
       })
+    } else {
+      directionRelations.forEach(rel => {
+        const parentId = rel.target_asset_id
+        if (!childrenMap.has(parentId)) childrenMap.set(parentId, [])
+        childrenMap.get(parentId)!.push({
+          rel,
+          childId: rel.source_asset_id,
+          childName: rel.source_asset_name || "Unknown",
+          childType: rel.source_asset_type || "unknown",
+        })
+      })
+    }
 
-      nodes.push(rootNode)
+    const buildNode = (
+      assetId: string,
+      assetName: string,
+      assetType: string,
+      visitedInPath: Set<string>
+    ): TreeNode => {
+      const children: TreeNode[] = []
+      const childEntries = childrenMap.get(assetId) || []
+
+childEntries.forEach(({ rel, childId, childName, childType }) => {
+          const relTypeName = rel.relation_type_info?.name || rel.relation_type || ""
+          const relTypeCode = rel.relation_type_info?.code || rel.relation_type
+
+          const childNode: TreeNode = {
+            assetId: childId,
+            assetName: childName,
+            assetType: childType,
+            direction,
+            relationType: relTypeCode,
+            relationTypeName: relTypeName,
+            relationId: rel.id,
+            children: [],
+          }
+
+          if (!visitedInPath.has(childId)) {
+            const newVisited = new Set(visitedInPath)
+            newVisited.add(childId)
+            childNode.children = buildNode(childId, childName, childType, newVisited).children
+          }
+
+          children.push(childNode)
+        })
+
+      return {
+        assetId,
+        assetName,
+        assetType,
+        direction,
+        children,
+      }
+    }
+
+    const groups = new Map<string, typeof directionRelations>()
+
+    if (direction === "upstream") {
+      directionRelations.forEach(rel => {
+        const rootKey = rel.source_asset_id
+        if (!groups.has(rootKey)) groups.set(rootKey, [])
+        groups.get(rootKey)!.push(rel)
+      })
+    } else {
+      directionRelations.forEach(rel => {
+        const rootKey = rel.target_asset_id
+        if (!groups.has(rootKey)) groups.set(rootKey, [])
+        groups.get(rootKey)!.push(rel)
+      })
+    }
+
+    const nodes: TreeNode[] = []
+    const processedRoots = new Set<string>()
+
+    groups.forEach((relations, rootId) => {
+      if (processedRoots.has(rootId)) return
+      processedRoots.add(rootId)
+
+      const firstRel = relations[0]
+      let rootName: string
+      let rootType: string
+
+      if (direction === "upstream") {
+        rootName = firstRel.source_asset_name || "Unknown"
+        rootType = firstRel.source_asset_type || "unknown"
+      } else {
+        rootName = firstRel.target_asset_name || "Unknown"
+        rootType = firstRel.target_asset_type || "unknown"
+      }
+
+      const node = buildNode(rootId, rootName, rootType, new Set([rootId]))
+      nodes.push(node)
     })
 
     return nodes
@@ -542,6 +640,46 @@ export default function MappingsPage() {
     }
     return buildRelationTreeForDirection(mappedDir)
   }, [assetRelations, relationTreeDirection])
+
+  const treeData = useMemo(() => {
+    interface AssetTreeNode {
+      id: string
+      name: string
+      assetType: string
+      relationType?: string
+      direction?: string
+      relationId?: string
+      children?: AssetTreeNode[]
+    }
+    const seenIds = new Map<string, number>()
+
+    const transformNode = (node: TreeNode, parentPath: string = ""): AssetTreeNode => {
+      let uniqueSuffix = ""
+      const baseId = node.assetId
+      if (parentPath) {
+        const count = seenIds.get(baseId) || 0
+        if (count > 0) {
+          uniqueSuffix = `-${count}`
+        }
+        seenIds.set(baseId, count + 1)
+      } else {
+        seenIds.set(baseId, 1)
+      }
+
+      const id = parentPath ? `${parentPath}-${baseId}${uniqueSuffix}` : baseId
+
+      return {
+        id,
+        name: node.assetName,
+        assetType: node.assetType,
+        relationType: node.relationType,
+        direction: node.direction,
+        relationId: node.relationId,
+        children: node.children?.map(child => transformNode(child, id)),
+      }
+    }
+    return buildRelationTree.map(node => transformNode(node))
+  }, [buildRelationTree])
 
   const toggleSourceAsset = (id: string) => {
     const next = new Set(selectedSourceAssetIds)
@@ -1187,13 +1325,41 @@ export default function MappingsPage() {
               ) : filteredRelations.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noRelations")}</p>
               ) : relationViewMode === "tree" ? (
-                <div className="max-h-[500px] overflow-y-auto">
-                  <RelationsTree
-                    nodes={buildRelationTree}
-                    onDeleteRelation={handleDeleteRelation}
-                    loading={loadingRelations}
-                    direction={relationTreeDirection === "all" ? undefined : relationTreeDirection}
-                  />
+                <div className="max-h-[500px] overflow-y-auto border rounded-lg p-4 bg-card">
+                  <Tree
+                    data={treeData}
+                    height={450}
+                    width={800}
+                    disableDrag
+                    disableDrop
+                  >
+                    {({ node, style }: NodeRendererProps<any>) => (
+                      <div
+                        style={style}
+                        className="flex items-center gap-2 px-3 py-1.5 rounded-md border bg-background hover:bg-accent cursor-pointer group"
+                      >
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${node.data.direction === "upstream" ? "bg-blue-500" : "bg-purple-500"}`} />
+                        <span className="text-sm font-medium truncate">{node.data.name}</span>
+                        <Badge variant="outline" className="text-xs shrink-0">{node.data.assetType}</Badge>
+                        {node.data.relationType && (
+                          <Badge variant="secondary" className="text-xs opacity-70 shrink-0">{node.data.relationType}</Badge>
+                        )}
+                        {node.data.relationId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive opacity-0 group-hover:opacity-100 ml-auto shrink-0"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteRelation(node.data.relationId, node.id)
+                            }}
+                          >
+                            <Unlink className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </Tree>
                 </div>
               ) : (
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">

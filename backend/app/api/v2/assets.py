@@ -1012,6 +1012,39 @@ def delete_asset_relation(
     db.commit()
 
 
+@router.get("/relation-types")
+def list_relation_types(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+):
+    """List all available asset relation types."""
+    from app.services.protection_inheritance_service import ProtectionInheritanceService
+    svc = ProtectionInheritanceService(db)
+    return svc.get_all_relation_types()
+
+
+@router.get("/relation-types-fix")
+def list_relation_types_fix(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+):
+    """List all available asset relation types - alternative endpoint."""
+    from app.models.asset_relation_type import AssetRelationType
+    types = db.query(AssetRelationType).all()
+    return [
+        {
+            "code": t.code,
+            "name": t.name,
+            "description": t.description,
+            "source_types": t.source_types,
+            "target_types": t.target_types,
+            "bidirectional": t.bidirectional,
+            "strength": t.strength,
+        }
+        for t in types
+    ]
+
+
 @router.get("/{asset_id}/protection-inheritance")
 def get_asset_protection_inheritance(
     db: DB,
@@ -1054,14 +1087,3 @@ def get_asset_protection_inheritance(
         "downstream": downstream,
         "dependency_tree": dependency_tree,
     }
-
-
-@router.get("/relation-types")
-def list_relation_types(
-    db: DB,
-    current_user: LocalUser = CurrentUserV2,
-):
-    """List all available asset relation types."""
-    from app.services.protection_inheritance_service import ProtectionInheritanceService
-    svc = ProtectionInheritanceService(db)
-    return svc.get_all_relation_types()
