@@ -71,6 +71,7 @@ export interface ImrValidationStatus {
 
 export interface ImrSummaryStatistics {
   pearo_status_counts: Record<PearoStatus, number>
+  priority_counts: Record<ImrPriority, number>
   overdue_count: number
   ready_for_completion_count: number
   total_items: number

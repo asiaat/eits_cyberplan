@@ -302,6 +302,18 @@ class ImrService:
         # Convert to dict
         status_dict = {status: count for status, count in status_counts}
         
+        # Get counts by priority
+        priority_counts = db.query(
+            ImrItem.priority,
+            func.count(ImrItem.id).label('count')
+        ).filter(
+            ImrItem.tenant_id == tenant_id
+        ).group_by(
+            ImrItem.priority
+        ).all()
+        
+        priority_dict = {p: count for p, count in priority_counts}
+        
         # Get overdue items (status E or O and due_date < today)
         from datetime import date
         overdue_count = db.query(func.count(ImrItem.id)).filter(
@@ -326,6 +338,7 @@ class ImrService:
         
         return {
             "pearo_status_counts": status_dict,
+            "priority_counts": priority_dict,
             "overdue_count": overdue_count,
             "ready_for_completion_count": ready_for_completion,
             "total_items": sum(status_dict.values())
@@ -355,7 +368,7 @@ class ImrService:
             )
         items = query.order_by(ImrItem.created_at.desc()).all()
 
-        peero_labels = {"P": "Kavandatud", "E": "Rakendamisel", "A": "Risk aktsepteeritud", "R": "Rakendatud", "O": "Osaliselt rakendatud"}
+        peero_labels = {"P": "Pole asjakohane", "E": "Ei ole rakendatud", "A": "Aktsepteeritud risk", "R": "Rakendatud", "O": "Osaliselt"}
         priority_labels = {"P1": "Kõrge", "P2": "Keskmine", "P3": "Madal"}
 
         wb = Workbook()
