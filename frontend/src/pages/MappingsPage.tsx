@@ -102,7 +102,6 @@ export default function MappingsPage() {
   const [saving, setSaving] = useState(false)
   const [mainTab, setMainTab] = useState("assets")
   const [assetTypeTab, setAssetTypeTab] = useState("all")
-  const [bpLinkedFilter, setBpLinkedFilter] = useState<"all" | "with_bp">("with_bp")
   const [moduleGroupTab, setModuleGroupTab] = useState("ISMS")
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
   const [selectedModuleIds, setSelectedModuleIds] = useState<Set<string>>(new Set())
@@ -150,11 +149,9 @@ export default function MappingsPage() {
 
   useEffect(() => { fetchData() }, [selectedOrgId])
 
-  const filteredAssets = assets.filter(a => {
-    const typeMatch = assetTypeTab === "all" || a.asset_type === assetTypeTab
-    const bpMatch = bpLinkedFilter === "all" || (a.linked_processes && a.linked_processes.length > 0)
-    return typeMatch && bpMatch
-  })
+  const filteredAssets = assets.filter(a =>
+    a.asset_type === assetTypeTab || assetTypeTab === "all"
+  ).filter(a => a.linked_processes && a.linked_processes.length > 0)
 
   const selectedAssetMappings = useMemo(() => {
     return assetMappings.filter(m => selectedAssetIds.has(m.asset_id))
@@ -179,15 +176,13 @@ export default function MappingsPage() {
     : (availableGroups[0] || "ISMS")
 
   const typeCounts = useMemo(() => {
-    const filteredForBp = bpLinkedFilter === "all"
-      ? assets
-      : assets.filter(a => a.linked_processes && a.linked_processes.length > 0)
+    const filteredForBp = assets.filter(a => a.linked_processes && a.linked_processes.length > 0)
     const counts: Record<string, number> = { all: filteredForBp.length }
     for (const t of ASSET_TYPES) {
       if (t !== "all") counts[t] = filteredForBp.filter(a => a.asset_type === t).length
     }
     return counts
-  }, [assets, bpLinkedFilter])
+  }, [assets])
 
   const sortedModules = useMemo(() => {
     const sorted = [...modules]
@@ -401,29 +396,6 @@ export default function MappingsPage() {
                       {type === "all" ? t("mappings.allTypes") : t(`mappings.${type}`)} ({typeCounts[type] || 0})
                     </button>
                   ))}
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className="text-xs text-muted-foreground">{t("mappings.filterByBp") || "BP linked:"}</span>
-                  <button
-                    onClick={() => setBpLinkedFilter("with_bp")}
-                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                      bpLinkedFilter === "with_bp"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-accent"
-                    }`}
-                  >
-                    {t("mappings.withBp") || "With BP"}
-                  </button>
-                  <button
-                    onClick={() => setBpLinkedFilter("all")}
-                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-                      bpLinkedFilter === "all"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-accent"
-                    }`}
-                  >
-                    {t("mappings.allAssets") || "All assets"}
-                  </button>
                 </div>
               </CardHeader>
               <CardContent className="max-h-[400px] overflow-y-auto space-y-1">
