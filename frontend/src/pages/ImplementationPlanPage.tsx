@@ -5,7 +5,7 @@ import { ImrDashboardStats } from "@/components/imr/ImrDashboardStats"
 import { ImrItem, IMR_STATUS_OPTIONS } from "@/lib/imr-types"
 import { useTranslation } from "@/lib/i18n"
 import { useImrApi } from "@/lib/use-imr-api"
-import { List, LayoutGrid } from "lucide-react"
+import { List, LayoutGrid, BarChart3 } from "lucide-react"
 
 const MODULE_GROUPS = ["All", "ISMS", "ORP", "CON", "OPS", "DER", "INF", "NET", "SYS", "APP", "IND"]
 
@@ -17,6 +17,10 @@ export default function ImplementationPlanPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>("list")
   const [activeTab, setActiveTab] = useState("All")
+  const [showStats, setShowStats] = useState(() => {
+    const stored = localStorage.getItem("eits-imr-show-stats")
+    return stored !== "false"
+  })
   const [filter, setFilter] = useState<{
     pearo_status?: string
     priority?: string
@@ -43,6 +47,14 @@ export default function ImplementationPlanPage() {
     exportImrItems(filter)
   }
 
+  const toggleStats = () => {
+    setShowStats((prev) => {
+      const next = !prev
+      localStorage.setItem("eits-imr-show-stats", String(next))
+      return next
+    })
+  }
+
   return (
     <div>
       {/* Page Header */}
@@ -56,6 +68,19 @@ export default function ImplementationPlanPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {/* Stats Toggle */}
+          <button
+            onClick={toggleStats}
+            className={`p-2 rounded-md transition-colors ${
+              showStats
+                ? "bg-background shadow-sm text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+            title={showStats ? "Hide statistics" : "Show statistics"}
+          >
+            <BarChart3 className="w-4 h-4" />
+          </button>
+
           {/* View Toggle */}
           <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
             <button
@@ -95,7 +120,7 @@ export default function ImplementationPlanPage() {
       </div>
 
       {/* Dashboard Statistics */}
-      <ImrDashboardStats />
+      {showStats && <ImrDashboardStats />}
 
       {/* Filter Bar */}
       <div className="mb-3 bg-card rounded-lg border border-border p-3">
