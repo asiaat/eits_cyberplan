@@ -345,36 +345,11 @@ export default function MappingsPage() {
         {/* === Assets Tab === */}
         <TabsContent value="assets" className="space-y-4">
           <div className="grid grid-cols-12 gap-6">
-            {/* Type sidebar */}
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm">{t("mappings.allTypes")}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-0.5 p-2">
-                {ASSET_TYPES.map((type) => (
-                  <button
-                    key={type}
-                    onClick={() => { setAssetTypeTab(type); setSelectedAssetIds(new Set()) }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
-                      assetTypeTab === type
-                        ? "bg-primary text-primary-foreground font-medium"
-                        : "hover:bg-accent text-muted-foreground"
-                    }`}
-                  >
-                    <span>{type === "all" ? t("mappings.allTypes") : t(`mappings.${type}`)}</span>
-                    <span className={`text-xs ml-2 ${assetTypeTab === type ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
-                      {typeCounts[type] || 0}
-                    </span>
-                  </button>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Asset list */}
-            <Card className="lg:col-span-4">
+            {/* Asset list with type tabs */}
+            <Card className="lg:col-span-5">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{t("mappings.asset")}s</CardTitle>
+                  <CardTitle className="text-lg">{t("mappings.assetsTab")}</CardTitle>
                   {filteredAssets.length > 0 && (
                     <Button variant="ghost" size="sm" onClick={handleSelectAll} className="text-xs">
                       <CheckSquare className="w-3.5 h-3.5 mr-1" />
@@ -382,8 +357,23 @@ export default function MappingsPage() {
                     </Button>
                   )}
                 </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {ASSET_TYPES.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => { setAssetTypeTab(type); setSelectedAssetIds(new Set()) }}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        assetTypeTab === type
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {type === "all" ? t("mappings.allTypes") : t(`mappings.${type}`)} ({typeCounts[type] || 0})
+                    </button>
+                  ))}
+                </div>
               </CardHeader>
-              <CardContent className="max-h-[500px] overflow-y-auto space-y-1">
+              <CardContent className="max-h-[400px] overflow-y-auto space-y-1">
                 {filteredAssets.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-4 text-center">{t("mappings.noMappings")}</p>
                 ) : (
@@ -416,7 +406,7 @@ export default function MappingsPage() {
             </Card>
 
             {/* Right: Scope Mapping panel */}
-            <Card className="lg:col-span-6">
+            <Card className="lg:col-span-7">
               <Tabs value={scopeTab} onValueChange={(v) => setScopeTab(v as "select" | "mapped")}>
                 <CardHeader className="pb-3">
                   <TabsList className="w-full">
