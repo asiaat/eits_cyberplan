@@ -196,7 +196,7 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
               >
                 {IMR_STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value} className="text-foreground">
-                    {option.label}
+                    {option.value} - {t(option.labelKey)}
                   </option>
                 ))}
               </select>
@@ -212,7 +212,7 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
               >
                 {IMR_PRIORITY_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value} className="text-foreground">
-                    {option.label}
+                    {option.value} - {t(option.labelKey)}
                   </option>
                 ))}
               </select>

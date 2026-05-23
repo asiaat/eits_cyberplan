@@ -92,7 +92,7 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
           cmp = (a.requirement_profile || "").localeCompare(b.requirement_profile || "")
           break
         case "responsible":
-          cmp = (users[a.responsible_user_id] || "").localeCompare(users[b.responsible_user_id] || "")
+          cmp = (users[a.responsible_user_id || ""] || "").localeCompare(users[b.responsible_user_id || ""] || "")
           break
         case "todo":
           cmp = (a.todo_description || "").localeCompare(b.todo_description || "")

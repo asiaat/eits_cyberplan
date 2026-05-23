@@ -7,8 +7,6 @@ interface ImrStatusBadgeProps {
 }
 
 export function ImrStatusBadge({ status, size = "md" }: ImrStatusBadgeProps) {
-  const { t } = useTranslation()
-  
   const config = {
     U: { bg: "bg-gray-100", text: "text-gray-700" },
     P: { bg: "bg-slate-100", text: "text-slate-700" },
@@ -19,7 +17,6 @@ export function ImrStatusBadge({ status, size = "md" }: ImrStatusBadgeProps) {
   }
   
   const style = config[status as keyof typeof config] || { bg: "bg-gray-100", text: "text-gray-700" }
-  const label = t(`implementationPlan.status.${status}` as any) || status
   
   const sizeClasses = {
     sm: "px-1.5 py-0.5 text-xs",

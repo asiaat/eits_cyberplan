@@ -388,7 +388,7 @@ export default function AssetsPage() {
         cell: ({ row }: any) => {
           const count = row.original.module_mapping_count as number
           return count > 0 ? (
-            <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900 dark:text-purple-200 cursor-pointer" onClick={() => { const asset = row.original; setSelectedAssetForModule(asset); setShowModuleDialog(true); setModuleSearch(""); setModuleJustification(""); setAvailableModules([]); }}>
+            <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900 dark:text-purple-200 cursor-pointer" onClick={(e) => { e.stopPropagation(); const asset = row.original; setSelectedAssetForModule(asset); setShowModuleDialog(true); setModuleSearch(""); setModuleJustification(""); setAvailableModules([]); }}>
               {count}
             </Badge>
           ) : (
@@ -402,13 +402,10 @@ export default function AssetsPage() {
         cell: ({ row }: any) => {
           const asset = row.original
           return (
-            <div className="flex gap-1">
+            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
               <Button variant="ghost" size="sm" onClick={() => { console.log("Assign module click", asset.id, asset.name); setSelectedAssetForModule(asset); setShowModuleDialog(true); setModuleSearch(""); setModuleJustification(""); setAvailableModules([]); }}>
                 <BookOpen className="h-4 w-4 mr-1" />
                 {t("assets.assignModule")}
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => handleEdit(asset)}>
-                {t("common.edit")}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => confirmDelete(asset.id)} className="text-destructive hover:text-destructive">
                 {t("common.delete")}
@@ -993,7 +990,7 @@ export default function AssetsPage() {
       {filteredAssets.length > 0 && viewMode === "cards" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAssets.map((asset) => (
-            <Card key={asset.id} className="hover:shadow-md transition-shadow">
+            <Card key={asset.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleEdit(asset)}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1">
@@ -1099,7 +1096,7 @@ export default function AssetsPage() {
                     </p>
                   )}
                 </div>
-                <div className="flex items-center gap-2 mt-4">
+                <div className="flex items-center gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
                   <Button variant="outline" size="sm" onClick={() => handleEdit(asset)}>
                     {t("common.edit")}
                   </Button>
@@ -1136,7 +1133,11 @@ export default function AssetsPage() {
             </thead>
             <tbody>
               {table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="border-t hover:bg-muted/50">
+                <tr 
+                  key={row.id} 
+                  className="border-t hover:bg-muted/50 cursor-pointer"
+                  onClick={() => handleEdit(row.original)}
+                >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3 text-sm">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

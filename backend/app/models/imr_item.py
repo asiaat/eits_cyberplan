@@ -55,7 +55,7 @@ class ImrItem(Base):
     def pearo_status_display(self):
         return {
             "U": "Unknown",
-            "P": "Not applicable",
+            "P": "Base measure",
             "E": "Not implemented",
             "A": "Accepted risk",
             "R": "Implemented",

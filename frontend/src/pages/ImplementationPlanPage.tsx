@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { ImrTable } from "@/components/imr/ImrTable"
 import { ImrItemModal } from "@/components/imr/ImrItemModal"
 import { ImrDashboardStats } from "@/components/imr/ImrDashboardStats"
@@ -36,8 +36,7 @@ export default function ImplementationPlanPage() {
   const { exportImrItems, loading: exporting, error: exportError } = useImrApi()
 
   const handleSaveItem = (updatedItem: ImrItem) => {
-    console.log("Item saved:", updatedItem)
-    setItems(prevItems => prevItems.map(item => item.id === updatedItem.id ? updatedItem : item))
+    console.log("Item saved:", updatedItem.id)
   }
 
   const handleExport = () => {
@@ -113,7 +112,7 @@ export default function ImplementationPlanPage() {
               <option value="">{t("implementationPlan.dashboard.allStatuses")}</option>
               {IMR_STATUS_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.value} - {option.label.split(" - ")[1]}
+                  {option.value} - {t(option.labelKey)}
                 </option>
               ))}
             </select>
