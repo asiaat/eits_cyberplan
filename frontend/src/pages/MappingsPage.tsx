@@ -509,10 +509,165 @@ export default function MappingsPage() {
 
       <Tabs value={mainTab} onValueChange={setMainTab}>
         <TabsList>
-          <TabsTrigger value="assets">{t("mappings.assetsTab")}</TabsTrigger>
           <TabsTrigger value="business_processes">{t("mappings.bpTab")}</TabsTrigger>
+          <TabsTrigger value="assets">{t("mappings.assetsTab")}</TabsTrigger>
           <TabsTrigger value="asset_relations">{t("mappings.assetRelationsTab")}</TabsTrigger>
         </TabsList>
+
+{/* === Business Processes Tab === */}
+        <TabsContent value="business_processes" className="space-y-6">
+          {/* Protection mode lock notice */}
+          {activeMode && (
+            <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
+              {t("mappings.modeLocked")}
+            </div>
+          )}
+
+          {/* BP list with protection needs */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                {t("mappings.protectionNeeds")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {bps.map((bp) => (
+                  <div key={bp.id} className="p-4 rounded-lg border bg-card">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{bp.name}</p>
+                          {approvedBpIds.has(bp.id) ? (
+                            <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50 text-xs gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Approved
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50 text-xs gap-1">
+                              <XCircle className="w-3 h-3" /> Unapproved
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex gap-3 mt-1">
+                          <span className="text-xs">C: <Badge variant="outline" className={`text-xs ${ciaColorMap[bp.confidentiality_need] || ""}`}>{bp.confidentiality_need}</Badge></span>
+                          <span className="text-xs">I: <Badge variant="outline" className={`text-xs ${ciaColorMap[bp.integrity_need] || ""}`}>{bp.integrity_need}</Badge></span>
+                          <span className="text-xs">A: <Badge variant="outline" className={`text-xs ${ciaColorMap[bp.availability_need] || ""}`}>{bp.availability_need}</Badge></span>
+                        </div>
+                        {bpMappings.filter(m => m.business_process_id === bp.id).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {bpMappings.filter(m => m.business_process_id === bp.id).map(m => (
+                              <Badge key={m.id} variant="secondary" className="text-xs">
+                                {m.module_code}
+                                <button
+                                  className="ml-1 hover:text-destructive"
+                                  onClick={() => handleRemoveBpMapping(m.id)}
+                                >
+                                  ×
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {editingBp?.id === bp.id ? (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <select
+                            className="border rounded p-1 text-xs bg-background"
+                            value={editForm.confidentiality}
+                            onChange={(e) => setEditForm(f => ({ ...f, confidentiality: e.target.value }))}
+                          >
+                            <option value="normal">normal</option>
+                            <option value="high">high</option>
+                            <option value="very_high">very_high</option>
+                          </select>
+                          <select
+                            className="border rounded p-1 text-xs bg-background"
+                            value={editForm.integrity}
+                            onChange={(e) => setEditForm(f => ({ ...f, integrity: e.target.value }))}
+                          >
+                            <option value="normal">normal</option>
+                            <option value="high">high</option>
+                            <option value="very_high">very_high</option>
+                          </select>
+                          <select
+                            className="border rounded p-1 text-xs bg-background"
+                            value={editForm.availability}
+                            onChange={(e) => setEditForm(f => ({ ...f, availability: e.target.value }))}
+                          >
+                            <option value="normal">normal</option>
+                            <option value="high">high</option>
+                            <option value="very_high">very_high</option>
+                          </select>
+                          <div className="flex gap-1">
+                            <Button size="sm" onClick={handleSaveProtectionNeed} disabled={saving}>
+                              {saving ? t("common.saving") : t("common.save")}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setEditingBp(null)}>
+                              {t("common.cancel")}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => handleEditProtectionNeed(bp)}>
+                          {t("mappings.editProtectionNeed")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Map module to BP */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Link2 className="w-5 h-5" />
+                {t("mappings.mapModule")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">{t("mappings.businessProcess")}</label>
+                <select
+                  className="w-full border rounded-md p-2 bg-background"
+                  value={bpTargetId}
+                  onChange={(e) => setBpTargetId(e.target.value)}
+                >
+                  <option value="">{t("mappings.selectTarget")}</option>
+                  {bps.map((bp) => (
+                    <option key={bp.id} value={bp.id}>{bp.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">{t("mappings.moduleName")}</label>
+                <select
+                  className="w-full border rounded-md p-2 bg-background"
+                  value={bpModuleId}
+                  onChange={(e) => setBpModuleId(e.target.value)}
+                >
+                  <option value="">{t("mappings.selectModule")}</option>
+                  {modules.map((mod) => (
+                    <option key={mod.id} value={mod.id}>
+                      {mod.code} — {mod.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                className="w-full"
+                onClick={handleMapModuleToBp}
+                disabled={saving || !bpTargetId || !bpModuleId}
+              >
+                {saving ? t("common.saving") : t("mappings.mapToScope")}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* === Assets Tab === */}
         <TabsContent value="assets" className="space-y-4">
@@ -725,162 +880,6 @@ export default function MappingsPage() {
               </Tabs>
             </Card>
           </div>
-        </TabsContent>
-
-        {/* === Business Processes Tab === */}
-        <TabsContent value="business_processes" className="space-y-6">
-          {/* Protection mode lock notice */}
-          {activeMode && (
-            <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              {t("mappings.modeLocked")}
-            </div>
-          )}
-
-          {/* BP list with protection needs */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Shield className="w-5 h-5" />
-                {t("mappings.protectionNeeds")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {bps.map((bp) => (
-                  <div key={bp.id} className="p-4 rounded-lg border bg-card">
-                    <div className="flex items-center justify-between">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-sm">{bp.name}</p>
-                          {approvedBpIds.has(bp.id) ? (
-                            <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50 text-xs gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Approved
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50 text-xs gap-1">
-                              <XCircle className="w-3 h-3" /> Unapproved
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex gap-3 mt-1">
-                          <span className="text-xs">C: <Badge variant="outline" className={`text-xs ${ciaColorMap[bp.confidentiality_need] || ""}`}>{bp.confidentiality_need}</Badge></span>
-                          <span className="text-xs">I: <Badge variant="outline" className={`text-xs ${ciaColorMap[bp.integrity_need] || ""}`}>{bp.integrity_need}</Badge></span>
-                          <span className="text-xs">A: <Badge variant="outline" className={`text-xs ${ciaColorMap[bp.availability_need] || ""}`}>{bp.availability_need}</Badge></span>
-                        </div>
-                        {/* Show mapped modules for this BP */}
-                        {bpMappings.filter(m => m.business_process_id === bp.id).length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {bpMappings.filter(m => m.business_process_id === bp.id).map(m => (
-                              <Badge key={m.id} variant="secondary" className="text-xs">
-                                {m.module_code}
-                                <button
-                                  className="ml-1 hover:text-destructive"
-                                  onClick={() => handleRemoveBpMapping(m.id)}
-                                >
-                                  ×
-                                </button>
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      {editingBp?.id === bp.id ? (
-                        <div className="flex items-center gap-2 shrink-0">
-                          <select
-                            className="border rounded p-1 text-xs bg-background"
-                            value={editForm.confidentiality}
-                            onChange={(e) => setEditForm(f => ({ ...f, confidentiality: e.target.value }))}
-                          >
-                            <option value="normal">normal</option>
-                            <option value="high">high</option>
-                            <option value="very_high">very_high</option>
-                          </select>
-                          <select
-                            className="border rounded p-1 text-xs bg-background"
-                            value={editForm.integrity}
-                            onChange={(e) => setEditForm(f => ({ ...f, integrity: e.target.value }))}
-                          >
-                            <option value="normal">normal</option>
-                            <option value="high">high</option>
-                            <option value="very_high">very_high</option>
-                          </select>
-                          <select
-                            className="border rounded p-1 text-xs bg-background"
-                            value={editForm.availability}
-                            onChange={(e) => setEditForm(f => ({ ...f, availability: e.target.value }))}
-                          >
-                            <option value="normal">normal</option>
-                            <option value="high">high</option>
-                            <option value="very_high">very_high</option>
-                          </select>
-                          <div className="flex gap-1">
-                            <Button size="sm" onClick={handleSaveProtectionNeed} disabled={saving}>
-                              {saving ? t("common.saving") : t("common.save")}
-                            </Button>
-                            <Button size="sm" variant="outline" onClick={() => setEditingBp(null)}>
-                              {t("common.cancel")}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <Button variant="outline" size="sm" onClick={() => handleEditProtectionNeed(bp)}>
-                          {t("mappings.editProtectionNeed")}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Map module to BP */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Link2 className="w-5 h-5" />
-                {t("mappings.mapModule")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">{t("mappings.businessProcess")}</label>
-                <select
-                  className="w-full border rounded-md p-2 bg-background"
-                  value={bpTargetId}
-                  onChange={(e) => setBpTargetId(e.target.value)}
-                >
-                  <option value="">{t("mappings.selectTarget")}</option>
-                  {bps.map((bp) => (
-                    <option key={bp.id} value={bp.id}>{bp.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1">{t("mappings.moduleName")}</label>
-                <select
-                  className="w-full border rounded-md p-2 bg-background"
-                  value={bpModuleId}
-                  onChange={(e) => setBpModuleId(e.target.value)}
-                >
-                  <option value="">{t("mappings.selectModule")}</option>
-                  {modules.map((mod) => (
-                    <option key={mod.id} value={mod.id}>
-                      {mod.code} — {mod.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <Button
-                className="w-full"
-                onClick={handleMapModuleToBp}
-                disabled={saving || !bpTargetId || !bpModuleId}
-              >
-                {saving ? t("common.saving") : t("mappings.mapToScope")}
-              </Button>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* === Asset Relations Tab === */}
