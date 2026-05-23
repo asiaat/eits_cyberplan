@@ -102,11 +102,13 @@ export default function MappingsPage() {
   const [saving, setSaving] = useState(false)
   const [mainTab, setMainTab] = useState("assets")
   const [assetTypeTab, setAssetTypeTab] = useState("all")
+  const [bpLinkedFilter, setBpLinkedFilter] = useState<"all" | "with_bp">("with_bp")
   const [moduleGroupTab, setModuleGroupTab] = useState("ISMS")
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
   const [selectedModuleIds, setSelectedModuleIds] = useState<Set<string>>(new Set())
   const [scopeTab, setScopeTab] = useState<"select" | "mapped">("select")
   const [moduleSort, setModuleSort] = useState<"code" | "name">("code")
+  const [moduleGroupFilter, setModuleGroupFilter] = useState("all")
   const [batchResult, setBatchResult] = useState<string | null>(null)
 
   const [editingBp, setEditingBp] = useState<BpItem | null>(null)
@@ -148,9 +150,11 @@ export default function MappingsPage() {
 
   useEffect(() => { fetchData() }, [selectedOrgId])
 
-  const filteredAssets = assetTypeTab === "all"
-    ? assets
-    : assets.filter(a => a.asset_type === assetTypeTab)
+  const filteredAssets = assets.filter(a => {
+    const typeMatch = assetTypeTab === "all" || a.asset_type === assetTypeTab
+    const bpMatch = bpLinkedFilter === "all" || (a.linked_processes && a.linked_processes.length > 0)
+    return typeMatch && bpMatch
+  })
 
   const selectedAssetMappings = useMemo(() => {
     return assetMappings.filter(m => selectedAssetIds.has(m.asset_id))
@@ -175,12 +179,15 @@ export default function MappingsPage() {
     : (availableGroups[0] || "ISMS")
 
   const typeCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: assets.length }
+    const filteredForBp = bpLinkedFilter === "all"
+      ? assets
+      : assets.filter(a => a.linked_processes && a.linked_processes.length > 0)
+    const counts: Record<string, number> = { all: filteredForBp.length }
     for (const t of ASSET_TYPES) {
-      if (t !== "all") counts[t] = assets.filter(a => a.asset_type === t).length
+      if (t !== "all") counts[t] = filteredForBp.filter(a => a.asset_type === t).length
     }
     return counts
-  }, [assets])
+  }, [assets, bpLinkedFilter])
 
   const sortedModules = useMemo(() => {
     const sorted = [...modules]
@@ -190,6 +197,29 @@ export default function MappingsPage() {
     })
     return sorted
   }, [modules, moduleSort])
+
+  const filteredModules = useMemo(() => {
+    let result = sortedModules
+    if (moduleGroupFilter !== "all") {
+      result = result.filter(m => m.module_group === moduleGroupFilter)
+    }
+    if (selectedAssetIds.size > 0) {
+      const mapped = new Set(selectedAssetMappings.map(m => m.module_id))
+      result = result.filter(m => !mapped.has(m.id))
+    }
+    return result
+  }, [sortedModules, moduleGroupFilter, selectedAssetIds, selectedAssetMappings])
+
+  const moduleGroupCounts = useMemo(() => {
+    const mapped = selectedAssetIds.size > 0
+      ? new Set(selectedAssetMappings.map(m => m.module_id))
+      : new Set<string>()
+    const counts: Record<string, number> = { all: modules.filter(m => !mapped.has(m.id)).length }
+    for (const g of MODULE_GROUPS) {
+      counts[g] = modules.filter(m => m.module_group === g && !mapped.has(m.id)).length
+    }
+    return counts
+  }, [modules, selectedAssetIds, selectedAssetMappings])
 
   const approvedBpIds = new Set([
     ...protectionNeeds.filter((pn) => pn.approved_by).map((pn) => pn.business_process_id),
@@ -372,6 +402,29 @@ export default function MappingsPage() {
                     </button>
                   ))}
                 </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-muted-foreground">{t("mappings.filterByBp") || "BP linked:"}</span>
+                  <button
+                    onClick={() => setBpLinkedFilter("with_bp")}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                      bpLinkedFilter === "with_bp"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {t("mappings.withBp") || "With BP"}
+                  </button>
+                  <button
+                    onClick={() => setBpLinkedFilter("all")}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                      bpLinkedFilter === "all"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    {t("mappings.allAssets") || "All assets"}
+                  </button>
+                </div>
               </CardHeader>
               <CardContent className="max-h-[400px] overflow-y-auto space-y-1">
                 {filteredAssets.length === 0 ? (
@@ -418,7 +471,7 @@ export default function MappingsPage() {
                   <TabsContent value="select" className="mt-0">
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs text-muted-foreground">{modules.length} modules, {selectedModuleIds.size} selected</span>
+                        <span className="text-xs text-muted-foreground">{filteredModules.length} modules, {selectedModuleIds.size} selected</span>
                         <button
                           className={`text-xs px-2 py-0.5 rounded ${moduleSort === "code" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
                           onClick={() => setModuleSort("code")}
@@ -434,18 +487,33 @@ export default function MappingsPage() {
                         <button
                           className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-accent ml-auto"
                           onClick={() => {
-                            if (selectedModuleIds.size === sortedModules.length) {
+                            if (selectedModuleIds.size === filteredModules.length) {
                               setSelectedModuleIds(new Set())
                             } else {
-                              setSelectedModuleIds(new Set(sortedModules.map(m => m.id)))
+                              setSelectedModuleIds(new Set(filteredModules.map(m => m.id)))
                             }
                           }}
                         >
-                          {selectedModuleIds.size === sortedModules.length ? "Deselect all" : "Select all"}
+                          {selectedModuleIds.size === filteredModules.length ? "Deselect all" : "Select all"}
                         </button>
                       </div>
+                      <div className="flex flex-wrap gap-1 mb-2">
+                        {(["all", ...MODULE_GROUPS] as const).map((g) => (
+                          <button
+                            key={g}
+                            onClick={() => setModuleGroupFilter(g)}
+                            className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                              moduleGroupFilter === g
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-muted-foreground hover:bg-accent"
+                            }`}
+                          >
+                            {g === "all" ? "All" : g} ({moduleGroupCounts[g] || 0})
+                          </button>
+                        ))}
+                      </div>
                       <div className="max-h-[300px] overflow-y-auto space-y-1 border rounded-md p-1">
-                        {sortedModules.map((mod) => (
+                        {filteredModules.map((mod) => (
                           <label
                               key={mod.id}
                               className={`flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer ${
