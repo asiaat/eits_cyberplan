@@ -152,15 +152,19 @@ export default function MappingsPage() {
     ? assets
     : assets.filter(a => a.asset_type === assetTypeTab)
 
+  const selectedAssetMappings = useMemo(() => {
+    return assetMappings.filter(m => selectedAssetIds.has(m.asset_id))
+  }, [assetMappings, selectedAssetIds])
+
   const mappingsByGroup = useMemo(() => {
     const map: Record<string, AssetMappingItem[]> = {}
-    for (const m of assetMappings) {
+    for (const m of selectedAssetMappings) {
       const group = m.module?.module_group || "OTHER"
       if (!map[group]) map[group] = []
       map[group].push(m)
     }
     return map
-  }, [assetMappings])
+  }, [selectedAssetMappings])
 
   const availableGroups = useMemo(() => {
     return MODULE_GROUPS.filter(g => mappingsByGroup[g]?.length)
@@ -484,7 +488,9 @@ export default function MappingsPage() {
                     </div>
                   </TabsContent>
                   <TabsContent value="mapped" className="mt-0">
-                    {assetMappings.length === 0 ? (
+                    {selectedAssetIds.size === 0 ? (
+                      <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noSelection")}</p>
+                    ) : availableGroups.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noMappings")}</p>
                     ) : (
                       <>
