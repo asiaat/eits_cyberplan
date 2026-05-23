@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import DB
@@ -29,7 +29,47 @@ class BpModuleMappingResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class BatchMapRequest(BaseModel):
+    module_id: UUID
+    target_ids: list[UUID]
+    target_type: str = Field(pattern="^(asset|business_process)$")
+
+
+class BatchMapResult(BaseModel):
+    mapped: list[UUID]
+    skipped: list[dict] = Field(default_factory=list)
+    errors: list[dict] = Field(default_factory=list)
+
+
 router = APIRouter()
+
+
+@router.post("/batch-map", status_code=status.HTTP_200_OK)
+def batch_map_module(
+    body: BatchMapRequest,
+    db: DB = None,
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """Map a module to multiple assets at once."""
+    result = BatchMapResult()
+    for target_id in body.target_ids:
+        try:
+            ModelingService.map_module_to_target(
+                db=db,
+                tenant_id=current_user.tenant_id,
+                user_id=current_user.id,
+                module_id=body.module_id,
+                target_type=body.target_type,
+                target_id=target_id,
+            )
+            result.mapped.append(target_id)
+        except Exception as e:
+            msg = str(e)
+            if "not ready" in msg.lower() or "Cannot model" in msg:
+                result.skipped.append({"id": str(target_id), "reason": msg})
+            else:
+                result.errors.append({"id": str(target_id), "reason": msg})
+    return result
 
 
 @router.post("/map", status_code=status.HTTP_201_CREATED)

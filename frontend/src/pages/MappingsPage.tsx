@@ -1,16 +1,24 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { useTranslation } from "@/lib/i18n"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
-import { Layers, Link2, Unlink, AlertTriangle, Shield, CheckCircle2, XCircle } from "lucide-react"
+import { Layers, Link2, Unlink, AlertTriangle, Shield, CheckCircle2, XCircle, CheckSquare } from "lucide-react"
+
+interface LinkedProcess {
+  id: string
+  name: string
+  status: string
+}
 
 interface AssetItem {
   id: string
   name: string
   asset_type: string
+  linked_processes?: LinkedProcess[]
 }
 
 interface BpItem {
@@ -60,20 +68,27 @@ interface ProtectionNeedItem {
   approved_by: string | null
 }
 
+const ASSET_TYPES = ["all", "information_asset", "software", "hardware", "service", "data", "other"] as const
+
+const MODULE_GROUPS = ["ISMS", "ORP", "CON", "OPS", "DER", "INF", "NET", "SYS", "APP", "IND"] as const
+
 const approachColorMap: Record<string, string> = {
   BASIC: "bg-green-100 text-green-800 border-green-200",
   STANDARD: "bg-yellow-100 text-yellow-800 border-yellow-200",
   CORE: "bg-red-100 text-red-800 border-red-200",
 }
 
+const ciaColorMap: Record<string, string> = {
+  normal: "bg-green-100 text-green-700 border-green-200",
+  high: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  very_high: "bg-red-100 text-red-700 border-red-200",
+  unknown: "bg-gray-100 text-gray-500 border-gray-200",
+}
+
 export default function MappingsPage() {
   const { t } = useTranslation()
   const { selectedOrgId } = useAuth()
   const orgRef = useRef(selectedOrgId)
-
-  const [targetType, setTargetType] = useState<"asset" | "business_process">("asset")
-  const [targetId, setTargetId] = useState("")
-  const [moduleId, setModuleId] = useState("")
 
   const [assets, setAssets] = useState<AssetItem[]>([])
   const [bps, setBps] = useState<BpItem[]>([])
@@ -85,8 +100,16 @@ export default function MappingsPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [mainTab, setMainTab] = useState("assets")
+  const [assetTypeTab, setAssetTypeTab] = useState("all")
+  const [moduleGroupTab, setModuleGroupTab] = useState("ISMS")
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
+  const [assetsModuleId, setAssetsModuleId] = useState("")
+
   const [editingBp, setEditingBp] = useState<BpItem | null>(null)
   const [editForm, setEditForm] = useState({ confidentiality: "", integrity: "", availability: "" })
+  const [bpTargetId, setBpTargetId] = useState("")
+  const [bpModuleId, setBpModuleId] = useState("")
 
   useEffect(() => { orgRef.current = selectedOrgId }, [selectedOrgId])
 
@@ -122,18 +145,104 @@ export default function MappingsPage() {
 
   useEffect(() => { fetchData() }, [selectedOrgId])
 
-  const handleMapModule = async () => {
-    if (!targetId || !moduleId) {
-      alert("Please select both a target and a module")
+  const filteredAssets = assetTypeTab === "all"
+    ? assets
+    : assets.filter(a => a.asset_type === assetTypeTab)
+
+  const selectedAssetMappings = useMemo(() => {
+    return assetMappings.filter(m => selectedAssetIds.has(m.asset_id))
+  }, [assetMappings, selectedAssetIds])
+
+  const mappingsByGroup = useMemo(() => {
+    const map: Record<string, AssetMappingItem[]> = {}
+    for (const m of selectedAssetMappings) {
+      const group = m.module?.module_group || "OTHER"
+      if (!map[group]) map[group] = []
+      map[group].push(m)
+    }
+    return map
+  }, [selectedAssetMappings])
+
+  const availableGroups = useMemo(() => {
+    return MODULE_GROUPS.filter(g => mappingsByGroup[g]?.length)
+  }, [mappingsByGroup])
+
+  const activeModuleGroup = availableGroups.includes(moduleGroupTab as any)
+    ? moduleGroupTab
+    : (availableGroups[0] || "ISMS")
+
+  const typeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: assets.length }
+    for (const t of ASSET_TYPES) {
+      if (t !== "all") counts[t] = assets.filter(a => a.asset_type === t).length
+    }
+    return counts
+  }, [assets])
+
+  const approvedBpIds = new Set([
+    ...protectionNeeds.filter((pn) => pn.approved_by).map((pn) => pn.business_process_id),
+    ...bps.filter((bp: any) =>
+      bp.confidentiality_need !== null && bp.confidentiality_need !== "" && bp.confidentiality_need !== "unknown" ||
+      bp.integrity_need !== null && bp.integrity_need !== "" && bp.integrity_need !== "unknown" ||
+      bp.availability_need !== null && bp.availability_need !== "" && bp.availability_need !== "unknown"
+    ).map((bp: any) => bp.id)
+  ])
+
+  const handleSelectAll = () => {
+    if (selectedAssetIds.size === filteredAssets.length && filteredAssets.length > 0) {
+      setSelectedAssetIds(new Set())
+    } else {
+      setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
+    }
+  }
+
+  const handleToggleAsset = (id: string) => {
+    const next = new Set(selectedAssetIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedAssetIds(next)
+  }
+
+  const handleBatchMap = async () => {
+    if (selectedAssetIds.size === 0 || !assetsModuleId) {
+      alert("Select assets and a module")
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await apiClient.post("/modeling/batch-map", {
+        module_id: assetsModuleId,
+        target_ids: Array.from(selectedAssetIds),
+        target_type: "asset",
+      })
+      const data = res.data
+      const parts: string[] = []
+      if (data.mapped?.length) parts.push(`Mapped: ${data.mapped.length}`)
+      if (data.skipped?.length) parts.push(`Skipped: ${data.skipped.length}`)
+      if (data.errors?.length) parts.push(`Errors: ${data.errors.length}`)
+      alert(parts.join(", ") || "Done")
+      setAssetsModuleId("")
+      setSelectedAssetIds(new Set())
+      await fetchData()
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Batch mapping failed")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleMapModuleToBp = async () => {
+    if (!bpTargetId || !bpModuleId) {
+      alert("Select both a BP and a module")
       return
     }
     setSaving(true)
     try {
       await apiClient.post("/modeling/map", null, {
-        params: { module_id: moduleId, target_type: targetType, target_id: targetId },
+        params: { module_id: bpModuleId, target_type: "business_process", target_id: bpTargetId },
       })
-      setTargetId("")
-      setModuleId("")
+      setBpTargetId("")
+      setBpModuleId("")
       await fetchData()
     } catch (err: any) {
       alert(err.response?.data?.detail || "Failed to map module")
@@ -142,10 +251,20 @@ export default function MappingsPage() {
     }
   }
 
-  const handleRemoveMapping = async (id: string, type: "asset" | "business_process") => {
+  const handleRemoveAssetMapping = async (id: string) => {
     if (!confirm("Remove this module from scope?")) return
     try {
-      await apiClient.delete(`/modeling/map/${id}`, { params: { target_type: type } })
+      await apiClient.delete(`/modeling/map/${id}`, { params: { target_type: "asset" } })
+      await fetchData()
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to remove mapping")
+    }
+  }
+
+  const handleRemoveBpMapping = async (id: string) => {
+    if (!confirm("Remove this module from scope?")) return
+    try {
+      await apiClient.delete(`/modeling/map/${id}`, { params: { target_type: "business_process" } })
       await fetchData()
     } catch (err: any) {
       alert(err.response?.data?.detail || "Failed to remove mapping")
@@ -185,21 +304,7 @@ export default function MappingsPage() {
     }
   }
 
-  const selectedTargets = targetType === "asset" ? assets : bps
-
-  const approvedBpIds = new Set([
-    ...protectionNeeds.filter((pn) => pn.approved_by).map((pn) => pn.business_process_id),
-    ...bps.filter((bp: any) =>
-      bp.confidentiality_need !== null && bp.confidentiality_need !== "" && bp.confidentiality_need !== "unknown" ||
-      bp.integrity_need !== null && bp.integrity_need !== "" && bp.integrity_need !== "unknown" ||
-      bp.availability_need !== null && bp.availability_need !== "" && bp.availability_need !== "unknown"
-    ).map((bp: any) => bp.id)
-  ])
-
-  const linkedProcesses = assets.find((a) => a.id === targetId) as any
-  const linkedProcessList: Array<{ id: string; name: string; status: string }> = linkedProcesses?.linked_processes || []
-
-  const allApproved = linkedProcessList.length > 0 && linkedProcessList.every((lp) => approvedBpIds.has(lp.id))
+  const getAssetName = (assetId: string) => assets.find(a => a.id === assetId)?.name || assetId.slice(0, 8)
 
   if (loading) {
     return <div className="p-8 text-center text-muted-foreground">{t("common.loading")}</div>
@@ -220,278 +325,329 @@ export default function MappingsPage() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Map New Module */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Link2 className="w-5 h-5" />
-              {t("mappings.mapModule")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">{t("mappings.targetType")}</label>
-              <div className="flex gap-2">
-                <Button
-                  variant={targetType === "asset" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => { setTargetType("asset"); setTargetId("") }}
-                >
-                  {t("mappings.asset")}
-                </Button>
-                <Button
-                  variant={targetType === "business_process" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => { setTargetType("business_process"); setTargetId("") }}
-                >
-                  {t("mappings.businessProcess")}
-                </Button>
-              </div>
-            </div>
+      <Tabs value={mainTab} onValueChange={setMainTab}>
+        <TabsList>
+          <TabsTrigger value="assets">{t("mappings.assetsTab")}</TabsTrigger>
+          <TabsTrigger value="business_processes">{t("mappings.bpTab")}</TabsTrigger>
+        </TabsList>
 
-            <div>
-              <label className="block text-sm font-medium mb-1">{t("mappings.targetType")}</label>
-              <select
-                className="w-full border rounded-md p-2 bg-background"
-                value={targetId}
-                onChange={(e) => setTargetId(e.target.value)}
-              >
-                <option value="">{t("mappings.selectTarget")}</option>
-                {selectedTargets.map((item: any) => (
-                  <option key={item.id} value={item.id}>
-                    {item.name} {item.asset_type ? `(${item.asset_type})` : ""}
-                  </option>
+        {/* === Assets Tab === */}
+        <TabsContent value="assets" className="space-y-4">
+          <div className="grid grid-cols-12 gap-6">
+            {/* Type sidebar */}
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">{t("mappings.allTypes")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-0.5 p-2">
+                {ASSET_TYPES.map((type) => (
+                  <button
+                    key={type}
+                    onClick={() => { setAssetTypeTab(type); setSelectedAssetIds(new Set()) }}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-md text-sm transition-colors ${
+                      assetTypeTab === type
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "hover:bg-accent text-muted-foreground"
+                    }`}
+                  >
+                    <span>{type === "all" ? t("mappings.allTypes") : t(`mappings.${type}`)}</span>
+                    <span className={`text-xs ml-2 ${assetTypeTab === type ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                      {typeCounts[type] || 0}
+                    </span>
+                  </button>
                 ))}
-              </select>
-            </div>
+              </CardContent>
+            </Card>
 
-            {targetType === "asset" && targetId && (
-              <div className="rounded-md border p-3 space-y-2 bg-muted/30">
-                <p className="text-xs font-semibold text-muted-foreground uppercase">{t("mappings.linkedProcesses")}</p>
-                {linkedProcessList.length === 0 ? (
-                  <div className="flex items-center gap-2 text-sm text-destructive">
-                    <XCircle className="w-4 h-4" />
-                    <span>No linked business processes</span>
-                  </div>
+            {/* Asset list */}
+            <Card className="lg:col-span-4">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{t("mappings.asset")}s</CardTitle>
+                  {filteredAssets.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={handleSelectAll} className="text-xs">
+                      <CheckSquare className="w-3.5 h-3.5 mr-1" />
+                      {selectedAssetIds.size === filteredAssets.length ? "Deselect all" : "Select all"}
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="max-h-[500px] overflow-y-auto space-y-1">
+                {filteredAssets.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">{t("mappings.noMappings")}</p>
                 ) : (
-                  linkedProcessList.map((lp) => (
-                    <div key={lp.id} className="flex items-center justify-between text-sm">
-                      <span>{lp.name}</span>
-                      {approvedBpIds.has(lp.id) ? (
-                        <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50 gap-1">
-                          <CheckCircle2 className="w-3 h-3" /> Approved
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50 gap-1">
-                          <AlertTriangle className="w-3 h-3" /> Not approved
+                  filteredAssets.map((asset) => (
+                    <label
+                      key={asset.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-accent ${
+                        selectedAssetIds.has(asset.id) ? "border-primary bg-primary/5" : ""
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        checked={selectedAssetIds.has(asset.id)}
+                        onChange={() => handleToggleAsset(asset.id)}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{asset.name}</p>
+                        <p className="text-xs text-muted-foreground">{asset.asset_type?.replace(/_/g, " ")}</p>
+                      </div>
+                      {asset.linked_processes && asset.linked_processes.length > 0 && (
+                        <Badge variant="outline" className="text-xs shrink-0">
+                          {asset.linked_processes.length} BP
                         </Badge>
                       )}
-                    </div>
+                    </label>
                   ))
                 )}
-                {linkedProcessList.length > 0 && (
-                  <div className={`flex items-center gap-2 text-sm pt-2 border-t ${allApproved ? "text-green-600" : "text-yellow-600"}`}>
-                    {allApproved ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                    <span className="font-medium">{allApproved ? "Ready for modeling" : "Cannot model — unapproved protection needs"}</span>
-                  </div>
+              </CardContent>
+            </Card>
+
+            {/* Right: Mapped modules for selected assets */}
+            <Card className="lg:col-span-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Layers className="w-5 h-5" />
+                  {t("mappings.mappedModules")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {selectedAssetIds.size === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noSelection")}</p>
+                ) : availableGroups.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noMappings")}</p>
+                ) : (
+                  <>
+                    {/* Module group sub-tabs */}
+                    <Tabs value={activeModuleGroup} onValueChange={setModuleGroupTab}>
+                      <TabsList className="flex-wrap h-auto mb-3">
+                        {availableGroups.map((group) => (
+                          <TabsTrigger key={group} value={group} className="text-xs">
+                            {group} ({mappingsByGroup[group]?.length || 0})
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                      {availableGroups.map((group) => (
+                        <TabsContent key={group} value={group} className="space-y-2 mt-0">
+                          {mappingsByGroup[group]?.map((m) => (
+                            <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">
+                                  <span className="font-mono text-xs text-muted-foreground">{m.module?.code}</span>{" "}
+                                  {m.module?.name}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  {t("mappings.target")}: {getAssetName(m.asset_id)}
+                                </p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive shrink-0 ml-2"
+                                onClick={() => handleRemoveAssetMapping(m.id)}
+                              >
+                                <Unlink className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ))}
+                          {(!mappingsByGroup[group] || mappingsByGroup[group].length === 0) && (
+                            <p className="text-sm text-muted-foreground py-4 text-center">No mappings in this group</p>
+                          )}
+                        </TabsContent>
+                      ))}
+                    </Tabs>
+                  </>
                 )}
-              </div>
-            )}
-            <div>
-              <label className="block text-sm font-medium mb-1">{t("mappings.moduleName")}</label>
-              <select
-                className="w-full border rounded-md p-2 bg-background"
-                value={moduleId}
-                onChange={(e) => setModuleId(e.target.value)}
-              >
-                <option value="">{t("mappings.selectModule")}</option>
-                {modules.map((mod) => (
-                  <option key={mod.id} value={mod.id}>
-                    {mod.code} — {mod.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              </CardContent>
+            </Card>
+          </div>
 
-            <Button
-              className="w-full"
-              onClick={handleMapModule}
-              disabled={saving || !targetId || !moduleId}
-            >
-              {saving ? t("common.saving") : t("mappings.mapToScope")}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Mapped Modules */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Layers className="w-5 h-5" />
-              {t("mappings.mappedModules")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {assetMappings.length === 0 && bpMappings.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t("mappings.noMappings")}</p>
-            ) : (
-              <>
-                {assetMappings.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">{t("mappings.asset")}</p>
-                    {assetMappings.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border mb-2 bg-card">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            <span className="font-mono text-xs text-muted-foreground">{m.module?.code}</span>{" "}
-                            {m.module?.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {t("mappings.target")}: {assets.find(a => a.id === m.asset_id)?.name || m.asset_id}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive shrink-0"
-                          onClick={() => handleRemoveMapping(m.id, "asset")}
-                        >
-                          <Unlink className="w-4 h-4" />
-                        </Button>
-                      </div>
+          {/* Batch map action bar */}
+          {selectedAssetIds.size > 0 && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-4 flex-wrap">
+                  <span className="text-sm font-medium whitespace-nowrap">
+                    {selectedAssetIds.size} asset{selectedAssetIds.size !== 1 ? "s" : ""} selected
+                  </span>
+                  <select
+                    className="flex-1 min-w-[200px] border rounded-md p-2 bg-background text-sm"
+                    value={assetsModuleId}
+                    onChange={(e) => setAssetsModuleId(e.target.value)}
+                  >
+                    <option value="">{t("mappings.selectModule")}</option>
+                    {modules.map((mod) => (
+                      <option key={mod.id} value={mod.id}>
+                        {mod.code} — {mod.name}
+                      </option>
                     ))}
-                  </div>
-                )}
-                {bpMappings.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground uppercase mb-2">{t("mappings.businessProcess")}</p>
-                    {bpMappings.map((m) => (
-                      <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border mb-2 bg-card">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            <span className="font-mono text-xs text-muted-foreground">{m.module_code}</span>{" "}
-                            {m.module_name}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {t("mappings.target")}: {m.business_process_name}
-                          </p>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive shrink-0"
-                          onClick={() => handleRemoveMapping(m.id, "business_process")}
-                        >
-                          <Unlink className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+                  </select>
+                  <Button onClick={handleBatchMap} disabled={saving || !assetsModuleId}>
+                    {saving ? t("common.saving") : t("mappings.mapSelected")}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
 
-      {/* Business Process Protection Needs */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Shield className="w-5 h-5" />
-            {t("mappings.protectionNeeds")}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* === Business Processes Tab === */}
+        <TabsContent value="business_processes" className="space-y-6">
+          {/* Protection mode lock notice */}
           {activeMode && (
-            <div className="mb-4 p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm flex items-center gap-2">
+            <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0" />
               {t("mappings.modeLocked")}
             </div>
           )}
-          <div className="space-y-3">
-            {bps.map((bp) => (
-              <div key={bp.id} className="p-4 rounded-lg border bg-card">
-                  <div className="flex items-center justify-between">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-sm">{bp.name}</p>
-                        {approvedBpIds.has(bp.id) ? (
-                          <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50 text-xs gap-1">
-                            <CheckCircle2 className="w-3 h-3" /> Approved
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50 text-xs gap-1">
-                            <XCircle className="w-3 h-3" /> Unapproved
-                          </Badge>
+
+          {/* BP list with protection needs */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Shield className="w-5 h-5" />
+                {t("mappings.protectionNeeds")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {bps.map((bp) => (
+                  <div key={bp.id} className="p-4 rounded-lg border bg-card">
+                    <div className="flex items-center justify-between">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{bp.name}</p>
+                          {approvedBpIds.has(bp.id) ? (
+                            <Badge variant="outline" className="text-green-600 border-green-300 bg-green-50 text-xs gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Approved
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-yellow-600 border-yellow-300 bg-yellow-50 text-xs gap-1">
+                              <XCircle className="w-3 h-3" /> Unapproved
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="flex gap-3 mt-1">
+                          <span className="text-xs">C: <Badge variant="outline" className={`text-xs ${ciaColorMap[bp.confidentiality_need] || ""}`}>{bp.confidentiality_need}</Badge></span>
+                          <span className="text-xs">I: <Badge variant="outline" className={`text-xs ${ciaColorMap[bp.integrity_need] || ""}`}>{bp.integrity_need}</Badge></span>
+                          <span className="text-xs">A: <Badge variant="outline" className={`text-xs ${ciaColorMap[bp.availability_need] || ""}`}>{bp.availability_need}</Badge></span>
+                        </div>
+                        {/* Show mapped modules for this BP */}
+                        {bpMappings.filter(m => m.business_process_id === bp.id).length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {bpMappings.filter(m => m.business_process_id === bp.id).map(m => (
+                              <Badge key={m.id} variant="secondary" className="text-xs">
+                                {m.module_code}
+                                <button
+                                  className="ml-1 hover:text-destructive"
+                                  onClick={() => handleRemoveBpMapping(m.id)}
+                                >
+                                  ×
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
                         )}
                       </div>
-                      <div className="flex gap-3 mt-1">
-                        <span className="text-xs">
-                          C: <Badge variant="outline" className="text-xs">{bp.confidentiality_need}</Badge>
-                        </span>
-                        <span className="text-xs">
-                          I: <Badge variant="outline" className="text-xs">{bp.integrity_need}</Badge>
-                        </span>
-                        <span className="text-xs">
-                          A: <Badge variant="outline" className="text-xs">{bp.availability_need}</Badge>
-                        </span>
-                      </div>
-                    </div>
-                  {editingBp?.id === bp.id ? (
-                    <div className="flex items-center gap-2 shrink-0">
-                      <select
-                        className="border rounded p-1 text-xs bg-background"
-                        value={editForm.confidentiality}
-                        onChange={(e) => setEditForm(f => ({ ...f, confidentiality: e.target.value }))}
-                      >
-                        <option value="normal">normal</option>
-                        <option value="high">high</option>
-                        <option value="very_high">very_high</option>
-                      </select>
-                      <select
-                        className="border rounded p-1 text-xs bg-background"
-                        value={editForm.integrity}
-                        onChange={(e) => setEditForm(f => ({ ...f, integrity: e.target.value }))}
-                      >
-                        <option value="normal">normal</option>
-                        <option value="high">high</option>
-                        <option value="very_high">very_high</option>
-                      </select>
-                      <select
-                        className="border rounded p-1 text-xs bg-background"
-                        value={editForm.availability}
-                        onChange={(e) => setEditForm(f => ({ ...f, availability: e.target.value }))}
-                      >
-                        <option value="normal">normal</option>
-                        <option value="high">high</option>
-                        <option value="very_high">very_high</option>
-                      </select>
-                      <div className="flex gap-1">
-                        <Button size="sm" onClick={handleSaveProtectionNeed} disabled={saving}>
-                          {saving ? t("common.saving") : t("common.save")}
+                      {editingBp?.id === bp.id ? (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <select
+                            className="border rounded p-1 text-xs bg-background"
+                            value={editForm.confidentiality}
+                            onChange={(e) => setEditForm(f => ({ ...f, confidentiality: e.target.value }))}
+                          >
+                            <option value="normal">normal</option>
+                            <option value="high">high</option>
+                            <option value="very_high">very_high</option>
+                          </select>
+                          <select
+                            className="border rounded p-1 text-xs bg-background"
+                            value={editForm.integrity}
+                            onChange={(e) => setEditForm(f => ({ ...f, integrity: e.target.value }))}
+                          >
+                            <option value="normal">normal</option>
+                            <option value="high">high</option>
+                            <option value="very_high">very_high</option>
+                          </select>
+                          <select
+                            className="border rounded p-1 text-xs bg-background"
+                            value={editForm.availability}
+                            onChange={(e) => setEditForm(f => ({ ...f, availability: e.target.value }))}
+                          >
+                            <option value="normal">normal</option>
+                            <option value="high">high</option>
+                            <option value="very_high">very_high</option>
+                          </select>
+                          <div className="flex gap-1">
+                            <Button size="sm" onClick={handleSaveProtectionNeed} disabled={saving}>
+                              {saving ? t("common.saving") : t("common.save")}
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setEditingBp(null)}>
+                              {t("common.cancel")}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button variant="outline" size="sm" onClick={() => handleEditProtectionNeed(bp)}>
+                          {t("mappings.editProtectionNeed")}
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditingBp(null)}>
-                          {t("common.cancel")}
-                        </Button>
-                      </div>
+                      )}
                     </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEditProtectionNeed(bp)}
-                    >
-                      {t("mappings.editProtectionNeed")}
-                    </Button>
-                  )}
-                </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          {/* Map module to BP */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Link2 className="w-5 h-5" />
+                {t("mappings.mapModule")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">{t("mappings.businessProcess")}</label>
+                <select
+                  className="w-full border rounded-md p-2 bg-background"
+                  value={bpTargetId}
+                  onChange={(e) => setBpTargetId(e.target.value)}
+                >
+                  <option value="">{t("mappings.selectTarget")}</option>
+                  {bps.map((bp) => (
+                    <option key={bp.id} value={bp.id}>{bp.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">{t("mappings.moduleName")}</label>
+                <select
+                  className="w-full border rounded-md p-2 bg-background"
+                  value={bpModuleId}
+                  onChange={(e) => setBpModuleId(e.target.value)}
+                >
+                  <option value="">{t("mappings.selectModule")}</option>
+                  {modules.map((mod) => (
+                    <option key={mod.id} value={mod.id}>
+                      {mod.code} — {mod.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <Button
+                className="w-full"
+                onClick={handleMapModuleToBp}
+                disabled={saving || !bpTargetId || !bpModuleId}
+              >
+                {saving ? t("common.saving") : t("mappings.mapToScope")}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
