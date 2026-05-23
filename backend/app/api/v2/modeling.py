@@ -36,7 +36,7 @@ class BatchMapRequest(BaseModel):
 
 
 class BatchMapResult(BaseModel):
-    mapped: list[UUID]
+    mapped: list[UUID] = Field(default_factory=list)
     skipped: list[dict] = Field(default_factory=list)
     errors: list[dict] = Field(default_factory=list)
 
