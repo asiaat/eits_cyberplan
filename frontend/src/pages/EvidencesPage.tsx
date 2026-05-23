@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
-import { Upload, Trash2, FileIcon, AlertTriangle, CheckCircle, X } from "lucide-react"
+import { Upload, Trash2, FileIcon, AlertTriangle, CheckCircle, X, Download, ExternalLink } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,13 @@ interface LinkedBP {
   link_id: string
 }
 
+interface LinkedImrItem {
+  imr_item_id: string
+  measure_code: string
+  measure_name: string
+  link_id: string
+}
+
 interface EvidenceItem {
   id: string
   title: string
@@ -34,9 +41,13 @@ interface EvidenceItem {
   valid_from: string | null
   valid_until: string | null
   review_due_date: string | null
+  file_size: number | null
+  mime_type: string | null
+  download_count: number
   created_at: string
   download_url: string | null
   linked_business_processes: LinkedBP[]
+  linked_imr_items: LinkedImrItem[]
 }
 
 interface UploadResult {
@@ -44,6 +55,33 @@ interface UploadResult {
   title: string
   is_new: boolean
   message: string
+}
+
+const formatFileSize = (bytes: number | null): string => {
+  if (bytes === null || bytes === undefined) return ""
+  const units = ["B", "KB", "MB", "GB"]
+  let value = bytes
+  let unitIdx = 0
+  while (value >= 1024 && unitIdx < units.length - 1) {
+    value /= 1024
+    unitIdx++
+  }
+  return `${value.toFixed(value >= 100 ? 0 : value >= 10 ? 1 : 2)} ${units[unitIdx]}`
+}
+
+const getFileExtension = (mimeType: string | null): string => {
+  if (!mimeType) return ""
+  const map: Record<string, string> = {
+    "application/pdf": "PDF",
+    "application/msword": "DOC",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "DOCX",
+    "application/vnd.ms-excel": "XLS",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "XLSX",
+    "image/jpeg": "JPG",
+    "image/png": "PNG",
+    "text/plain": "TXT",
+  }
+  return map[mimeType] || mimeType.split("/").pop()?.toUpperCase() || ""
 }
 
 const evidenceTypeColors: Record<string, string> = {
@@ -64,6 +102,7 @@ export default function EvidencesPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadResult, setUploadResult] = useState<UploadResult | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deletingEvidence, setDeletingEvidence] = useState<EvidenceItem | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [title, setTitle] = useState("")
   const [evidenceType, setEvidenceType] = useState("document")
@@ -153,6 +192,27 @@ export default function EvidencesPage() {
     }
   }
 
+  const handleDownload = async (id: string, title: string) => {
+    try {
+      const response = await apiClient.get(`/evidences/${id}/download`, {
+        responseType: "blob",
+      })
+      const disposition = response.headers["content-disposition"]
+      const match = disposition?.match(/filename="(.+)"/)
+      const filename = match ? match[1] : `${title}.pdf`
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", filename)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (err: any) {
+      console.error("Download failed:", err)
+    }
+  }
+
   const filteredEvidences = evidences.filter((e) =>
     e.title.toLowerCase().includes(search.toLowerCase())
   )
@@ -236,10 +296,33 @@ export default function EvidencesPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {evidence.evidence_type === "document" && (
+                      <button
+                        onClick={() => handleDownload(evidence.id, evidence.title)}
+                        className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        title="Download"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                    )}
+                    {evidence.evidence_type === "url" && evidence.external_url && (
+                      <a
+                        href={evidence.external_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        title="Open URL"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setDeleteId(evidence.id)}
+                      onClick={() => {
+                        setDeleteId(evidence.id)
+                        setDeletingEvidence(evidence)
+                      }}
                       className="text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -262,6 +345,21 @@ export default function EvidencesPage() {
                     <span>{t("evidences.reviewDue")}: {formatDate(evidence.review_due_date)}</span>
                   )}
                 </div>
+                {(evidence.file_size || evidence.mime_type || evidence.download_count > 0) && (
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                    {evidence.mime_type && (
+                      <Badge variant="secondary" className="text-xs font-mono">
+                        {getFileExtension(evidence.mime_type)}
+                      </Badge>
+                    )}
+                    {evidence.file_size != null && (
+                      <span>{formatFileSize(evidence.file_size)}</span>
+                    )}
+                    {evidence.download_count > 0 && (
+                      <span>{evidence.download_count} download{evidence.download_count !== 1 ? "s" : ""}</span>
+                    )}
+                  </div>
+                )}
                 {evidence.file_hash && (
                   <div className="mt-2">
                     <code className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
@@ -275,6 +373,16 @@ export default function EvidencesPage() {
                     {evidence.linked_business_processes.map((bp) => (
                       <Badge key={bp.link_id} variant="outline" className="text-xs">
                         {bp.process_name}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                {evidence.linked_imr_items && evidence.linked_imr_items.length > 0 && (
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">IMR:</span>
+                    {evidence.linked_imr_items.map((item) => (
+                      <Badge key={item.link_id} variant="outline" className="text-xs">
+                        {item.measure_code}
                       </Badge>
                     ))}
                   </div>
@@ -377,7 +485,9 @@ export default function EvidencesPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+      <Dialog open={!!deleteId} onOpenChange={(open) => {
+        if (!open) { setDeleteId(null); setDeletingEvidence(null) }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center">
@@ -388,8 +498,41 @@ export default function EvidencesPage() {
               {t("evidences.deleteConfirm")}
             </DialogDescription>
           </DialogHeader>
+          {deletingEvidence && (
+            <div className="space-y-3 py-2">
+              {(deletingEvidence.linked_business_processes.length > 0 || deletingEvidence.linked_imr_items.length > 0) && (
+                <p className="text-sm text-amber-600 dark:text-amber-400">
+                  {t("evidences.deleteWarning")}
+                </p>
+              )}
+              {deletingEvidence.linked_business_processes.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">{t("evidences.linkedTo") || "Linked to"}:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {deletingEvidence.linked_business_processes.map((bp) => (
+                      <Badge key={bp.link_id} variant="outline" className="text-xs">
+                        {bp.process_name}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {deletingEvidence.linked_imr_items.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground mb-1">IMR:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {deletingEvidence.linked_imr_items.map((item) => (
+                      <Badge key={item.link_id} variant="outline" className="text-xs">
+                        {item.measure_code}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteId(null)}>
+            <Button variant="outline" onClick={() => { setDeleteId(null); setDeletingEvidence(null) }}>
               {t("common.cancel")}
             </Button>
             <Button variant="destructive" onClick={() => deleteId && handleDelete(deleteId)}>

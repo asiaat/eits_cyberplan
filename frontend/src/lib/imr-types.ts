@@ -39,6 +39,7 @@ export interface MeasureInfo {
   code: string
   name: string
   measure_level: string
+  module_group?: string
 }
 
 export interface ImrItemUpdate {
@@ -70,6 +71,7 @@ export interface ImrValidationStatus {
 
 export interface ImrSummaryStatistics {
   pearo_status_counts: Record<PearoStatus, number>
+  priority_counts: Record<ImrPriority, number>
   overdue_count: number
   ready_for_completion_count: number
   total_items: number
@@ -77,21 +79,21 @@ export interface ImrSummaryStatistics {
 
 export interface ImrStatusOption {
   value: PearoStatus
-  label: string
+  labelKey: string
   color: string
 }
 
 export const IMR_STATUS_OPTIONS: ImrStatusOption[] = [
-  { value: "U", label: "U - Teadmata (Unknown)", color: "gray" },
-  { value: "P", label: "P - Kavandatud (Planned)", color: "slate" },
-  { value: "E", label: "E - Rakendamisel (In Progress)", color: "amber" },
-  { value: "A", label: "A - Risk aktsepteeritud (Accepted Risk)", color: "orange" },
-  { value: "R", label: "R - Rakendatud (Implemented)", color: "emerald" },
-  { value: "O", label: "O - Osaliselt rakendatud (Partially Implemented)", color: "blue" },
+  { value: "U", labelKey: "implementationPlan.status.U", color: "gray" },
+  { value: "P", labelKey: "implementationPlan.status.P", color: "slate" },
+  { value: "E", labelKey: "implementationPlan.status.E", color: "amber" },
+  { value: "A", labelKey: "implementationPlan.status.A", color: "orange" },
+  { value: "R", labelKey: "implementationPlan.status.R", color: "emerald" },
+  { value: "O", labelKey: "implementationPlan.status.O", color: "blue" },
 ]
 
-export const IMR_PRIORITY_OPTIONS: { value: ImrPriority; label: string; color: string }[] = [
-  { value: "P1", label: "P1 - Esmane prioriteet", color: "red" },
-  { value: "P2", label: "P2 - Järgmine prioriteet", color: "orange" },
-  { value: "P3", label: "P3 - Kui võimalik", color: "blue" },
+export const IMR_PRIORITY_OPTIONS: { value: ImrPriority; labelKey: string; color: string }[] = [
+  { value: "P1", labelKey: "implementationPlan.priority.P1", color: "red" },
+  { value: "P2", labelKey: "implementationPlan.priority.P2", color: "orange" },
+  { value: "P3", labelKey: "implementationPlan.priority.P3", color: "blue" },
 ]

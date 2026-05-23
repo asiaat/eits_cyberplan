@@ -4,6 +4,8 @@ from uuid import UUID
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, status
+from fastapi.responses import StreamingResponse
+from io import BytesIO
 from pydantic import BaseModel
 
 from app.api.deps import DB
@@ -42,6 +44,9 @@ class EvidenceResponse(BaseModel):
     valid_from: Optional[str] = None
     valid_until: Optional[str] = None
     review_due_date: Optional[str] = None
+    file_size: Optional[int] = None
+    mime_type: Optional[str] = None
+    download_count: int = 0
     created_at: str
     download_url: Optional[str] = None
 
@@ -186,8 +191,46 @@ def get_evidence(
         valid_from=str(evidence.valid_from) if evidence.valid_from else None,
         valid_until=str(evidence.valid_until) if evidence.valid_until else None,
         review_due_date=str(evidence.review_due_date) if evidence.review_due_date else None,
+        file_size=evidence.file_size,
+        mime_type=evidence.mime_type,
+        download_count=evidence.download_count or 0,
         created_at=str(evidence.created_at),
         download_url=download_url,
+    )
+
+
+@router.get("/evidences/{evidence_id}/download")
+def download_evidence_file(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+    evidence_id: UUID = None,
+):
+    """Download evidence file with proper Content-Disposition header."""
+    evidence = db.query(Evidence).filter(
+        Evidence.id == evidence_id,
+        Evidence.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not evidence:
+        raise HTTPException(status_code=404, detail="Evidence not found")
+
+    if not evidence.storage_uri:
+        raise HTTPException(status_code=400, detail="No file associated with this evidence")
+
+    evidence.download_count = (evidence.download_count or 0) + 1
+    db.commit()
+
+    service = get_evidence_service()
+    file_content, content_type = service.get_file(evidence.storage_uri)
+
+    filename = evidence.storage_uri.split("/")[-1]
+
+    return StreamingResponse(
+        BytesIO(file_content),
+        media_type=content_type or "application/octet-stream",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
     )
 
 

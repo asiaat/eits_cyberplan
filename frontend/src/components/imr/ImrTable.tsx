@@ -14,6 +14,7 @@ interface ImrTableProps {
     priority?: string
     asset_id?: string
     overdue_only?: boolean
+    module_group?: string
   }
 }
 
@@ -31,12 +32,17 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
   const [hasMore, setHasMore] = useState(false)
 
   useEffect(() => {
+    setPage(1)
+  }, [filters])
+
+  useEffect(() => {
     loadItems()
   }, [filters, page])
 
   const loadItems = async () => {
     const skip = (page - 1) * PAGE_SIZE
     const fetchedItems = await fetchImrItems({ ...filters, skip, limit: PAGE_SIZE })
+    
     setItems(fetchedItems)
     setHasMore(fetchedItems.length === PAGE_SIZE)
     
@@ -86,7 +92,7 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
           cmp = (a.requirement_profile || "").localeCompare(b.requirement_profile || "")
           break
         case "responsible":
-          cmp = (users[a.responsible_user_id] || "").localeCompare(users[b.responsible_user_id] || "")
+          cmp = (users[a.responsible_user_id || ""] || "").localeCompare(users[b.responsible_user_id || ""] || "")
           break
         case "todo":
           cmp = (a.todo_description || "").localeCompare(b.todo_description || "")

@@ -7,14 +7,11 @@ import UserMenu from "@/components/UserMenu"
 import OrgSelector from "@/components/OrgSelector"
 import AlertBell from "@/components/AlertBell"
 import {
-  LayoutDashboard,
   FolderKanban,
   Boxes,
-  Target,
   BookMarked,
   Link2,
   ListTodo,
-  AlertTriangle,
   FileText,
   Shield,
   BookOpen,

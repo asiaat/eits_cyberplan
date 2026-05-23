@@ -119,6 +119,7 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
     }
     
     const updatedItem = await updateImrItem(item.id, formData)
+    console.log("UPDATE RESPONSE:", updatedItem)
     if (updatedItem) {
       onSave(updatedItem)
       onClose()
@@ -195,7 +196,7 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
               >
                 {IMR_STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value} className="text-foreground">
-                    {option.label}
+                    {t(option.labelKey)}
                   </option>
                 ))}
               </select>
@@ -211,7 +212,7 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
               >
                 {IMR_PRIORITY_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value} className="text-foreground">
-                    {option.label}
+                    {t(option.labelKey)}
                   </option>
                 ))}
               </select>
