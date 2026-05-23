@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
-import { Link2, Unlink, AlertTriangle, Shield, CheckCircle2, XCircle, CheckSquare } from "lucide-react"
+import { Link2, Unlink, AlertTriangle, Shield, CheckCircle2, XCircle, CheckSquare, Loader2 } from "lucide-react"
 
 interface LinkedProcess {
   id: string
@@ -115,6 +115,18 @@ export default function MappingsPage() {
   const [bpTargetId, setBpTargetId] = useState("")
   const [bpModuleId, setBpModuleId] = useState("")
 
+  // Asset Relations state
+  const [assetRelations, setAssetRelations] = useState<any[]>([])
+  const [loadingRelations, setLoadingRelations] = useState(false)
+  const [relationTypes, setRelationTypes] = useState<any[]>([])
+  const [selectedSourceAssetIds, setSelectedSourceAssetIds] = useState<Set<string>>(new Set())
+  const [selectedTargetAssetIds, setSelectedTargetAssetIds] = useState<Set<string>>(new Set())
+  const [sourceAssetTypeTab, setSourceAssetTypeTab] = useState("all")
+  const [targetAssetTypeTab, setTargetAssetTypeTab] = useState("all")
+  const [selectedRelationTypeCode, setSelectedRelationTypeCode] = useState("")
+  const [relationDirectionFilter, setRelationDirectionFilter] = useState<"all" | "upstream" | "downstream">("all")
+  const [createRelationResult, setCreateRelationResult] = useState<string | null>(null)
+
   useEffect(() => { orgRef.current = selectedOrgId }, [selectedOrgId])
 
   const activeMode = protectionMode?.is_active ? protectionMode : null
@@ -148,6 +160,13 @@ export default function MappingsPage() {
   }
 
   useEffect(() => { fetchData() }, [selectedOrgId])
+
+  useEffect(() => {
+    if (mainTab === "asset_relations") {
+      fetchRelationTypes()
+      fetchAllAssetRelations()
+    }
+  }, [mainTab, selectedOrgId])
 
   const filteredAssets = assets.filter(a =>
     a.asset_type === assetTypeTab || assetTypeTab === "all"
@@ -183,6 +202,35 @@ export default function MappingsPage() {
     }
     return counts
   }, [assets])
+
+  const filteredSourceAssets = useMemo(() => {
+    return assets.filter(a => sourceAssetTypeTab === "all" || a.asset_type === sourceAssetTypeTab)
+  }, [assets, sourceAssetTypeTab])
+
+  const filteredTargetAssets = useMemo(() => {
+    return assets.filter(a => targetAssetTypeTab === "all" || a.asset_type === targetAssetTypeTab)
+  }, [assets, targetAssetTypeTab])
+
+  const sourceTypeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: filteredSourceAssets.length }
+    for (const t of ASSET_TYPES) {
+      if (t !== "all") counts[t] = filteredSourceAssets.filter(a => a.asset_type === t).length
+    }
+    return counts
+  }, [filteredSourceAssets])
+
+  const targetTypeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: filteredTargetAssets.length }
+    for (const t of ASSET_TYPES) {
+      if (t !== "all") counts[t] = filteredTargetAssets.filter(a => a.asset_type === t).length
+    }
+    return counts
+  }, [filteredTargetAssets])
+
+  const filteredRelations = useMemo(() => {
+    if (relationDirectionFilter === "all") return assetRelations
+    return assetRelations.filter(r => r.direction === relationDirectionFilter)
+  }, [assetRelations, relationDirectionFilter])
 
   const sortedModules = useMemo(() => {
     const sorted = [...modules]
@@ -342,6 +390,104 @@ export default function MappingsPage() {
 
   const getAssetName = (assetId: string) => assets.find(a => a.id === assetId)?.name || assetId.slice(0, 8)
 
+  const fetchAllAssetRelations = async () => {
+    setLoadingRelations(true)
+    try {
+      const allRelations: any[] = []
+      for (const asset of assets) {
+        const res = await apiClient.get(`/assets/${asset.id}/relations`)
+        if (res.data?.length) {
+          allRelations.push(...res.data.map((r: any) => ({ ...r, source_asset_name: asset.name })))
+        }
+      }
+      setAssetRelations(allRelations)
+    } catch (err: any) {
+      console.error("Failed to fetch asset relations:", err)
+    } finally {
+      setLoadingRelations(false)
+    }
+  }
+
+  const fetchRelationTypes = async () => {
+    try {
+      const res = await apiClient.get("/assets/relation-types")
+      setRelationTypes(res.data || [])
+    } catch (err: any) {
+      console.error("Failed to fetch relation types:", err)
+    }
+  }
+
+  const handleBatchCreateRelations = async () => {
+    if (selectedSourceAssetIds.size === 0 || selectedTargetAssetIds.size === 0 || !selectedRelationTypeCode) {
+      setCreateRelationResult("Select source assets, target assets, and relation type")
+      return
+    }
+    setSaving(true)
+    setCreateRelationResult(null)
+    let created = 0
+    let skipped = 0
+    let errors = 0
+    try {
+      for (const sourceId of selectedSourceAssetIds) {
+        for (const targetId of selectedTargetAssetIds) {
+          try {
+            await apiClient.post(`/assets/${sourceId}/relations`, {
+              target_asset_id: targetId,
+              relation_type_code: selectedRelationTypeCode,
+            })
+            created++
+          } catch (err: any) {
+            if (err.response?.status === 400 && err.response?.data?.detail?.includes("already exists")) {
+              skipped++
+            } else {
+              errors++
+            }
+          }
+        }
+      }
+      setCreateRelationResult(`Created: ${created}, Skipped: ${skipped}, Errors: ${errors}`)
+      setSelectedSourceAssetIds(new Set())
+      setSelectedTargetAssetIds(new Set())
+      await fetchAllAssetRelations()
+    } catch (err: any) {
+      setCreateRelationResult(err.response?.data?.detail || "Failed to create relations")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDeleteRelation = async (relationId: string, assetId: string) => {
+    if (!confirm("Delete this relation?")) return
+    try {
+      await apiClient.delete(`/assets/${assetId}/relations/${relationId}`)
+      await fetchAllAssetRelations()
+    } catch (err: any) {
+      alert(err.response?.data?.detail || "Failed to delete relation")
+    }
+  }
+
+  const toggleSourceAsset = (id: string) => {
+    const next = new Set(selectedSourceAssetIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedSourceAssetIds(next)
+  }
+
+  const toggleTargetAsset = (id: string) => {
+    const next = new Set(selectedTargetAssetIds)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelectedTargetAssetIds(next)
+  }
+
+  const selectAllSource = () => {
+    setSelectedSourceAssetIds(new Set(filteredSourceAssets.map(a => a.id)))
+  }
+
+  const selectAllTarget = () => {
+    setSelectedTargetAssetIds(new Set(filteredTargetAssets.map(a => a.id)))
+  }
+
   if (loading) {
     return <div className="p-8 text-center text-muted-foreground">{t("common.loading")}</div>
   }
@@ -365,6 +511,7 @@ export default function MappingsPage() {
         <TabsList>
           <TabsTrigger value="assets">{t("mappings.assetsTab")}</TabsTrigger>
           <TabsTrigger value="business_processes">{t("mappings.bpTab")}</TabsTrigger>
+          <TabsTrigger value="asset_relations">{t("mappings.assetRelationsTab")}</TabsTrigger>
         </TabsList>
 
         {/* === Assets Tab === */}
@@ -732,6 +879,221 @@ export default function MappingsPage() {
               >
                 {saving ? t("common.saving") : t("mappings.mapToScope")}
               </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* === Asset Relations Tab === */}
+        <TabsContent value="asset_relations" className="space-y-4">
+          <div className="grid grid-cols-12 gap-6">
+            {/* Source Assets */}
+            <Card className="lg:col-span-5">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{t("mappings.sourceAssets")}</CardTitle>
+                  {filteredSourceAssets.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={selectAllSource} className="text-xs">
+                      <CheckSquare className="w-3.5 h-3.5 mr-1" />
+                      {selectedSourceAssetIds.size === filteredSourceAssets.length ? "Deselect all" : "Select all"}
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {ASSET_TYPES.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => { setSourceAssetTypeTab(type); setSelectedSourceAssetIds(new Set()) }}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        sourceAssetTypeTab === type ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {type === "all" ? t("mappings.allTypes") : t(`mappings.${type}`)} ({sourceTypeCounts[type] || 0})
+                    </button>
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent className="max-h-[400px] overflow-y-auto space-y-1">
+                {filteredSourceAssets.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">{t("mappings.noAssets")}</p>
+                ) : (
+                  filteredSourceAssets.map((asset) => (
+                    <label
+                      key={asset.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-accent ${
+                        selectedSourceAssetIds.has(asset.id) ? "border-primary bg-primary/5" : ""
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        checked={selectedSourceAssetIds.has(asset.id)}
+                        onChange={() => toggleSourceAsset(asset.id)}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{asset.name}</p>
+                        <p className="text-xs text-muted-foreground">{asset.asset_type?.replace(/_/g, " ")}</p>
+                      </div>
+                    </label>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Target Assets */}
+            <Card className="lg:col-span-5">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{t("mappings.targetAssets")}</CardTitle>
+                  {filteredTargetAssets.length > 0 && (
+                    <Button variant="ghost" size="sm" onClick={selectAllTarget} className="text-xs">
+                      <CheckSquare className="w-3.5 h-3.5 mr-1" />
+                      {selectedTargetAssetIds.size === filteredTargetAssets.length ? "Deselect all" : "Select all"}
+                    </Button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {ASSET_TYPES.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => { setTargetAssetTypeTab(type); setSelectedTargetAssetIds(new Set()) }}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        targetAssetTypeTab === type ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {type === "all" ? t("mappings.allTypes") : t(`mappings.${type}`)} ({targetTypeCounts[type] || 0})
+                    </button>
+                  ))}
+                </div>
+              </CardHeader>
+              <CardContent className="max-h-[400px] overflow-y-auto space-y-1">
+                {filteredTargetAssets.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">{t("mappings.noAssets")}</p>
+                ) : (
+                  filteredTargetAssets.map((asset) => (
+                    <label
+                      key={asset.id}
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors hover:bg-accent ${
+                        selectedTargetAssetIds.has(asset.id) ? "border-primary bg-primary/5" : ""
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        checked={selectedTargetAssetIds.has(asset.id)}
+                        onChange={() => toggleTargetAsset(asset.id)}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{asset.name}</p>
+                        <p className="text-xs text-muted-foreground">{asset.asset_type?.replace(/_/g, " ")}</p>
+                      </div>
+                    </label>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Relation Type & Action */}
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">{t("mappings.relationType")}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <select
+                    className="w-full border rounded-md p-2 bg-background text-sm"
+                    value={selectedRelationTypeCode}
+                    onChange={(e) => setSelectedRelationTypeCode(e.target.value)}
+                  >
+                    <option value="">{t("common.select")}...</option>
+                    {relationTypes.map((rt: any) => (
+                      <option key={rt.code} value={rt.code}>
+                        {rt.name} ({rt.code})
+                      </option>
+                    ))}
+                  </select>
+                  {selectedRelationTypeCode && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {relationTypes.find((rt: any) => rt.code === selectedRelationTypeCode)?.description}
+                    </p>
+                  )}
+                </div>
+                {createRelationResult && (
+                  <div className={`p-2 rounded-md text-xs ${
+                    createRelationResult.includes("Error") ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
+                  }`}>
+                    {createRelationResult}
+                  </div>
+                )}
+                <Button
+                  className="w-full"
+                  onClick={handleBatchCreateRelations}
+                  disabled={saving || selectedSourceAssetIds.size === 0 || selectedTargetAssetIds.size === 0 || !selectedRelationTypeCode}
+                >
+                  {saving ? t("common.saving") : `${t("mappings.createRelations")} (${selectedSourceAssetIds.size} × ${selectedTargetAssetIds.size})`}
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Existing Relations */}
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">{t("mappings.existingRelations")}</CardTitle>
+                <div className="flex gap-1">
+                  {(["all", "upstream", "downstream"] as const).map((dir) => (
+                    <button
+                      key={dir}
+                      onClick={() => setRelationDirectionFilter(dir)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        relationDirectionFilter === dir ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      {dir === "all" ? t("mappings.all") : dir === "upstream" ? t("assets.upstream") : t("assets.downstream")}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingRelations ? (
+                <div className="flex items-center gap-2 text-muted-foreground py-8">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t("common.loading")}
+                </div>
+              ) : filteredRelations.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noRelations")}</p>
+              ) : (
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {filteredRelations.map((rel: any) => (
+                    <div key={rel.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className={rel.direction === "upstream" ? "bg-blue-50 dark:bg-blue-900" : "bg-purple-50 dark:bg-purple-900"}>
+                          {rel.direction === "upstream" ? t("assets.upstream") : t("assets.downstream")}
+                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">{rel.source_asset_name}</span>
+                          <span className="text-xs text-muted-foreground">──{rel.relation_type_info?.code || rel.relation_type}──</span>
+                          <span className="text-sm font-medium">
+                            {rel.direction === "upstream" ? rel.target_asset_name : rel.source_asset_name}
+                          </span>
+                        </div>
+                        {rel.description && (
+                          <span className="text-xs text-muted-foreground">({rel.description})</span>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive shrink-0"
+                        onClick={() => handleDeleteRelation(rel.id, rel.direction === "upstream" ? rel.source_asset_id : rel.target_asset_id)}
+                      >
+                        <Unlink className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
