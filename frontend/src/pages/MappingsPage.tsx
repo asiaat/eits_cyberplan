@@ -126,6 +126,7 @@ export default function MappingsPage() {
   const [selectedRelationTypeCode, setSelectedRelationTypeCode] = useState("")
   const [relationDirectionFilter, setRelationDirectionFilter] = useState<"all" | "upstream" | "downstream">("all")
   const [createRelationResult, setCreateRelationResult] = useState<string | null>(null)
+  const [customRelationText, setCustomRelationText] = useState("")
 
   useEffect(() => { orgRef.current = selectedOrgId }, [selectedOrgId])
 
@@ -418,8 +419,12 @@ export default function MappingsPage() {
   }
 
   const handleBatchCreateRelations = async () => {
-    if (selectedSourceAssetIds.size === 0 || selectedTargetAssetIds.size === 0 || !selectedRelationTypeCode) {
-      setCreateRelationResult("Select source assets, target assets, and relation type")
+    if (selectedSourceAssetIds.size === 0 || selectedTargetAssetIds.size === 0) {
+      setCreateRelationResult("Select source assets and target assets")
+      return
+    }
+    if (!selectedRelationTypeCode || (selectedRelationTypeCode === "__custom__" && !customRelationText)) {
+      setCreateRelationResult("Select or enter a relation type")
       return
     }
     setSaving(true)
@@ -428,12 +433,13 @@ export default function MappingsPage() {
     let skipped = 0
     let errors = 0
     try {
+      const relationTypeToUse = selectedRelationTypeCode === "__custom__" ? customRelationText : selectedRelationTypeCode
       for (const sourceId of selectedSourceAssetIds) {
         for (const targetId of selectedTargetAssetIds) {
           try {
             await apiClient.post(`/assets/${sourceId}/relations`, {
               target_asset_id: targetId,
-              relation_type_code: selectedRelationTypeCode,
+              relation_type_code: relationTypeToUse,
             })
             created++
           } catch (err: any) {
@@ -448,6 +454,8 @@ export default function MappingsPage() {
       setCreateRelationResult(`Created: ${created}, Skipped: ${skipped}, Errors: ${errors}`)
       setSelectedSourceAssetIds(new Set())
       setSelectedTargetAssetIds(new Set())
+      setSelectedRelationTypeCode("")
+      setCustomRelationText("")
       await fetchAllAssetRelations()
     } catch (err: any) {
       setCreateRelationResult(err.response?.data?.detail || "Failed to create relations")
@@ -882,11 +890,11 @@ export default function MappingsPage() {
           </div>
         </TabsContent>
 
-        {/* === Asset Relations Tab === */}
+        {/* === Cross-linked Tab === */}
         <TabsContent value="asset_relations" className="space-y-4">
           <div className="grid grid-cols-12 gap-6">
             {/* Source Assets */}
-            <Card className="lg:col-span-5">
+            <Card className="lg:col-span-6">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{t("mappings.sourceAssets")}</CardTitle>
@@ -939,7 +947,7 @@ export default function MappingsPage() {
             </Card>
 
             {/* Target Assets */}
-            <Card className="lg:col-span-5">
+            <Card className="lg:col-span-6">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{t("mappings.targetAssets")}</CardTitle>
@@ -990,49 +998,73 @@ export default function MappingsPage() {
                 )}
               </CardContent>
             </Card>
+          </div>
 
-            {/* Relation Type & Action */}
-            <Card className="lg:col-span-2">
+          {/* Create Relations Card - only shown when source AND target selected */}
+          {selectedSourceAssetIds.size > 0 && selectedTargetAssetIds.size > 0 && (
+            <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">{t("mappings.relationType")}</CardTitle>
+                <CardTitle className="text-lg">{t("mappings.createRelations")}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <select
-                    className="w-full border rounded-md p-2 bg-background text-sm"
-                    value={selectedRelationTypeCode}
-                    onChange={(e) => setSelectedRelationTypeCode(e.target.value)}
-                  >
-                    <option value="">{t("common.select")}...</option>
-                    {relationTypes.map((rt: any) => (
-                      <option key={rt.code} value={rt.code}>
-                        {rt.name} ({rt.code})
-                      </option>
-                    ))}
-                  </select>
-                  {selectedRelationTypeCode && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {relationTypes.find((rt: any) => rt.code === selectedRelationTypeCode)?.description}
-                    </p>
+                <div className="flex items-center gap-4">
+                  <p className="text-sm text-muted-foreground">
+                    {selectedSourceAssetIds.size} source × {selectedTargetAssetIds.size} target = <span className="font-semibold text-primary">{selectedSourceAssetIds.size * selectedTargetAssetIds.size}</span> relations to create
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">{t("mappings.relationType")}</label>
+                    <select
+                      className="w-full border rounded-md p-2 bg-background text-sm"
+                      value={selectedRelationTypeCode}
+                      onChange={(e) => { setSelectedRelationTypeCode(e.target.value); setCustomRelationText(""); }}
+                    >
+                      <option value="">{t("common.selectRelationType")}</option>
+                      {relationTypes.map((rt: any) => (
+                        <option key={rt.code} value={rt.code}>
+                          {rt.name} ({rt.code})
+                        </option>
+                      ))}
+                      <option value="__custom__">{t("mappings.customRelationType")}</option>
+                    </select>
+                    {selectedRelationTypeCode && selectedRelationTypeCode !== "__custom__" && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {relationTypes.find((rt: any) => rt.code === selectedRelationTypeCode)?.description}
+                      </p>
+                    )}
+                  </div>
+                  {selectedRelationTypeCode === "__custom__" && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">{t("mappings.customRelationType")}</label>
+                      <input
+                        type="text"
+                        className="w-full border rounded-md p-2 bg-background text-sm"
+                        value={customRelationText}
+                        onChange={(e) => setCustomRelationText(e.target.value)}
+                        placeholder={t("mappings.customRelationPlaceholder")}
+                      />
+                    </div>
                   )}
                 </div>
                 {createRelationResult && (
-                  <div className={`p-2 rounded-md text-xs ${
-                    createRelationResult.includes("Error") ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700"
+                  <div className={`p-3 rounded-md text-sm ${
+                    createRelationResult.includes("Error") ? "bg-red-50 text-red-700 border border-red-200" : "bg-green-50 text-green-700 border border-green-200"
                   }`}>
                     {createRelationResult}
                   </div>
                 )}
-                <Button
-                  className="w-full"
-                  onClick={handleBatchCreateRelations}
-                  disabled={saving || selectedSourceAssetIds.size === 0 || selectedTargetAssetIds.size === 0 || !selectedRelationTypeCode}
-                >
-                  {saving ? t("common.saving") : `${t("mappings.createRelations")} (${selectedSourceAssetIds.size} × ${selectedTargetAssetIds.size})`}
-                </Button>
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleBatchCreateRelations}
+                    disabled={saving || (!selectedRelationTypeCode || (selectedRelationTypeCode === "__custom__" && !customRelationText))}
+                  >
+                    {saving ? t("common.saving") : t("mappings.createRelations")}
+                  </Button>
+                </div>
               </CardContent>
             </Card>
-          </div>
+          )}
 
           {/* Existing Relations */}
           <Card>

@@ -256,7 +256,8 @@ class ProtectionInheritanceService:
         ).first()
 
         if not rel_type:
-            return False, f"Unknown relation type: {relation_type_code}"
+            # Allow custom/free-text relation types that don't exist in the table
+            return True, None
 
         # Check if source type is allowed
         if rel_type.source_types:

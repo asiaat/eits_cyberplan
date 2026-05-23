@@ -21,6 +21,7 @@ from app.models.asset import Asset
 from app.models.asset_module_mapping import AssetModuleMapping
 from app.models.process_asset import ProcessAsset
 from app.models.business_process import BusinessProcess
+from app.models.asset_relation import AssetRelation
 from app.models.user import User
 from app.models.local_user import EITSRole, UserRole
 from app.schemas.asset import (
@@ -865,6 +866,12 @@ def list_asset_relations(
     return result
 
 
+def _relation_type_exists(db, code: str) -> bool:
+    """Check if a relation type code exists in the asset_relation_types table."""
+    from app.models.asset_relation_type import AssetRelationType
+    return db.query(AssetRelationType).filter(AssetRelationType.code == code).first() is not None
+
+
 class AssetRelationCreate(BaseModel):
     """Schema for creating an asset relation."""
     target_asset_id: UUID
@@ -937,7 +944,9 @@ def create_asset_relation(
         source_asset_id=asset_id,
         target_asset_id=data.target_asset_id,
         relation_type=data.relation_type_code,
-        relation_type_code=data.relation_type_code,
+        # Only set relation_type_code if it exists in asset_relation_types table
+        # For custom/free-text types, leave relation_type_code null
+        relation_type_code=data.relation_type_code if _relation_type_exists(db, data.relation_type_code) else None,
         description=data.description,
         bidirectional=data.bidirectional,
         strength=data.strength,
