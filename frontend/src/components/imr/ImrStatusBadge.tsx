@@ -44,7 +44,7 @@ export function ImrPriorityBadge({ priority }: { priority: string }) {
 
   return (
     <span className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${style.bg} ${style.text}`}>
-      {priority} - {t(`implementationPlan.priority.${priority}` as any) || priority}
+      {t(`implementationPlan.priority.${priority}` as any) || priority}
     </span>
   )
 }

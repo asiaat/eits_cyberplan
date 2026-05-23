@@ -112,7 +112,7 @@ export default function ImplementationPlanPage() {
               <option value="">{t("implementationPlan.dashboard.allStatuses")}</option>
               {IMR_STATUS_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.value} - {t(option.labelKey)}
+                  {t(option.labelKey)}
                 </option>
               ))}
             </select>
