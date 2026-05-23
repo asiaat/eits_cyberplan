@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
-import { Layers, Link2, Unlink, AlertTriangle, Shield, CheckCircle2, XCircle, CheckSquare } from "lucide-react"
+import { Link2, Unlink, AlertTriangle, Shield, CheckCircle2, XCircle, CheckSquare } from "lucide-react"
 
 interface LinkedProcess {
   id: string
@@ -105,6 +105,8 @@ export default function MappingsPage() {
   const [moduleGroupTab, setModuleGroupTab] = useState("ISMS")
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
   const [assetsModuleId, setAssetsModuleId] = useState("")
+  const [scopeTab, setScopeTab] = useState<"select" | "mapped">("select")
+  const [moduleSort, setModuleSort] = useState<"code" | "name">("code")
 
   const [editingBp, setEditingBp] = useState<BpItem | null>(null)
   const [editForm, setEditForm] = useState({ confidentiality: "", integrity: "", availability: "" })
@@ -178,6 +180,15 @@ export default function MappingsPage() {
     }
     return counts
   }, [assets])
+
+  const sortedModules = useMemo(() => {
+    const sorted = [...modules]
+    sorted.sort((a, b) => {
+      if (moduleSort === "code") return a.code.localeCompare(b.code)
+      return a.name.localeCompare(b.name)
+    })
+    return sorted
+  }, [modules, moduleSort])
 
   const approvedBpIds = new Set([
     ...protectionNeeds.filter((pn) => pn.approved_by).map((pn) => pn.business_process_id),
@@ -404,92 +415,113 @@ export default function MappingsPage() {
               </CardContent>
             </Card>
 
-            {/* Right: Mapped modules for selected assets */}
+            {/* Right: Scope Mapping panel */}
             <Card className="lg:col-span-6">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Layers className="w-5 h-5" />
-                  {t("mappings.mappedModules")}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {selectedAssetIds.size === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noSelection")}</p>
-                ) : availableGroups.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noMappings")}</p>
-                ) : (
-                  <>
-                    {/* Module group sub-tabs */}
-                    <Tabs value={activeModuleGroup} onValueChange={setModuleGroupTab}>
-                      <TabsList className="flex-wrap h-auto mb-3">
-                        {availableGroups.map((group) => (
-                          <TabsTrigger key={group} value={group} className="text-xs">
-                            {group} ({mappingsByGroup[group]?.length || 0})
-                          </TabsTrigger>
+              <Tabs value={scopeTab} onValueChange={(v) => setScopeTab(v as "select" | "mapped")}>
+                <CardHeader className="pb-3">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="select" className="flex-1">{t("mappings.mapModule")}</TabsTrigger>
+                    <TabsTrigger value="mapped" className="flex-1">{t("mappings.mappedModules")}</TabsTrigger>
+                  </TabsList>
+                </CardHeader>
+                <CardContent>
+                  <TabsContent value="select" className="mt-0">
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs text-muted-foreground">{modules.length} modules</span>
+                        <button
+                          className={`text-xs px-2 py-0.5 rounded ${moduleSort === "code" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
+                          onClick={() => setModuleSort("code")}
+                        >
+                          Code
+                        </button>
+                        <button
+                          className={`text-xs px-2 py-0.5 rounded ${moduleSort === "name" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
+                          onClick={() => setModuleSort("name")}
+                        >
+                          Name
+                        </button>
+                      </div>
+                      <div className="max-h-[300px] overflow-y-auto space-y-1 border rounded-md p-1">
+                        {sortedModules.map((mod) => (
+                          <label
+                            key={mod.id}
+                            className={`flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer ${
+                              assetsModuleId === mod.id ? "bg-primary/5 border border-primary/30" : "border border-transparent"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                              checked={assetsModuleId === mod.id}
+                              onChange={() => setAssetsModuleId(assetsModuleId === mod.id ? "" : mod.id)}
+                            />
+                            <span className="font-mono text-xs text-muted-foreground w-16 shrink-0">{mod.code}</span>
+                            <span className="text-sm truncate flex-1">{mod.name}</span>
+                            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{mod.module_group}</span>
+                          </label>
                         ))}
-                      </TabsList>
-                      {availableGroups.map((group) => (
-                        <TabsContent key={group} value={group} className="space-y-2 mt-0">
-                          {mappingsByGroup[group]?.map((m) => (
-                            <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium truncate">
-                                  <span className="font-mono text-xs text-muted-foreground">{m.module?.code}</span>{" "}
-                                  {m.module?.name}
-                                </p>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {t("mappings.target")}: {getAssetName(m.asset_id)}
-                                </p>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive shrink-0 ml-2"
-                                onClick={() => handleRemoveAssetMapping(m.id)}
-                              >
-                                <Unlink className="w-4 h-4" />
-                              </Button>
-                            </div>
+                      </div>
+                      <Button
+                        className="w-full"
+                        onClick={handleBatchMap}
+                        disabled={saving || selectedAssetIds.size === 0 || !assetsModuleId}
+                      >
+                        {saving ? t("common.saving") : `${t("mappings.mapSelected")} (${selectedAssetIds.size || 0})`}
+                      </Button>
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="mapped" className="mt-0">
+                    {selectedAssetIds.size === 0 ? (
+                      <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noSelection")}</p>
+                    ) : availableGroups.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noMappings")}</p>
+                    ) : (
+                      <>
+                        <Tabs value={activeModuleGroup} onValueChange={setModuleGroupTab}>
+                          <TabsList className="flex-wrap h-auto mb-3">
+                            {availableGroups.map((group) => (
+                              <TabsTrigger key={group} value={group} className="text-xs">
+                                {group} ({mappingsByGroup[group]?.length || 0})
+                              </TabsTrigger>
+                            ))}
+                          </TabsList>
+                          {availableGroups.map((group) => (
+                            <TabsContent key={group} value={group} className="space-y-2 mt-0">
+                              {mappingsByGroup[group]?.map((m) => (
+                                <div key={m.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-medium truncate">
+                                      <span className="font-mono text-xs text-muted-foreground">{m.module?.code}</span>{" "}
+                                      {m.module?.name}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {t("mappings.target")}: {getAssetName(m.asset_id)}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-destructive shrink-0 ml-2"
+                                    onClick={() => handleRemoveAssetMapping(m.id)}
+                                  >
+                                    <Unlink className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              ))}
+                              {(!mappingsByGroup[group] || mappingsByGroup[group].length === 0) && (
+                                <p className="text-sm text-muted-foreground py-4 text-center">No mappings in this group</p>
+                              )}
+                            </TabsContent>
                           ))}
-                          {(!mappingsByGroup[group] || mappingsByGroup[group].length === 0) && (
-                            <p className="text-sm text-muted-foreground py-4 text-center">No mappings in this group</p>
-                          )}
-                        </TabsContent>
-                      ))}
-                    </Tabs>
-                  </>
-                )}
-              </CardContent>
+                        </Tabs>
+                      </>
+                    )}
+                  </TabsContent>
+                </CardContent>
+              </Tabs>
             </Card>
           </div>
-
-          {/* Batch map action bar */}
-          {selectedAssetIds.size > 0 && (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-4 flex-wrap">
-                  <span className="text-sm font-medium whitespace-nowrap">
-                    {selectedAssetIds.size} asset{selectedAssetIds.size !== 1 ? "s" : ""} selected
-                  </span>
-                  <select
-                    className="flex-1 min-w-[200px] border rounded-md p-2 bg-background text-sm"
-                    value={assetsModuleId}
-                    onChange={(e) => setAssetsModuleId(e.target.value)}
-                  >
-                    <option value="">{t("mappings.selectModule")}</option>
-                    {modules.map((mod) => (
-                      <option key={mod.id} value={mod.id}>
-                        {mod.code} — {mod.name}
-                      </option>
-                    ))}
-                  </select>
-                  <Button onClick={handleBatchMap} disabled={saving || !assetsModuleId}>
-                    {saving ? t("common.saving") : t("mappings.mapSelected")}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
 
         {/* === Business Processes Tab === */}
