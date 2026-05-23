@@ -585,6 +585,8 @@ organization: {
       customRelationType: "Custom relation",
       customRelationPlaceholder: "Enter custom relation type...",
       noRelations: "No relations defined yet",
+      listView: "List",
+      treeView: "Tree",
     },
     implementationPlan: {
       title: "Implementation Plan",
@@ -1415,6 +1417,8 @@ inactive: "Mitteaktiivne",
       customRelationType: "Kohandatud seos",
       customRelationPlaceholder: "Sisesta kohandatud seose tüüp...",
       noRelations: "Seoseid veel pole",
+      listView: "Nimekiri",
+      treeView: "Puu",
     },
     implementationPlan: {
       title: "Rakenduskava",

@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
-import { Link2, Unlink, AlertTriangle, Shield, CheckCircle2, XCircle, CheckSquare, Loader2 } from "lucide-react"
+import { Link2, Unlink, AlertTriangle, Shield, CheckCircle2, XCircle, CheckSquare, Loader2, GitBranch } from "lucide-react"
+import { RelationsTree, TreeNode } from "@/components/RelationsTree"
 
 interface LinkedProcess {
   id: string
@@ -124,9 +125,11 @@ export default function MappingsPage() {
   const [sourceAssetTypeTab, setSourceAssetTypeTab] = useState("all")
   const [targetAssetTypeTab, setTargetAssetTypeTab] = useState("all")
   const [selectedRelationTypeCode, setSelectedRelationTypeCode] = useState("")
-  const [relationDirectionFilter, setRelationDirectionFilter] = useState<"all" | "upstream" | "downstream">("all")
+  const [relationDirectionFilter] = useState<"all" | "upstream" | "downstream">("all")
   const [createRelationResult, setCreateRelationResult] = useState<string | null>(null)
   const [customRelationText, setCustomRelationText] = useState("")
+  const [relationViewMode, setRelationViewMode] = useState<"list" | "tree">("list")
+  const [relationTreeDirection, setRelationTreeDirection] = useState<"depends_on" | "required_by" | "all">("depends_on")
 
   useEffect(() => { orgRef.current = selectedOrgId }, [selectedOrgId])
 
@@ -473,6 +476,72 @@ export default function MappingsPage() {
       alert(err.response?.data?.detail || "Failed to delete relation")
     }
   }
+
+  const buildRelationTreeForDirection = (direction: "upstream" | "downstream"): TreeNode[] => {
+    const directionRelations = assetRelations.filter(r => r.direction === direction)
+
+    const groups = new Map<string, typeof directionRelations>()
+    directionRelations.forEach(rel => {
+      const rootKey = rel.source_asset_id
+      if (!groups.has(rootKey)) groups.set(rootKey, [])
+      groups.get(rootKey)!.push(rel)
+    })
+
+    const nodes: TreeNode[] = []
+    const processedIds = new Set<string>()
+
+    groups.forEach((relations, rootId) => {
+      if (processedIds.has(rootId)) return
+      processedIds.add(rootId)
+
+      const firstRel = relations[0]
+      const rootName = firstRel.source_asset_name || "Unknown"
+      const rootType = firstRel.source_asset_type || "unknown"
+      const rootNode: TreeNode = {
+        assetId: rootId,
+        assetName: rootName,
+        assetType: rootType,
+        direction,
+        children: [],
+      }
+
+      relations.forEach(rel => {
+        const childName = rel.target_asset_name || "Unknown"
+        const childType = rel.target_asset_type || "unknown"
+        const relTypeName = rel.relation_type_info?.name || rel.relation_type || ""
+
+        rootNode.children.push({
+          assetId: rel.target_asset_id,
+          assetName: childName,
+          assetType: childType,
+          direction,
+          relationType: rel.relation_type_info?.code || rel.relation_type,
+          relationTypeName: relTypeName,
+          relationId: rel.id,
+          children: [],
+        })
+      })
+
+      nodes.push(rootNode)
+    })
+
+    return nodes
+  }
+
+  const buildRelationTree = useMemo((): TreeNode[] => {
+    const dirMap: Record<string, "upstream" | "downstream" | null> = {
+      depends_on: "upstream",
+      required_by: "downstream",
+      all: null,
+    }
+    const mappedDir = dirMap[relationTreeDirection]
+    if (mappedDir === null) {
+      const upstreamNodes = buildRelationTreeForDirection("upstream")
+      const downstreamNodes = buildRelationTreeForDirection("downstream")
+      return [...upstreamNodes, ...downstreamNodes]
+    }
+    return buildRelationTreeForDirection(mappedDir)
+  }, [assetRelations, relationTreeDirection])
 
   const toggleSourceAsset = (id: string) => {
     const next = new Set(selectedSourceAssetIds)
@@ -1071,18 +1140,41 @@ export default function MappingsPage() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{t("mappings.existingRelations")}</CardTitle>
-                <div className="flex gap-1">
-                  {(["all", "upstream", "downstream"] as const).map((dir) => (
+                <div className="flex items-center gap-4">
+                  {relationViewMode === "tree" && (
+                    <div className="flex gap-1">
+                      {(["depends_on", "required_by", "all"] as const).map((dir) => (
+                        <button
+                          key={dir}
+                          onClick={() => setRelationTreeDirection(dir)}
+                          className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                            relationTreeDirection === dir ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
+                          }`}
+                        >
+                          {dir === "depends_on" ? t("assets.upstream") : dir === "required_by" ? t("assets.downstream") : t("mappings.all")}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-1 bg-muted rounded-md p-1">
                     <button
-                      key={dir}
-                      onClick={() => setRelationDirectionFilter(dir)}
+                      onClick={() => setRelationViewMode("list")}
                       className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                        relationDirectionFilter === dir ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"
+                        relationViewMode === "list" ? "bg-background shadow-sm" : "hover:bg-background/50"
                       }`}
                     >
-                      {dir === "all" ? t("mappings.all") : dir === "upstream" ? t("assets.upstream") : t("assets.downstream")}
+                      {t("mappings.listView") || "List"}
                     </button>
-                  ))}
+                    <button
+                      onClick={() => setRelationViewMode("tree")}
+                      className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1 ${
+                        relationViewMode === "tree" ? "bg-background shadow-sm" : "hover:bg-background/50"
+                      }`}
+                    >
+                      <GitBranch className="h-3 w-3" />
+                      {t("mappings.treeView") || "Tree"}
+                    </button>
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -1094,6 +1186,15 @@ export default function MappingsPage() {
                 </div>
               ) : filteredRelations.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noRelations")}</p>
+              ) : relationViewMode === "tree" ? (
+                <div className="max-h-[500px] overflow-y-auto">
+                  <RelationsTree
+                    nodes={buildRelationTree}
+                    onDeleteRelation={handleDeleteRelation}
+                    loading={loadingRelations}
+                    direction={relationTreeDirection === "all" ? undefined : relationTreeDirection}
+                  />
+                </div>
               ) : (
                 <div className="space-y-2 max-h-[400px] overflow-y-auto">
                   {filteredRelations.map((rel: any) => (
