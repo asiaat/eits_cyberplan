@@ -104,9 +104,10 @@ export default function MappingsPage() {
   const [assetTypeTab, setAssetTypeTab] = useState("all")
   const [moduleGroupTab, setModuleGroupTab] = useState("ISMS")
   const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
-  const [assetsModuleId, setAssetsModuleId] = useState("")
+  const [selectedModuleIds, setSelectedModuleIds] = useState<Set<string>>(new Set())
   const [scopeTab, setScopeTab] = useState<"select" | "mapped">("select")
   const [moduleSort, setModuleSort] = useState<"code" | "name">("code")
+  const [batchResult, setBatchResult] = useState<string | null>(null)
 
   const [editingBp, setEditingBp] = useState<BpItem | null>(null)
   const [editForm, setEditForm] = useState({ confidentiality: "", integrity: "", availability: "" })
@@ -151,19 +152,15 @@ export default function MappingsPage() {
     ? assets
     : assets.filter(a => a.asset_type === assetTypeTab)
 
-  const selectedAssetMappings = useMemo(() => {
-    return assetMappings.filter(m => selectedAssetIds.has(m.asset_id))
-  }, [assetMappings, selectedAssetIds])
-
   const mappingsByGroup = useMemo(() => {
     const map: Record<string, AssetMappingItem[]> = {}
-    for (const m of selectedAssetMappings) {
+    for (const m of assetMappings) {
       const group = m.module?.module_group || "OTHER"
       if (!map[group]) map[group] = []
       map[group].push(m)
     }
     return map
-  }, [selectedAssetMappings])
+  }, [assetMappings])
 
   const availableGroups = useMemo(() => {
     return MODULE_GROUPS.filter(g => mappingsByGroup[g]?.length)
@@ -215,28 +212,27 @@ export default function MappingsPage() {
   }
 
   const handleBatchMap = async () => {
-    if (selectedAssetIds.size === 0 || !assetsModuleId) {
-      alert("Select assets and a module")
+    if (selectedAssetIds.size === 0 || selectedModuleIds.size === 0) {
+      setBatchResult("Select assets and at least one module")
       return
     }
     setSaving(true)
+    setBatchResult(null)
     try {
       const res = await apiClient.post("/modeling/batch-map", {
-        module_id: assetsModuleId,
+        module_ids: Array.from(selectedModuleIds),
         target_ids: Array.from(selectedAssetIds),
         target_type: "asset",
       })
       const data = res.data
-      const parts: string[] = []
-      if (data.mapped?.length) parts.push(`Mapped: ${data.mapped.length}`)
-      if (data.skipped?.length) parts.push(`Skipped: ${data.skipped.length}`)
-      if (data.errors?.length) parts.push(`Errors: ${data.errors.length}`)
-      alert(parts.join(", ") || "Done")
-      setAssetsModuleId("")
-      setSelectedAssetIds(new Set())
+      const mapped = data.mapped?.length || 0
+      const skipped = data.skipped?.length || 0
+      const errors = data.errors?.length || 0
+      setBatchResult(`Mapped: ${mapped}, Skipped: ${skipped}, Errors: ${errors}`)
+      setSelectedModuleIds(new Set())
       await fetchData()
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Batch mapping failed")
+      setBatchResult(err.response?.data?.detail || "Batch mapping failed")
     } finally {
       setSaving(false)
     }
@@ -418,7 +414,7 @@ export default function MappingsPage() {
                   <TabsContent value="select" className="mt-0">
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs text-muted-foreground">{modules.length} modules</span>
+                        <span className="text-xs text-muted-foreground">{modules.length} modules, {selectedModuleIds.size} selected</span>
                         <button
                           className={`text-xs px-2 py-0.5 rounded ${moduleSort === "code" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent"}`}
                           onClick={() => setModuleSort("code")}
@@ -431,40 +427,64 @@ export default function MappingsPage() {
                         >
                           Name
                         </button>
+                        <button
+                          className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground hover:bg-accent ml-auto"
+                          onClick={() => {
+                            if (selectedModuleIds.size === sortedModules.length) {
+                              setSelectedModuleIds(new Set())
+                            } else {
+                              setSelectedModuleIds(new Set(sortedModules.map(m => m.id)))
+                            }
+                          }}
+                        >
+                          {selectedModuleIds.size === sortedModules.length ? "Deselect all" : "Select all"}
+                        </button>
                       </div>
                       <div className="max-h-[300px] overflow-y-auto space-y-1 border rounded-md p-1">
                         {sortedModules.map((mod) => (
                           <label
-                            key={mod.id}
-                            className={`flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer ${
-                              assetsModuleId === mod.id ? "bg-primary/5 border border-primary/30" : "border border-transparent"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                              checked={assetsModuleId === mod.id}
-                              onChange={() => setAssetsModuleId(assetsModuleId === mod.id ? "" : mod.id)}
-                            />
+                              key={mod.id}
+                              className={`flex items-center gap-2 p-2 rounded hover:bg-accent cursor-pointer ${
+                                selectedModuleIds.has(mod.id) ? "bg-primary/5 border border-primary/30" : "border border-transparent"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                checked={selectedModuleIds.has(mod.id)}
+                                onChange={() => {
+                                  const next = new Set(selectedModuleIds)
+                                  if (next.has(mod.id)) next.delete(mod.id)
+                                  else next.add(mod.id)
+                                  setSelectedModuleIds(next)
+                                }}
+                              />
                             <span className="font-mono text-xs text-muted-foreground w-16 shrink-0">{mod.code}</span>
                             <span className="text-sm truncate flex-1">{mod.name}</span>
                             <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{mod.module_group}</span>
                           </label>
                         ))}
                       </div>
+                      {batchResult && (
+                        <div className={`p-3 rounded-md text-sm border ${
+                          batchResult.includes("failed") || batchResult.includes("Errors:")
+                            ? "bg-red-50 border-red-200 text-red-700"
+                            : "bg-green-50 border-green-200 text-green-700"
+                        }`}>
+                          {batchResult}
+                        </div>
+                      )}
                       <Button
                         className="w-full"
                         onClick={handleBatchMap}
-                        disabled={saving || selectedAssetIds.size === 0 || !assetsModuleId}
+                        disabled={saving || selectedAssetIds.size === 0 || selectedModuleIds.size === 0}
                       >
-                        {saving ? t("common.saving") : `${t("mappings.mapSelected")} (${selectedAssetIds.size || 0})`}
+                        {saving ? t("common.saving") : `${t("mappings.mapSelected")} (${selectedModuleIds.size} mod × ${selectedAssetIds.size} assets)`}
                       </Button>
                     </div>
                   </TabsContent>
                   <TabsContent value="mapped" className="mt-0">
-                    {selectedAssetIds.size === 0 ? (
-                      <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noSelection")}</p>
-                    ) : availableGroups.length === 0 ? (
+                    {assetMappings.length === 0 ? (
                       <p className="text-sm text-muted-foreground py-8 text-center">{t("mappings.noMappings")}</p>
                     ) : (
                       <>

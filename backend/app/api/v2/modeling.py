@@ -30,13 +30,13 @@ class BpModuleMappingResponse(BaseModel):
 
 
 class BatchMapRequest(BaseModel):
-    module_id: UUID
+    module_ids: list[UUID]
     target_ids: list[UUID]
     target_type: str = Field(pattern="^(asset|business_process)$")
 
 
 class BatchMapResult(BaseModel):
-    mapped: list[UUID] = Field(default_factory=list)
+    mapped: list[dict] = Field(default_factory=list)
     skipped: list[dict] = Field(default_factory=list)
     errors: list[dict] = Field(default_factory=list)
 
@@ -50,25 +50,27 @@ def batch_map_module(
     db: DB = None,
     current_user: LocalUser = Depends(get_current_user_v2),
 ):
-    """Map a module to multiple assets at once."""
+    """Map multiple modules to multiple assets at once."""
     result = BatchMapResult()
-    for target_id in body.target_ids:
-        try:
-            ModelingService.map_module_to_target(
-                db=db,
-                tenant_id=current_user.tenant_id,
-                user_id=current_user.id,
-                module_id=body.module_id,
-                target_type=body.target_type,
-                target_id=target_id,
-            )
-            result.mapped.append(target_id)
-        except Exception as e:
-            msg = str(e)
-            if "not ready" in msg.lower() or "Cannot model" in msg:
-                result.skipped.append({"id": str(target_id), "reason": msg})
-            else:
-                result.errors.append({"id": str(target_id), "reason": msg})
+    for module_id in body.module_ids:
+        for target_id in body.target_ids:
+            try:
+                ModelingService.map_module_to_target(
+                    db=db,
+                    tenant_id=current_user.tenant_id,
+                    user_id=current_user.id,
+                    module_id=module_id,
+                    target_type=body.target_type,
+                    target_id=target_id,
+                )
+                result.mapped.append({"module_id": str(module_id), "target_id": str(target_id)})
+            except HTTPException as e:
+                if e.status_code == 400:
+                    result.skipped.append({"module_id": str(module_id), "target_id": str(target_id), "reason": e.detail})
+                else:
+                    result.errors.append({"module_id": str(module_id), "target_id": str(target_id), "reason": e.detail})
+            except Exception as e:
+                result.errors.append({"module_id": str(module_id), "target_id": str(target_id), "reason": str(e)})
     return result
 
 
