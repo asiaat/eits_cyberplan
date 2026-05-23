@@ -25,6 +25,7 @@ export default defineConfig({
         "font-src 'self' data: https://fonts.gstatic.com",
         "img-src 'self' data: blob:",
         "connect-src 'self' ws://localhost:* http://localhost:*",
+        "form-action 'self'",
         "frame-ancestors 'none'",
       ].join('; '),
       'X-Content-Type-Options': 'nosniff',
