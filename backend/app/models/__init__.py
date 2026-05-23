@@ -11,6 +11,7 @@ from app.models.membership import Membership
 from app.models.business_process import BusinessProcess
 from app.models.asset import Asset
 from app.models.asset_relation import AssetRelation
+from app.models.asset_relation_type import AssetRelationType
 from app.models.process_asset import ProcessAsset
 from app.models.eits_catalog_version import EitsCatalogVersion
 from app.models.eits_module import EitsModule
@@ -61,6 +62,7 @@ __all__ = [
     "BusinessProcessDependency",
     "Asset",
     "AssetRelation",
+    "AssetRelationType",
     "ProcessAsset",
     "EitsCatalogVersion",
     "EitsModule",

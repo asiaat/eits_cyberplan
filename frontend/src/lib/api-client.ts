@@ -28,3 +28,27 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => Promise.reject(error)
 )
+
+// Asset Relations API
+export const assetRelationsApi = {
+  listRelations: (assetId: string) =>
+    apiClient.get(`/assets/${assetId}/relations`),
+
+  createRelation: (assetId: string, data: {
+    target_asset_id: string
+    relation_type_code: string
+    description?: string
+    bidirectional?: boolean
+    strength?: string
+  }) =>
+    apiClient.post(`/assets/${assetId}/relations`, data),
+
+  deleteRelation: (assetId: string, relationId: string) =>
+    apiClient.delete(`/assets/${assetId}/relations/${relationId}`),
+
+  getProtectionInheritance: (assetId: string) =>
+    apiClient.get(`/assets/${assetId}/protection-inheritance`),
+
+  listRelationTypes: () =>
+    apiClient.get(`/assets/relation-types`),
+}
