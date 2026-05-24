@@ -5,10 +5,10 @@ from sqlalchemy import Column, String, Text, DateTime, ForeignKey, BigInteger, I
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.db.base import Base
+from app.db.base import Base, SoftDeleteMixin
 
 
-class Evidence(Base):
+class Evidence(SoftDeleteMixin, Base):
     __tablename__ = "evidences"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

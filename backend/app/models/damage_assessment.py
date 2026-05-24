@@ -5,10 +5,10 @@ from sqlalchemy import Column, Integer, Text, DateTime, ForeignKey, UniqueConstr
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.db.base import Base
+from app.db.base import Base, SoftDeleteMixin
 
 
-class DamageAssessment(Base):
+class DamageAssessment(SoftDeleteMixin, Base):
     __tablename__ = "damage_assessments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

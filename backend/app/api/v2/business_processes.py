@@ -34,7 +34,8 @@ from app.services.business_process_service import (
     build_dependency_tree,
 )
 from app.core.audit import log_audit as audit_log
-from app.models.protectionmode_selection import ProtectionModeSelection
+from app.core.utils import active_query
+
 
 router = APIRouter()
 
@@ -53,6 +54,7 @@ def list_business_processes_v2(
     query = db.query(BusinessProcess).filter(
         BusinessProcess.tenant_id == current_user.tenant_id
     )
+    query = active_query(query, BusinessProcess)
 
     if status_filter:
         query = query.filter(BusinessProcess.status == status_filter)
@@ -187,6 +189,7 @@ def get_business_process_v2(
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
         BusinessProcess.tenant_id == current_user.tenant_id,
+        BusinessProcess.deleted_at.is_(None),
     ).first()
 
     if not bp:
@@ -310,6 +313,8 @@ def delete_business_process_v2(
         ProcessAsset.business_process_id == process_id
     ).delete()
 
+    bp.soft_delete(current_user.global_user_id)
+
     audit_log(
         db=db,
         tenant_id=str(current_user.tenant_id),
@@ -320,7 +325,6 @@ def delete_business_process_v2(
         before_json={"business_process": bp.name},
     )
 
-    db.delete(bp)
     db.commit()
 
 

@@ -316,11 +316,18 @@ def delete_target(
         raise HTTPException(status_code=404, detail="Target Object not found")
     
     target_name = target.name
-    db.delete(target)
+    target.soft_delete(current_user.global_user_id)
     db.commit()
     
-    # Audit log
-    pass
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="delete",
+        entity_type="target",
+        entity_id=str(target_id),
+        before_json={"name": target_name},
+    )
 
 
 @router.get("/{target_id}/modules")
@@ -513,11 +520,24 @@ def remove_target_module(
         raise HTTPException(status_code=404, detail="Module mapping not found")
     
     module_code = mapping.module.code if mapping.module else "Unknown"
+    imr_items = db.query(ImrItem).filter(
+        ImrItem.asset_module_mapping_id == mapping_id
+    ).all()
+    for item in imr_items:
+        item.soft_delete(current_user.global_user_id)
+        item.asset_module_mapping_id = None
     db.delete(mapping)
     db.commit()
     
-    # Audit log
-    pass
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="delete",
+        entity_type="target_module_mapping",
+        entity_id=str(mapping_id),
+        before_json={"module_code": module_code},
+    )
 
 
 @router.get("/{target_id}/imr")

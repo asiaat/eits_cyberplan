@@ -27,6 +27,7 @@ from app.schemas.eits_catalog import (
     AssetProtectionOverview,
 )
 from app.core.audit import log_audit as audit_log
+from app.core.utils import active_query
 
 router = APIRouter()
 
@@ -130,6 +131,7 @@ def list_imr_items(
 ):
     """List IMR items for current tenant."""
     query = db.query(ImrItem).filter(ImrItem.tenant_id == current_user.tenant_id)
+    query = active_query(query, ImrItem)
     if pearo_status:
         query = query.filter(ImrItem.pearo_status == pearo_status)
     if priority:
@@ -239,6 +241,7 @@ def get_imr_item(
     item = db.query(ImrItem).filter(
         ImrItem.id == item_id,
         ImrItem.tenant_id == current_user.tenant_id,
+        ImrItem.deleted_at.is_(None),
     ).first()
     if not item:
         raise HTTPException(status_code=404, detail="IMR item not found")
@@ -354,7 +357,7 @@ def delete_imr_item(
         entity_id=str(item_id),
     )
 
-    db.delete(item)
+    item.soft_delete(current_user.global_user_id)
     db.commit()
 
 

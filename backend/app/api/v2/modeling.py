@@ -106,6 +106,7 @@ def unmap_module(
         tenant_id=current_user.tenant_id,
         mapping_id=mapping_id,
         target_type=target_type,
+        user_id=current_user.global_user_id,
     )
 
 

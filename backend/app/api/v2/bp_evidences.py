@@ -13,6 +13,7 @@ from app.models.business_process import BusinessProcess
 from app.models.imr_item import ImrItem
 from app.models.eits_catalog_measure import EitsCatalogMeasure
 from app.core.audit import log_audit as audit_log
+from app.core.utils import active_query
 from app.services.evidence_service import get_evidence_service
 
 router = APIRouter()
@@ -249,6 +250,7 @@ def list_evidences(
 ):
     """List all evidences for the current tenant (for linking UI)."""
     query = db.query(Evidence).filter(Evidence.tenant_id == current_user.tenant_id)
+    query = active_query(query, Evidence)
 
     if evidence_type:
         query = query.filter(Evidence.evidence_type == evidence_type)

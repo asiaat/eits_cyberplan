@@ -13,6 +13,7 @@ from app.models.eits_catalog_measure import EitsCatalogMeasure
 from app.models.eits_module import EitsModule
 from app.models.imr_item import ImrItem
 from app.models.process_asset import ProcessAsset
+from app.db.base import SoftDeleteMixin
 from app.models.protection_need_summary import ProtectionNeedSummary
 from app.models.protectionmode_selection import ProtectionModeSelection
 
@@ -167,6 +168,7 @@ class ModelingService:
         tenant_id: uuid.UUID,
         mapping_id: uuid.UUID,
         target_type: str,
+        user_id: uuid.UUID = None,
     ) -> dict[str, Any]:
         if target_type == "asset":
             mapping = db.query(AssetModuleMapping).filter(
@@ -195,7 +197,11 @@ class ModelingService:
 
         deleted_count = len(items)
         for item in items:
-            db.delete(item)
+            item.soft_delete(user_id)
+            if target_type == "asset":
+                item.asset_module_mapping_id = None
+            else:
+                item.bp_module_mapping_id = None
         db.delete(mapping)
         db.commit()
 

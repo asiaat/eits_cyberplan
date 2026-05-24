@@ -32,6 +32,7 @@ from app.schemas.asset import (
     LinkedProcessInfo,
 )
 from app.core.audit import log_audit as audit_log
+from app.core.utils import active_query
 
 
 settings = get_settings()
@@ -156,6 +157,7 @@ def list_assets_v2(
     query = db.query(Asset).filter(
         Asset.tenant_id == current_user.tenant_id
     )
+    query = active_query(query, Asset)
 
     if type_filter:
         query = query.filter(Asset.asset_type == type_filter)
@@ -477,6 +479,7 @@ def get_asset_v2(
     asset = db.query(Asset).filter(
         Asset.id == asset_id,
         Asset.tenant_id == current_user.tenant_id,
+        Asset.deleted_at.is_(None),
     ).first()
 
     if not asset:
@@ -564,7 +567,7 @@ def delete_asset_v2(
             detail=f"Cannot delete: asset is linked to {len(linked_processes)} business process(es): {', '.join(process_names)}. Unlink the asset first."
         )
 
-    db.delete(asset)
+    asset.soft_delete(current_user.global_user_id)
     db.commit()
 
     audit_log(

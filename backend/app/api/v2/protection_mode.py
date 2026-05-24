@@ -135,7 +135,8 @@ def list_protectionmode_selections(
 ):
     """List all protection mode selections for the current tenant."""
     query = db.query(ProtectionModeSelection).filter(
-        ProtectionModeSelection.tenant_id == current_user.tenant_id
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
+        ProtectionModeSelection.deleted_at.is_(None),
     )
 
     if catalog_version_id:
@@ -209,6 +210,7 @@ def get_protectionmode_selection(
     sel = db.query(ProtectionModeSelection).filter(
         ProtectionModeSelection.id == selection_id,
         ProtectionModeSelection.tenant_id == current_user.tenant_id,
+        ProtectionModeSelection.deleted_at.is_(None),
     ).first()
 
     if not sel:
@@ -270,7 +272,7 @@ def delete_protectionmode_selection(
     if not sel:
         raise HTTPException(status_code=404, detail="Protection mode selection not found")
 
-    db.delete(sel)
+    sel.soft_delete(current_user.global_user_id)
     db.commit()
 
 

@@ -69,7 +69,9 @@ def list_persons(db: DB, current_user: LocalUser = CurrentUserV2, search: Option
     """List all persons in the current tenant."""
     tenant_id = get_tenant_id(current_user, x_tenant_id)
 
-    query = db.query(Person).order_by(Person.last_name, Person.first_name)
+    query = db.query(Person).filter(
+        Person.deleted_at.is_(None),
+    ).order_by(Person.last_name, Person.first_name)
 
     if search:
         search_filter = f"%{search}%"
@@ -191,7 +193,10 @@ def get_person(person_id: UUID, db: DB, current_user: LocalUser = CurrentUserV2,
     """Get a specific person."""
     tenant_id = get_tenant_id(current_user, x_tenant_id)
 
-    person = db.query(Person).filter(Person.id == person_id).first()
+    person = db.query(Person).filter(
+        Person.id == person_id,
+        Person.deleted_at.is_(None),
+    ).first()
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
 
@@ -284,17 +289,7 @@ def delete_person(person_id: UUID, db: DB, current_user: LocalUser = CurrentUser
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
 
-    db.query(PersonOrganization).filter(
-        PersonOrganization.person_id == person.id,
-        PersonOrganization.tenant_id == tenant_id
-    ).delete()
-
-    db.query(Asset).filter(
-        Asset.person_id == person.id,
-        Asset.tenant_id == tenant_id
-    ).delete()
-
-    db.delete(person)
+    person.soft_delete(current_user.global_user_id)
     db.commit()
 
 
