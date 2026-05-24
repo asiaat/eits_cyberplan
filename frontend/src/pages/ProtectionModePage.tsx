@@ -469,7 +469,7 @@ export default function ProtectionModePage() {
               <p>{t("protectionmode.confirmModeChangeDesc") || "Kaitse režiimi muutmine kustutab kõik olemasolevad IMR kirjed ja loob uued vastavalt uuele režiimile."}</p>
               {imrPreviewStats && (
                 <p className="font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-200 dark:border-blue-800">
-                  {t("protectionmode.imrWillBeGenerated") || "Luuakse"} {imrPreviewStats.measures_count} {t("protectionmode.measures") || "meedet"} ({pendingApproach})
+                  {t("protectionmode.imrWillBeGenerated") || "Luuakse"} {imrPreviewStats.measures_count} {t("protectionmode.measures") || "meedet"} ({t(`protectionmode.approaches.${pendingApproach}.name`)})
                 </p>
               )}
               <p className="font-semibold text-destructive">{t("protectionmode.confirmModeChangeWarning") || "See toiming ei ole tagasivõetav!"}</p>
