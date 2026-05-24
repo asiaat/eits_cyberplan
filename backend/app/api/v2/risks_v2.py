@@ -26,6 +26,7 @@ from app.schemas.eits_catalog import (
     RiskMatrixCell,
 )
 from app.core.audit import log_audit as audit_log
+from app.core.utils import active_query
 
 router = APIRouter()
 
@@ -42,6 +43,7 @@ def list_risks_v2(
 ):
     """List risks for current tenant."""
     query = db.query(Risk).filter(Risk.tenant_id == current_user.tenant_id)
+    query = active_query(query, Risk)
     if status_filter:
         query = query.filter(Risk.status == status_filter)
     if treatment_type:
@@ -111,6 +113,7 @@ def get_risk_v2(
     risk = db.query(Risk).filter(
         Risk.id == risk_id,
         Risk.tenant_id == current_user.tenant_id,
+        Risk.deleted_at.is_(None),
     ).first()
     if not risk:
         raise HTTPException(status_code=404, detail="Risk not found")
@@ -192,6 +195,8 @@ def delete_risk_v2(
 
     db.query(RiskMeasureLink).filter(RiskMeasureLink.risk_id == risk_id).delete()
 
+    risk.soft_delete(current_user.global_user_id)
+
     audit_log(
         db=db,
         tenant_id=str(current_user.tenant_id),
@@ -201,7 +206,6 @@ def delete_risk_v2(
         entity_id=str(risk_id),
     )
 
-    db.delete(risk)
     db.commit()
 
 

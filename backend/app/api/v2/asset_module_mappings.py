@@ -173,7 +173,12 @@ def delete_asset_module_mapping(
     if not mapping:
         raise HTTPException(status_code=404, detail="Mapping not found")
 
-    db.query(ImrItem).filter(ImrItem.asset_module_mapping_id == mapping_id).delete()
+    imr_items = db.query(ImrItem).filter(
+        ImrItem.asset_module_mapping_id == mapping_id
+    ).all()
+    for item in imr_items:
+        item.soft_delete(current_user.global_user_id)
+        item.asset_module_mapping_id = None
 
     audit_log(
         db=db,

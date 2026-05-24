@@ -127,6 +127,24 @@ def list_approaches(
     }
 
 
+@router.get("/active", response_model=Optional[ProtectionModeSelectionResponse])
+def get_active_protectionmode(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """Get the currently active protection mode selection (404 if none)."""
+    sel = db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
+        ProtectionModeSelection.deleted_at.is_(None),
+        ProtectionModeSelection.is_active.is_(True),
+    ).first()
+
+    if not sel:
+        raise HTTPException(status_code=404, detail="No active protection mode")
+
+    return _build_selection_response(sel, db)
+
+
 @router.get("/", response_model=List[ProtectionModeSelectionResponse])
 def list_protectionmode_selections(
     db: DB,
@@ -135,7 +153,8 @@ def list_protectionmode_selections(
 ):
     """List all protection mode selections for the current tenant."""
     query = db.query(ProtectionModeSelection).filter(
-        ProtectionModeSelection.tenant_id == current_user.tenant_id
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
+        ProtectionModeSelection.deleted_at.is_(None),
     )
 
     if catalog_version_id:
@@ -199,6 +218,51 @@ def create_or_activate_protectionmode(
     return _build_selection_response(new_sel, db)
 
 
+@router.post("/regenerate-imr")
+def regenerate_imr_after_mode_change(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """Regenerate all IMR items based on active protection mode.
+
+    Before regenerating, current IMR items are snapshotted (versioned).
+    New IMR items become the current working set.
+    Old snapshot items are preserved and viewable via /imr-snapshots.
+    """
+    active = db.query(ProtectionModeSelection).filter(
+        ProtectionModeSelection.tenant_id == current_user.tenant_id,
+        ProtectionModeSelection.is_active == True,
+    ).first()
+
+    if not active:
+        raise HTTPException(status_code=400, detail="No active protection mode set")
+
+    result = ImrRegenerationService.snapshot_and_regenerate(
+        db=db,
+        tenant_id=current_user.tenant_id,
+        approach=active.security_approach,
+        user_id=current_user.id,
+        protection_mode_selection_id=active.id,
+        label=f"Before {active.security_approach} regeneration",
+    )
+
+    return result
+
+
+@router.get("/imr-preview")
+def get_imr_preview_for_approach(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+    approach: str = None,
+):
+    """Get preview of how many IMR items would be generated for a given approach."""
+    if approach not in ("BASIC", "STANDARD", "CORE"):
+        raise HTTPException(status_code=400, detail="Invalid approach. Use BASIC, STANDARD, or CORE")
+
+    stats = ImrRegenerationService.get_approach_stats(db, approach)
+    return stats
+
+
 @router.get("/{selection_id}", response_model=ProtectionModeSelectionResponse)
 def get_protectionmode_selection(
     db: DB,
@@ -209,6 +273,7 @@ def get_protectionmode_selection(
     sel = db.query(ProtectionModeSelection).filter(
         ProtectionModeSelection.id == selection_id,
         ProtectionModeSelection.tenant_id == current_user.tenant_id,
+        ProtectionModeSelection.deleted_at.is_(None),
     ).first()
 
     if not sel:
@@ -249,6 +314,14 @@ def update_protectionmode_selection(
     if data.is_active is not None:
         sel.is_active = data.is_active
 
+    if data.is_active is False:
+        ImrRegenerationService.snapshot_and_clear(
+            db=db,
+            tenant_id=current_user.tenant_id,
+            user_id=current_user.id,
+            protection_mode_selection_id=sel.id,
+        )
+
     db.commit()
     db.refresh(sel)
 
@@ -270,7 +343,7 @@ def delete_protectionmode_selection(
     if not sel:
         raise HTTPException(status_code=404, detail="Protection mode selection not found")
 
-    db.delete(sel)
+    sel.soft_delete(current_user.global_user_id)
     db.commit()
 
 
@@ -325,45 +398,3 @@ def unlink_evidence_from_protectionmode(
     db.refresh(sel)
 
     return _build_selection_response(sel, db)
-
-
-@router.post("/regenerate-imr")
-def regenerate_imr_after_mode_change(
-    db: DB,
-    current_user: LocalUser = Depends(get_current_user_v2),
-):
-    """Regenerate all IMR items based on active protection mode.
-
-    When protection mode changes, this endpoint clears all existing IMR items
-    for the tenant and creates new ones based on the active protection approach.
-    PEARO status is set to 'U' (Unknown) for all generated items.
-    """
-    active = db.query(ProtectionModeSelection).filter(
-        ProtectionModeSelection.tenant_id == current_user.tenant_id,
-        ProtectionModeSelection.is_active == True,
-    ).first()
-
-    if not active:
-        raise HTTPException(status_code=400, detail="No active protection mode set")
-
-    result = ImrRegenerationService.regenerate_for_tenant(
-        db=db,
-        tenant_id=current_user.tenant_id,
-        approach=active.security_approach,
-    )
-
-    return result
-
-
-@router.get("/imr-preview")
-def get_imr_preview_for_approach(
-    db: DB,
-    current_user: LocalUser = Depends(get_current_user_v2),
-    approach: str = None,
-):
-    """Get preview of how many IMR items would be generated for a given approach."""
-    if approach not in ("BASIC", "STANDARD", "CORE"):
-        raise HTTPException(status_code=400, detail="Invalid approach. Use BASIC, STANDARD, or CORE")
-
-    stats = ImrRegenerationService.get_approach_stats(db, approach)
-    return stats

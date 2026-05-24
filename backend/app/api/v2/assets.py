@@ -21,6 +21,7 @@ from app.models.asset import Asset
 from app.models.asset_module_mapping import AssetModuleMapping
 from app.models.process_asset import ProcessAsset
 from app.models.business_process import BusinessProcess
+from app.models.asset_relation import AssetRelation
 from app.models.user import User
 from app.models.local_user import EITSRole, UserRole
 from app.schemas.asset import (
@@ -31,6 +32,7 @@ from app.schemas.asset import (
     LinkedProcessInfo,
 )
 from app.core.audit import log_audit as audit_log
+from app.core.utils import active_query
 
 
 settings = get_settings()
@@ -155,6 +157,7 @@ def list_assets_v2(
     query = db.query(Asset).filter(
         Asset.tenant_id == current_user.tenant_id
     )
+    query = active_query(query, Asset)
 
     if type_filter:
         query = query.filter(Asset.asset_type == type_filter)
@@ -476,6 +479,7 @@ def get_asset_v2(
     asset = db.query(Asset).filter(
         Asset.id == asset_id,
         Asset.tenant_id == current_user.tenant_id,
+        Asset.deleted_at.is_(None),
     ).first()
 
     if not asset:
@@ -563,7 +567,17 @@ def delete_asset_v2(
             detail=f"Cannot delete: asset is linked to {len(linked_processes)} business process(es): {', '.join(process_names)}. Unlink the asset first."
         )
 
-    db.delete(asset)
+    active_mappings = db.query(AssetModuleMapping).filter(
+        AssetModuleMapping.asset_id == asset_id,
+        AssetModuleMapping.deleted_at.is_(None),
+    ).count()
+    if active_mappings:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete: asset has {active_mappings} active module mapping(s) used in IMR. Deactivate the mappings first."
+        )
+
+    asset.soft_delete(current_user.global_user_id)
     db.commit()
 
     audit_log(
@@ -778,3 +792,311 @@ def list_unlinked_processes(
         {"id": str(p.id), "name": p.name, "status": p.status}
         for p in processes
     ]
+
+
+# Asset Relations Endpoints
+
+@router.get("/{asset_id}/relations", response_model=list[dict])
+def list_asset_relations(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+    asset_id: UUID = None,
+):
+    """List all relations for an asset (both upstream and downstream)."""
+    if asset_id is None:
+        raise HTTPException(status_code=400, detail="asset_id is required")
+
+    asset = db.query(Asset).filter(
+        Asset.id == asset_id,
+        Asset.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    # Get relations where this asset is source (upstream - asset depends on these)
+    upstream_relations = db.query(AssetRelation).filter(
+        AssetRelation.source_asset_id == asset_id,
+        AssetRelation.tenant_id == current_user.tenant_id,
+    ).all()
+
+    # Get relations where this asset is target (downstream - these depend on this asset)
+    downstream_relations = db.query(AssetRelation).filter(
+        AssetRelation.target_asset_id == asset_id,
+        AssetRelation.tenant_id == current_user.tenant_id,
+    ).all()
+
+    from app.models.asset_relation_type import AssetRelationType
+
+    result = []
+
+    for rel in upstream_relations:
+        target = db.query(Asset).filter(Asset.id == rel.target_asset_id).first()
+        if target:
+            rel_type_info = None
+            if rel.relation_type_code:
+                rel_type = db.query(AssetRelationType).filter(
+                    AssetRelationType.code == rel.relation_type_code
+                ).first()
+                if rel_type:
+                    rel_type_info = {"code": rel_type.code, "name": rel_type.name}
+            result.append({
+                "id": str(rel.id),
+                "direction": "upstream",
+                "relation_type": rel.relation_type or rel.relation_type_code,
+                "relation_type_info": rel_type_info,
+                "bidirectional": rel.bidirectional,
+                "strength": rel.strength,
+                "target_asset_id": str(target.id),
+                "target_asset_name": target.name,
+                "target_asset_type": target.asset_type,
+                "description": rel.description,
+            })
+
+    for rel in downstream_relations:
+        source = db.query(Asset).filter(Asset.id == rel.source_asset_id).first()
+        if source:
+            rel_type_info = None
+            if rel.relation_type_code:
+                rel_type = db.query(AssetRelationType).filter(
+                    AssetRelationType.code == rel.relation_type_code
+                ).first()
+                if rel_type:
+                    rel_type_info = {"code": rel_type.code, "name": rel_type.name}
+            result.append({
+                "id": str(rel.id),
+                "direction": "downstream",
+                "relation_type": rel.relation_type or rel.relation_type_code,
+                "relation_type_info": rel_type_info,
+                "bidirectional": rel.bidirectional,
+                "strength": rel.strength,
+                "source_asset_id": str(source.id),
+                "source_asset_name": source.name,
+                "source_asset_type": source.asset_type,
+                "description": rel.description,
+            })
+
+    return result
+
+
+def _relation_type_exists(db, code: str) -> bool:
+    """Check if a relation type code exists in the asset_relation_types table."""
+    from app.models.asset_relation_type import AssetRelationType
+    return db.query(AssetRelationType).filter(AssetRelationType.code == code).first() is not None
+
+
+class AssetRelationCreate(BaseModel):
+    """Schema for creating an asset relation."""
+    target_asset_id: UUID
+    relation_type_code: str
+    description: Optional[str] = None
+    bidirectional: bool = False
+    strength: str = "weak"
+
+
+@router.post("/{asset_id}/relations", status_code=status.HTTP_201_CREATED)
+def create_asset_relation(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+    asset_id: UUID = None,
+    data: AssetRelationCreate = None,
+):
+    """Create a new relation from an asset to another asset."""
+    if asset_id is None:
+        raise HTTPException(status_code=400, detail="asset_id is required")
+    if data is None:
+        raise HTTPException(status_code=400, detail="Request body required")
+
+    # Check asset exists and belongs to tenant
+    asset = db.query(Asset).filter(
+        Asset.id == asset_id,
+        Asset.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    # Check target asset exists and belongs to tenant
+    target = db.query(Asset).filter(
+        Asset.id == data.target_asset_id,
+        Asset.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not target:
+        raise HTTPException(status_code=404, detail="Target asset not found")
+
+    if asset_id == data.target_asset_id:
+        raise HTTPException(status_code=400, detail="Asset cannot relate to itself")
+
+    # Validate relation type
+    from app.services.protection_inheritance_service import ProtectionInheritanceService
+    svc = ProtectionInheritanceService(db)
+    is_valid, error = svc.validate_relation_type(asset_id, data.target_asset_id, data.relation_type_code)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error)
+
+    # Check for circular dependency
+    would_cycle, cycle_msg = svc.check_circular_dependency(
+        current_user.tenant_id, asset_id, data.target_asset_id
+    )
+    if would_cycle:
+        raise HTTPException(status_code=400, detail=cycle_msg)
+
+    # Check if relation already exists
+    existing = db.query(AssetRelation).filter(
+        AssetRelation.source_asset_id == asset_id,
+        AssetRelation.target_asset_id == data.target_asset_id,
+        AssetRelation.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Relation already exists")
+
+    rel = AssetRelation(
+        tenant_id=current_user.tenant_id,
+        source_asset_id=asset_id,
+        target_asset_id=data.target_asset_id,
+        relation_type=data.relation_type_code,
+        # Only set relation_type_code if it exists in asset_relation_types table
+        # For custom/free-text types, leave relation_type_code null
+        relation_type_code=data.relation_type_code if _relation_type_exists(db, data.relation_type_code) else None,
+        description=data.description,
+        bidirectional=data.bidirectional,
+        strength=data.strength,
+    )
+    db.add(rel)
+    db.commit()
+    db.refresh(rel)
+
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="create",
+        entity_type="asset_relation",
+        entity_id=str(rel.id),
+        after_json={
+            "source_asset_id": str(asset_id),
+            "target_asset_id": str(data.target_asset_id),
+            "relation_type_code": data.relation_type_code,
+        },
+    )
+
+    return {"id": str(rel.id), "message": "Relation created successfully"}
+
+
+@router.delete("/{asset_id}/relations/{relation_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_asset_relation(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+    asset_id: UUID = None,
+    relation_id: UUID = None,
+):
+    """Delete an asset relation."""
+    if asset_id is None or relation_id is None:
+        raise HTTPException(status_code=400, detail="asset_id and relation_id are required")
+
+    rel = db.query(AssetRelation).filter(
+        AssetRelation.id == relation_id,
+        AssetRelation.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not rel:
+        raise HTTPException(status_code=404, detail="Relation not found")
+
+    # Verify relation belongs to this asset
+    if rel.source_asset_id != asset_id and rel.target_asset_id != asset_id:
+        raise HTTPException(status_code=404, detail="Relation not found for this asset")
+
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="delete",
+        entity_type="asset_relation",
+        entity_id=str(relation_id),
+        before_json={
+            "source_asset_id": str(rel.source_asset_id),
+            "target_asset_id": str(rel.target_asset_id),
+        },
+    )
+
+    db.delete(rel)
+    db.commit()
+
+
+@router.get("/relation-types")
+def list_relation_types(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+):
+    """List all available asset relation types."""
+    from app.services.protection_inheritance_service import ProtectionInheritanceService
+    svc = ProtectionInheritanceService(db)
+    return svc.get_all_relation_types()
+
+
+@router.get("/relation-types-fix")
+def list_relation_types_fix(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+):
+    """List all available asset relation types - alternative endpoint."""
+    from app.models.asset_relation_type import AssetRelationType
+    types = db.query(AssetRelationType).all()
+    return [
+        {
+            "code": t.code,
+            "name": t.name,
+            "description": t.description,
+            "source_types": t.source_types,
+            "target_types": t.target_types,
+            "bidirectional": t.bidirectional,
+            "strength": t.strength,
+        }
+        for t in types
+    ]
+
+
+@router.get("/{asset_id}/protection-inheritance")
+def get_asset_protection_inheritance(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+    asset_id: UUID = None,
+):
+    """Get protection inheritance info for an asset."""
+    if asset_id is None:
+        raise HTTPException(status_code=400, detail="asset_id is required")
+
+    asset = db.query(Asset).filter(
+        Asset.id == asset_id,
+        Asset.tenant_id == current_user.tenant_id,
+    ).first()
+
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    from app.services.protection_inheritance_service import ProtectionInheritanceService
+    svc = ProtectionInheritanceService(db)
+
+    inherited = svc.get_inherited_protection_needs(asset_id)
+    upstream = svc.get_upstream_assets(asset_id)
+    downstream = svc.get_downstream_assets(asset_id)
+    dependency_tree = svc.get_dependency_tree(asset_id)
+
+    return {
+        "asset_id": str(asset_id),
+        "asset_name": asset.name,
+        "baseline_c": inherited["baseline_c"],
+        "baseline_i": inherited["baseline_i"],
+        "baseline_a": inherited["baseline_a"],
+        "inherited_c": inherited["inherited_c"],
+        "inherited_i": inherited["inherited_i"],
+        "inherited_a": inherited["inherited_a"],
+        "has_inherited": inherited["has_inherited"],
+        "upstream_count": len(upstream),
+        "downstream_count": len(downstream),
+        "upstream": upstream,
+        "downstream": downstream,
+        "dependency_tree": dependency_tree,
+    }

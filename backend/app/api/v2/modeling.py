@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.api.deps import DB
@@ -29,7 +29,49 @@ class BpModuleMappingResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class BatchMapRequest(BaseModel):
+    module_ids: list[UUID]
+    target_ids: list[UUID]
+    target_type: str = Field(pattern="^(asset|business_process)$")
+
+
+class BatchMapResult(BaseModel):
+    mapped: list[dict] = Field(default_factory=list)
+    skipped: list[dict] = Field(default_factory=list)
+    errors: list[dict] = Field(default_factory=list)
+
+
 router = APIRouter()
+
+
+@router.post("/batch-map", status_code=status.HTTP_200_OK)
+def batch_map_module(
+    body: BatchMapRequest,
+    db: DB = None,
+    current_user: LocalUser = Depends(get_current_user_v2),
+):
+    """Map multiple modules to multiple assets at once."""
+    result = BatchMapResult()
+    for module_id in body.module_ids:
+        for target_id in body.target_ids:
+            try:
+                ModelingService.map_module_to_target(
+                    db=db,
+                    tenant_id=current_user.tenant_id,
+                    user_id=current_user.id,
+                    module_id=module_id,
+                    target_type=body.target_type,
+                    target_id=target_id,
+                )
+                result.mapped.append({"module_id": str(module_id), "target_id": str(target_id)})
+            except HTTPException as e:
+                if e.status_code == 400:
+                    result.skipped.append({"module_id": str(module_id), "target_id": str(target_id), "reason": e.detail})
+                else:
+                    result.errors.append({"module_id": str(module_id), "target_id": str(target_id), "reason": e.detail})
+            except Exception as e:
+                result.errors.append({"module_id": str(module_id), "target_id": str(target_id), "reason": str(e)})
+    return result
 
 
 @router.post("/map", status_code=status.HTTP_201_CREATED)
@@ -64,6 +106,7 @@ def unmap_module(
         tenant_id=current_user.tenant_id,
         mapping_id=mapping_id,
         target_type=target_type,
+        user_id=current_user.global_user_id,
     )
 
 

@@ -27,7 +27,8 @@ def list_security_profiles(
 ):
     """List security profiles for current tenant."""
     return db.query(SecurityProfile).filter(
-        SecurityProfile.tenant_id == current_user.tenant_id
+        SecurityProfile.tenant_id == current_user.tenant_id,
+        SecurityProfile.deleted_at.is_(None),
     ).order_by(SecurityProfile.created_at.desc()).offset(skip).limit(limit).all()
 
 
@@ -70,6 +71,7 @@ def get_security_profile(
     profile = db.query(SecurityProfile).filter(
         SecurityProfile.id == profile_id,
         SecurityProfile.tenant_id == current_user.tenant_id,
+        SecurityProfile.deleted_at.is_(None),
     ).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Security profile not found")
@@ -119,5 +121,5 @@ def delete_security_profile(
     ).first()
     if not profile:
         raise HTTPException(status_code=404, detail="Security profile not found")
-    db.delete(profile)
+    profile.soft_delete(current_user.global_user_id)
     db.commit()

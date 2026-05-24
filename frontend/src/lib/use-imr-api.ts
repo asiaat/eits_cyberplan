@@ -30,6 +30,7 @@ export function useImrApi() {
       asset_id?: string
       overdue_only?: boolean
       module_group?: string
+      snapshot_id?: string
       skip?: number
       limit?: number
     }
@@ -43,6 +44,7 @@ export function useImrApi() {
       if (filters?.asset_id) params.append("asset_id", filters.asset_id)
       if (filters?.overdue_only) params.append("overdue_only", "true")
       if (filters?.module_group) params.append("module_group", filters.module_group)
+      if (filters?.snapshot_id) params.append("snapshot_id", filters.snapshot_id)
       if (filters?.skip) params.append("skip", String(filters.skip))
       if (filters?.limit) params.append("limit", String(filters.limit))
       
@@ -161,7 +163,9 @@ export function useImrApi() {
       const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement("a")
       link.href = url
-      link.setAttribute("download", `IMR_${new Date().toISOString().split("T")[0]}.xlsx`)
+      const now = new Date()
+      const timestamp = now.toISOString().replace(/[:.]/g, "-").slice(0, 19)
+      link.setAttribute("download", `IMR_${timestamp}.xlsx`)
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

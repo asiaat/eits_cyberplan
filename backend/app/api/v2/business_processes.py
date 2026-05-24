@@ -10,6 +10,7 @@ from app.api.v2.auth import get_current_user_v2, CurrentUserV2, LocalUser
 from app.models.asset import Asset
 from app.models.process_asset import ProcessAsset
 from app.models.business_process import BusinessProcess
+from app.models.bp_module_mapping import BusinessProcessModuleMapping
 from app.models.user import User
 from app.models.business_process_dependency import BusinessProcessDependency
 from app.schemas.business_process import (
@@ -34,7 +35,8 @@ from app.services.business_process_service import (
     build_dependency_tree,
 )
 from app.core.audit import log_audit as audit_log
-from app.models.protectionmode_selection import ProtectionModeSelection
+from app.core.utils import active_query
+
 
 router = APIRouter()
 
@@ -53,6 +55,7 @@ def list_business_processes_v2(
     query = db.query(BusinessProcess).filter(
         BusinessProcess.tenant_id == current_user.tenant_id
     )
+    query = active_query(query, BusinessProcess)
 
     if status_filter:
         query = query.filter(BusinessProcess.status == status_filter)
@@ -187,6 +190,7 @@ def get_business_process_v2(
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
         BusinessProcess.tenant_id == current_user.tenant_id,
+        BusinessProcess.deleted_at.is_(None),
     ).first()
 
     if not bp:
@@ -306,9 +310,21 @@ def delete_business_process_v2(
     if not bp:
         raise HTTPException(status_code=404, detail="Business process not found")
 
+    active_mappings = db.query(BusinessProcessModuleMapping).filter(
+        BusinessProcessModuleMapping.business_process_id == process_id,
+        BusinessProcessModuleMapping.deleted_at.is_(None),
+    ).count()
+    if active_mappings:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete: business process has {active_mappings} active module mapping(s) used in IMR. Deactivate the mappings first."
+        )
+
     db.query(ProcessAsset).filter(
         ProcessAsset.business_process_id == process_id
     ).delete()
+
+    bp.soft_delete(current_user.global_user_id)
 
     audit_log(
         db=db,
@@ -320,7 +336,6 @@ def delete_business_process_v2(
         before_json={"business_process": bp.name},
     )
 
-    db.delete(bp)
     db.commit()
 
 

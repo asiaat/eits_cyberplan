@@ -32,6 +32,7 @@ export interface ImrItem {
   todo_description?: string
   cost_eur?: number
   linked_asset_count?: number
+  bp_names: string[]
 }
 
 export interface MeasureInfo {

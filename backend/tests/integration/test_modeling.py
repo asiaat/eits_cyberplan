@@ -1,5 +1,6 @@
 """Scope Modeling API v2 Tests - E-ITS modelleerimine."""
 from uuid import uuid4
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -28,6 +29,11 @@ class FakeModel:
     def __init__(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
+
+    def soft_delete(self, by_user_id=None):
+        self.deleted_at = datetime.now(timezone.utc)
+        if by_user_id:
+            self.deleted_by = by_user_id
 
 
 def _make_module(**overrides):

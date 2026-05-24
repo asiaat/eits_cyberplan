@@ -21,6 +21,9 @@ Thumbs.db
 node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/node_modules/.pnpm-store/
+frontend/node_modules/.pnpm/
+pnpm-lock.yaml
 .cache/
 
 TMP/

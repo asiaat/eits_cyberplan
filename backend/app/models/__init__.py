@@ -11,6 +11,7 @@ from app.models.membership import Membership
 from app.models.business_process import BusinessProcess
 from app.models.asset import Asset
 from app.models.asset_relation import AssetRelation
+from app.models.asset_relation_type import AssetRelationType
 from app.models.process_asset import ProcessAsset
 from app.models.eits_catalog_version import EitsCatalogVersion
 from app.models.eits_module import EitsModule
@@ -39,6 +40,7 @@ from app.models.risk_measure_link import RiskMeasureLink, DamageCategoryThreshol
 from app.models.business_process_dependency import BusinessProcessDependency
 from .bp_module_mapping import BusinessProcessModuleMapping
 from .protectionmode_selection import ProtectionModeSelection
+from .imr_snapshot import ImrSnapshot
 
 __all__ = [
     # Tier A - Subscription Layer
@@ -61,6 +63,7 @@ __all__ = [
     "BusinessProcessDependency",
     "Asset",
     "AssetRelation",
+    "AssetRelationType",
     "ProcessAsset",
     "EitsCatalogVersion",
     "EitsModule",
@@ -94,4 +97,5 @@ __all__ = [
     "ProcessModuleAssignment",
     "BusinessProcessModuleMapping",
     "ProtectionModeSelection",
+    "ImrSnapshot",
 ]

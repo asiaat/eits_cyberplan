@@ -5,10 +5,10 @@ from sqlalchemy import Column, String, Text, Date, DateTime, Boolean, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.db.base import Base
+from app.db.base import Base, SoftDeleteMixin
 
 
-class ImrItem(Base):
+class ImrItem(SoftDeleteMixin, Base):
     __tablename__ = "imr_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -32,8 +32,11 @@ class ImrItem(Base):
     created_at = Column(DateTime(timezone=True), server_default="now()")
     updated_at = Column(DateTime(timezone=True), server_default="now()", onupdate="now")
     
+    imr_snapshot_id = Column(UUID(as_uuid=True), ForeignKey("imr_snapshots.id", ondelete="SET NULL"), nullable=True, index=True)
+
     # New fields for enhanced IMR tracking
-    mapped_module_id = Column(UUID(as_uuid=True), nullable=True)
+    # Note: mapped_module_id removed - redundant since bp_module_mapping_id and asset_module_mapping_id
+    # already provide proper relationship via their own FK constraints
     created_by = Column(UUID(as_uuid=True), ForeignKey("local_users.id", ondelete="SET NULL"), nullable=True)
     updated_by = Column(UUID(as_uuid=True), ForeignKey("local_users.id", ondelete="SET NULL"), nullable=True)
     status_changed_at = Column(DateTime(timezone=True), nullable=True)
@@ -42,6 +45,7 @@ class ImrItem(Base):
     cost_eur = Column(Numeric(12, 2), nullable=True)
 
     tenant = relationship("AppTenant")
+    imr_snapshot = relationship("ImrSnapshot", back_populates="imr_items")
     asset_module_mapping = relationship("AssetModuleMapping", back_populates="imr_items")
     bp_module_mapping = relationship("BusinessProcessModuleMapping", back_populates="imr_items")
     measure = relationship("EitsCatalogMeasure", back_populates="imr_items")

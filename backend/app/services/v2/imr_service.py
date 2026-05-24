@@ -289,12 +289,13 @@ class ImrService:
         """
         from sqlalchemy import func, case
         
-        # Get counts by PEARO status
+        # Get counts by PEARO status (current items only)
         status_counts = db.query(
             ImrItem.pearo_status,
             func.count(ImrItem.id).label('count')
         ).filter(
-            ImrItem.tenant_id == tenant_id
+            ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
         ).group_by(
             ImrItem.pearo_status
         ).all()
@@ -302,29 +303,32 @@ class ImrService:
         # Convert to dict
         status_dict = {status: count for status, count in status_counts}
         
-        # Get counts by priority
+        # Get counts by priority (current items only)
         priority_counts = db.query(
             ImrItem.priority,
             func.count(ImrItem.id).label('count')
         ).filter(
-            ImrItem.tenant_id == tenant_id
+            ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
         ).group_by(
             ImrItem.priority
         ).all()
         
         priority_dict = {p: count for p, count in priority_counts}
         
-        # Get overdue items (status E or O and due_date < today)
+        # Get overdue items (status E or O and due_date < today) - current items only
         from datetime import date
         overdue_count = db.query(func.count(ImrItem.id)).filter(
             ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
             ImrItem.pearo_status.in_(["E", "O"]),
             ImrItem.due_date < date.today()
         ).scalar()
         
-        # Get items ready for completion (have evidence + sufficient details but not R)
+        # Get items ready for completion (have evidence + sufficient details but not R) - current items only
         ready_for_completion = db.query(func.count(ImrItem.id)).filter(
             ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
             ImrItem.pearo_status.in_(["P", "E"]),
             ImrItem.implementation_description.is_not(None),
             func.length(ImrItem.implementation_description) >= 15,

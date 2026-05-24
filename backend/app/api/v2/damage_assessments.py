@@ -13,6 +13,7 @@ from app.models.business_process import BusinessProcess
 from app.models.damage_scenario import DamageScenario
 from app.models.asset import Asset
 from app.models.process_asset import ProcessAsset
+from app.core.utils import active_query
 from app.schemas.eits_catalog import (
     DamageAssessmentCreate,
     DamageAssessmentUpdate,
@@ -38,6 +39,7 @@ def list_damage_assessments(
     query = db.query(DamageAssessment).filter(
         DamageAssessment.tenant_id == current_user.tenant_id
     )
+    query = active_query(query, DamageAssessment)
     if business_process_id:
         query = query.filter(DamageAssessment.business_process_id == business_process_id)
     if damage_scenario_id:
@@ -135,6 +137,7 @@ def get_damage_assessment(
     assessment = db.query(DamageAssessment).filter(
         DamageAssessment.id == assessment_id,
         DamageAssessment.tenant_id == current_user.tenant_id,
+        DamageAssessment.deleted_at.is_(None),
     ).first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Damage assessment not found")
@@ -182,7 +185,7 @@ def delete_damage_assessment(
     ).first()
     if not assessment:
         raise HTTPException(status_code=404, detail="Damage assessment not found")
-    db.delete(assessment)
+    assessment.soft_delete(current_user.global_user_id)
     db.commit()
 
 

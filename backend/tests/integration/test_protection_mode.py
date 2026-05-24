@@ -32,6 +32,11 @@ class FakeModel:
         for k, v in kwargs.items():
             setattr(self, k, v)
 
+    def soft_delete(self, by_user_id=None):
+        self.deleted_at = datetime.now(timezone.utc)
+        if by_user_id:
+            self.deleted_by = by_user_id
+
 
 def _make_selection(**overrides):
     now = datetime.now(timezone.utc)

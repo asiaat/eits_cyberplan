@@ -1,11 +1,13 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ImrTable } from "@/components/imr/ImrTable"
 import { ImrItemModal } from "@/components/imr/ImrItemModal"
 import { ImrDashboardStats, StatsFilter } from "@/components/imr/ImrDashboardStats"
+import { SnapshotSelector } from "@/components/imr/SnapshotSelector"
 import { ImrItem, IMR_STATUS_OPTIONS } from "@/lib/imr-types"
 import { useTranslation } from "@/lib/i18n"
 import { useImrApi } from "@/lib/use-imr-api"
-import { List, LayoutGrid, BarChart3 } from "lucide-react"
+import { apiClient } from "@/lib/api-client"
+import { List, LayoutGrid, BarChart3, ShieldAlert } from "lucide-react"
 
 const MODULE_GROUPS = ["All", "ISMS", "ORP", "CON", "OPS", "DER", "INF", "NET", "SYS", "APP", "IND"]
 
@@ -27,6 +29,14 @@ export default function ImplementationPlanPage() {
     overdue_only?: boolean
   }>({})
   const [statsFilter, setStatsFilter] = useState<StatsFilter>(null)
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null)
+  const [hasActivePlan, setHasActivePlan] = useState<boolean | null>(null)
+
+  useEffect(() => {
+    apiClient.get("/protection-mode/active")
+      .then(() => setHasActivePlan(true))
+      .catch(() => setHasActivePlan(false))
+  }, [])
 
   const handleEditItem = (item: ImrItem) => {
     setSelectedItem(item)
@@ -84,8 +94,32 @@ export default function ImplementationPlanPage() {
           <p className="text-xs text-muted-foreground mt-1">
             {t("implementationPlan.pageSubtitle")}
           </p>
+          {hasActivePlan === false && !selectedSnapshotId && (
+            <div className="mt-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800">
+              <div className="flex items-start gap-2">
+                <ShieldAlert className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    {t("implementationPlan.noActivePlan")}
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                    {t("implementationPlan.noActivePlanDesc")}
+                  </p>
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                    {t("implementationPlan.viewSnapshotsHint")}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-3">
+          {/* Snapshot Selector */}
+          <SnapshotSelector
+            selectedSnapshotId={selectedSnapshotId}
+            onSelectSnapshot={setSelectedSnapshotId}
+          />
+
           {/* Stats Toggle */}
           <button
             onClick={toggleStats}
@@ -137,62 +171,6 @@ export default function ImplementationPlanPage() {
         </div>
       </div>
 
-      {/* Dashboard Statistics */}
-      {showStats && <ImrDashboardStats activeFilter={statsFilter} onFilterChange={handleStatsFilterChange} />}
-
-      {/* Filter Bar */}
-      <div className="mb-3 bg-card rounded-lg border border-border p-3">
-        <div className="flex flex-wrap gap-4 items-center">
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1">
-              {t("implementationPlan.dashboard.filterByStatusLabel")}
-            </label>
-            <select
-              value={filter.pearo_status || ""}
-              onChange={(e) => {
-                setFilter({ ...filter, pearo_status: e.target.value || undefined })
-                setStatsFilter(null)
-              }}
-              className="border border-border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-background"
-            >
-              <option value="">{t("implementationPlan.dashboard.allStatuses")}</option>
-              {IMR_STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {t(option.labelKey)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-muted-foreground mb-1">
-              {t("implementationPlan.dashboard.overdueSection")}
-            </label>
-            <label className="inline-flex items-center">
-              <input
-                type="checkbox"
-                checked={filter.overdue_only || false}
-                onChange={(e) => setFilter({ ...filter, overdue_only: e.target.checked || undefined })}
-                className="rounded border-border text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="ml-2 text-sm text-muted-foreground">{t("implementationPlan.dashboard.showOverdueOnly")}</span>
-            </label>
-          </div>
-
-          {(filter.pearo_status || filter.overdue_only) && (
-            <button
-              onClick={() => {
-                setFilter({})
-                setStatsFilter(null)
-              }}
-              className="text-sm text-indigo-600 hover:text-indigo-900 underline"
-            >
-              {t("implementationPlan.dashboard.clearFilters")}
-            </button>
-          )}
-        </div>
-      </div>
-
       {/* Error display */}
       {exportError && (
         <div className="mb-3 p-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
@@ -200,36 +178,94 @@ export default function ImplementationPlanPage() {
         </div>
       )}
 
-      {/* Grouped View - Tab Bar */}
-      {viewMode === "grouped" && (
-        <div className="mb-4 overflow-x-auto">
-          <div className="flex gap-1 min-w-max border-b">
-            {MODULE_GROUPS.map((group) => (
-              <button
-                key={group}
-                onClick={() => {
-                  setActiveTab(group)
-                }}
-                className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
-                  activeTab === group
-                    ? "border-b-2 border-primary text-primary"
-                    : "text-muted-foreground hover:text-foreground border-b-2 border-transparent"
-                }`}
-              >
-                {group}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* IMR content - hidden when no active plan unless viewing a snapshot */}
+      {(hasActivePlan !== false || selectedSnapshotId) && (
+        <>
+          {showStats && <ImrDashboardStats activeFilter={statsFilter} onFilterChange={handleStatsFilterChange} />}
 
-      {/* IMR Table */}
-      <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
-        <ImrTable
-          onEditItem={handleEditItem}
-          filters={viewMode === "grouped" ? { ...filter, module_group: activeTab === "All" ? undefined : activeTab } : filter}
-        />
-      </div>
+          <div className="mb-3 bg-card rounded-lg border border-border p-3">
+            <div className="flex flex-wrap gap-4 items-center">
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  {t("implementationPlan.dashboard.filterByStatusLabel")}
+                </label>
+                <select
+                  value={filter.pearo_status || ""}
+                  onChange={(e) => {
+                    setFilter({ ...filter, pearo_status: e.target.value || undefined })
+                    setStatsFilter(null)
+                  }}
+                  className="border border-border rounded-lg px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-background"
+                >
+                  <option value="">{t("implementationPlan.dashboard.allStatuses")}</option>
+                  {IMR_STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {t(option.labelKey)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-muted-foreground mb-1">
+                  {t("implementationPlan.dashboard.overdueSection")}
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={filter.overdue_only || false}
+                    onChange={(e) => setFilter({ ...filter, overdue_only: e.target.checked || undefined })}
+                    className="rounded border-border text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="ml-2 text-sm text-muted-foreground">{t("implementationPlan.dashboard.showOverdueOnly")}</span>
+                </label>
+              </div>
+
+              {(filter.pearo_status || filter.overdue_only) && (
+                <button
+                  onClick={() => {
+                    setFilter({})
+                    setStatsFilter(null)
+                  }}
+                  className="text-sm text-indigo-600 hover:text-indigo-900 underline"
+                >
+                  {t("implementationPlan.dashboard.clearFilters")}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {viewMode === "grouped" && (
+            <div className="mb-4 overflow-x-auto">
+              <div className="flex gap-1 min-w-max border-b">
+                {MODULE_GROUPS.map((group) => (
+                  <button
+                    key={group}
+                    onClick={() => {
+                      setActiveTab(group)
+                    }}
+                    className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                      activeTab === group
+                        ? "border-b-2 border-primary text-primary"
+                        : "text-muted-foreground hover:text-foreground border-b-2 border-transparent"
+                    }`}
+                  >
+                    {group}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
+            <ImrTable
+              onEditItem={selectedSnapshotId ? undefined : handleEditItem}
+              readOnly={!!selectedSnapshotId}
+              filters={viewMode === "grouped" ? { ...filter, module_group: activeTab === "All" ? undefined : activeTab, snapshot_id: selectedSnapshotId || undefined } : { ...filter, snapshot_id: selectedSnapshotId || undefined }}
+            />
+          </div>
+        </>
+      )}
 
       {/* IMR Item Modal */}
       <ImrItemModal

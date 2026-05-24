@@ -157,6 +157,7 @@ def get_evidence(
     evidence = db.query(Evidence).filter(
         Evidence.id == evidence_id,
         Evidence.tenant_id == current_user.tenant_id,
+        Evidence.deleted_at.is_(None),
     ).first()
 
     if not evidence:
@@ -249,12 +250,7 @@ def delete_evidence(
     if not evidence:
         raise HTTPException(status_code=404, detail="Evidence not found")
 
-    if evidence.storage_uri:
-        try:
-            service = get_evidence_service()
-            service.delete_file(evidence.storage_uri)
-        except Exception:
-            pass
+    evidence.soft_delete(current_user.global_user_id)
 
     audit_log(
         db=db,
@@ -266,7 +262,6 @@ def delete_evidence(
         before_json={"title": evidence.title},
     )
 
-    db.delete(evidence)
     db.commit()
 
 
