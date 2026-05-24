@@ -150,7 +150,6 @@ class ModelingService:
                 kwargs["asset_module_mapping_id"] = mapping.id
             else:
                 kwargs["bp_module_mapping_id"] = mapping.id
-                kwargs["mapped_module_id"] = mapping.id
             imr_item = ImrItem(**kwargs)
             db.add(imr_item)
             generated_count += 1

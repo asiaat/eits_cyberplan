@@ -172,7 +172,6 @@ class ImrRegenerationService:
                     measure_id=measure.id,
                     pearo_status="U",
                     priority="P2",
-                    mapped_module_id=None,
                 )
                 db.add(imr_item)
                 created_count += 1

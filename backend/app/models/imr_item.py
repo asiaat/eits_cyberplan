@@ -35,7 +35,8 @@ class ImrItem(SoftDeleteMixin, Base):
     imr_snapshot_id = Column(UUID(as_uuid=True), ForeignKey("imr_snapshots.id", ondelete="SET NULL"), nullable=True, index=True)
 
     # New fields for enhanced IMR tracking
-    mapped_module_id = Column(UUID(as_uuid=True), nullable=True)
+    # Note: mapped_module_id removed - redundant since bp_module_mapping_id and asset_module_mapping_id
+    # already provide proper relationship via their own FK constraints
     created_by = Column(UUID(as_uuid=True), ForeignKey("local_users.id", ondelete="SET NULL"), nullable=True)
     updated_by = Column(UUID(as_uuid=True), ForeignKey("local_users.id", ondelete="SET NULL"), nullable=True)
     status_changed_at = Column(DateTime(timezone=True), nullable=True)

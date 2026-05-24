@@ -80,7 +80,6 @@ def _build_imr_response(db: Session, item: ImrItem, linked_asset_count: int = 0)
         created_at=item.created_at,
         updated_at=item.updated_at,
         measure=measure_info,
-        mapped_module_id=item.mapped_module_id,
         created_by=item.created_by,
         updated_by=item.updated_by,
         status_changed_at=item.status_changed_at,
