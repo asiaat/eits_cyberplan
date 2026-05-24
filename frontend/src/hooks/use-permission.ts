@@ -9,7 +9,7 @@ export function usePermission() {
       if (!user) return false
 
       const roleNames = user.roles?.map((r) => r.role_name) || []
-      if (roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")) return true
+      if (roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond") || roleNames.includes("superadmin") || roleNames.includes("admin")) return true
 
       return user.permissions?.includes(permissionCode) || false
     },
@@ -21,7 +21,7 @@ export function usePermission() {
       if (!user) return false
 
       const roleNames = user.roles?.map((r) => r.role_name) || []
-      if (roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")) return true
+      if (roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond") || roleNames.includes("superadmin") || roleNames.includes("admin")) return true
 
       if (!user.permissions) return false
 
@@ -35,7 +35,7 @@ export function usePermission() {
       if (!user) return false
 
       const roleNames = user.roles?.map((r) => r.role_name) || []
-      if (roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")) return true
+      if (roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond") || roleNames.includes("superadmin") || roleNames.includes("admin")) return true
 
       if (!user.permissions) return false
 
@@ -47,13 +47,13 @@ export function usePermission() {
   const isAdmin = useCallback((): boolean => {
     if (!user) return false
     const roleNames = user.roles?.map((r) => r.role_name) || []
-    return roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")
+    return roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond") || roleNames.includes("superadmin") || roleNames.includes("admin")
   }, [user])
 
   const isISM = useCallback((): boolean => {
     if (!user) return false
     const roleNames = user.roles?.map((r) => r.role_name) || []
-    return roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond")
+    return roleNames.includes("Infoturbejuht") || roleNames.includes("Juhtkond") || roleNames.includes("superadmin")
   }, [user])
 
   return {
