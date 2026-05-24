@@ -10,6 +10,7 @@ from app.api.v2.auth import get_current_user_v2, CurrentUserV2, LocalUser
 from app.models.asset import Asset
 from app.models.process_asset import ProcessAsset
 from app.models.business_process import BusinessProcess
+from app.models.bp_module_mapping import BusinessProcessModuleMapping
 from app.models.user import User
 from app.models.business_process_dependency import BusinessProcessDependency
 from app.schemas.business_process import (
@@ -308,6 +309,16 @@ def delete_business_process_v2(
 
     if not bp:
         raise HTTPException(status_code=404, detail="Business process not found")
+
+    active_mappings = db.query(BusinessProcessModuleMapping).filter(
+        BusinessProcessModuleMapping.business_process_id == process_id,
+        BusinessProcessModuleMapping.deleted_at.is_(None),
+    ).count()
+    if active_mappings:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete: business process has {active_mappings} active module mapping(s) used in IMR. Deactivate the mappings first."
+        )
 
     db.query(ProcessAsset).filter(
         ProcessAsset.business_process_id == process_id

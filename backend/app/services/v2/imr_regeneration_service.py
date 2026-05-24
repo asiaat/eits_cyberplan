@@ -1,10 +1,11 @@
 """IMR Regeneration Service - E-ITS IMR auto-generation based on protection mode."""
 import uuid
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
 from app.models.imr_item import ImrItem
+from app.models.imr_snapshot import ImrSnapshot
 from app.models.eits_module import EitsModule
 from app.models.eits_catalog_measure import EitsCatalogMeasure
 
@@ -19,29 +20,141 @@ LEVEL_FILTERS = {
 class ImrRegenerationService:
 
     @staticmethod
-    def regenerate_for_tenant(db: Session, tenant_id: uuid.UUID, approach: str) -> dict[str, Any]:
-        """Regenerate all IMR items for a tenant based on protection mode.
+    def snapshot_and_regenerate(
+        db: Session,
+        tenant_id: uuid.UUID,
+        approach: str,
+        user_id: Optional[uuid.UUID] = None,
+        protection_mode_selection_id: Optional[uuid.UUID] = None,
+        label: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Snapshot current IMR items, then regenerate.
 
-        1. Clear all existing IMR items for tenant
-        2. Generate ALL measures from ALL modules at the specified protection level
-        3. Create IMR items with PEARO status = "U" (Unknown)
+        1. Snapshot all current (imr_snapshot_id IS NULL) IMR items for tenant
+        2. Regenerate IMR items based on protection mode
+        3. New items have imr_snapshot_id = NULL (current working set)
 
-        Args:
-            db: Database session
-            tenant_id: Tenant UUID
-            approach: Security approach (BASIC, STANDARD, CORE)
-
-        Returns:
-            dict with approach, modules_count, measures_count, imr_items_created
+        Returns dict with snapshot info and regeneration stats.
         """
+        current_items = db.query(ImrItem).filter(
+            ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
+        ).all()
+
+        snapshot_info = None
+        if current_items:
+            snapshot_label = label or f"Previous state before {approach}"
+            snapshot = ImrSnapshot(
+                tenant_id=tenant_id,
+                protection_mode_selection_id=protection_mode_selection_id,
+                label=snapshot_label,
+                description=f"Auto-snapshot created before switching to {approach}",
+                is_current=False,
+                item_count=len(current_items),
+                created_by=user_id,
+            )
+            db.add(snapshot)
+            db.flush()
+
+            for item in current_items:
+                item.imr_snapshot_id = snapshot.id
+
+            db.flush()
+            snapshot_info = {
+                "snapshot_id": str(snapshot.id),
+                "snapshot_label": snapshot_label,
+                "snapshot_item_count": len(current_items),
+            }
+
+        db.query(ImrItem).filter(
+            ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
+        ).delete(synchronize_session=False)
+
+        result = ImrRegenerationService._generate_items(db, tenant_id, approach)
+
+        if snapshot_info:
+            result["snapshot"] = snapshot_info
+        result["previous_imr_count"] = len(current_items) if current_items else 0
+        return result
+
+    @staticmethod
+    def regenerate_for_tenant(db: Session, tenant_id: uuid.UUID, approach: str) -> dict[str, Any]:
+        """Regenerate all current IMR items for a tenant.
+
+        Only affects items with imr_snapshot_id = NULL (the current working set).
+        Snapshot items are preserved.
+        """
+        existing_count = db.query(ImrItem).filter(
+            ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
+        ).count()
+
+        db.query(ImrItem).filter(
+            ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
+        ).delete(synchronize_session=False)
+
+        result = ImrRegenerationService._generate_items(db, tenant_id, approach)
+        result["previous_imr_count"] = existing_count
+        return result
+
+    @staticmethod
+    def snapshot_and_clear(
+        db: Session,
+        tenant_id: uuid.UUID,
+        user_id: Optional[uuid.UUID] = None,
+        protection_mode_selection_id: Optional[uuid.UUID] = None,
+        label: Optional[str] = None,
+    ) -> dict[str, Any]:
+        """Snapshot all current IMR items and clear the current working set.
+        Unlike snapshot_and_regenerate, this does NOT generate new items.
+        """
+        current_items = db.query(ImrItem).filter(
+            ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
+        ).all()
+
+        snapshot_info = None
+        if current_items:
+            snapshot_label = label or "Auto-saved before deactivation"
+            snapshot = ImrSnapshot(
+                tenant_id=tenant_id,
+                protection_mode_selection_id=protection_mode_selection_id,
+                label=snapshot_label,
+                description="Auto-snapshot created when protection mode was deactivated",
+                is_current=False,
+                item_count=len(current_items),
+                created_by=user_id,
+            )
+            db.add(snapshot)
+            db.flush()
+
+            for item in current_items:
+                item.imr_snapshot_id = snapshot.id
+
+            db.flush()
+            snapshot_info = {
+                "snapshot_id": str(snapshot.id),
+                "snapshot_label": snapshot_label,
+                "snapshot_item_count": len(current_items),
+            }
+
+        db.query(ImrItem).filter(
+            ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
+        ).delete(synchronize_session=False)
+
+        return {
+            "snapshot": snapshot_info,
+            "previous_imr_count": len(current_items) if current_items else 0,
+        }
+
+    @staticmethod
+    def _generate_items(db: Session, tenant_id: uuid.UUID, approach: str) -> dict[str, Any]:
+        """Generate IMR items for all modules at the specified protection level."""
         level_filter = LEVEL_FILTERS.get(approach, LEVEL_FILTERS["BASIC"])
-
-        existing_count = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id).count()
-
-        db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id).delete(synchronize_session=False)
-
         modules = db.query(EitsModule).all()
-
         created_count = 0
         measures_count = 0
 
@@ -71,7 +184,6 @@ class ImrRegenerationService:
             "modules_count": len(modules),
             "measures_count": measures_count,
             "imr_items_created": created_count,
-            "previous_imr_count": existing_count,
         }
 
     @staticmethod
@@ -91,3 +203,27 @@ class ImrRegenerationService:
             "modules_count": modules_count,
             "measures_count": measures_count,
         }
+
+    @staticmethod
+    def restore_snapshot(db: Session, tenant_id: uuid.UUID, snapshot_id: uuid.UUID) -> int:
+        """Restore a snapshot: delete current items, un-archive snapshot items."""
+        current_count = db.query(ImrItem).filter(
+            ImrItem.tenant_id == tenant_id,
+            ImrItem.imr_snapshot_id.is_(None),
+        ).delete(synchronize_session=False)
+
+        snapshot = db.query(ImrSnapshot).filter(
+            ImrSnapshot.id == snapshot_id,
+            ImrSnapshot.tenant_id == tenant_id,
+        ).first()
+        if not snapshot:
+            raise ValueError("Snapshot not found")
+
+        db.query(ImrItem).filter(
+            ImrItem.imr_snapshot_id == snapshot_id,
+        ).update({"imr_snapshot_id": None})
+
+        snapshot.restored_from = snapshot_id
+        db.commit()
+
+        return current_count

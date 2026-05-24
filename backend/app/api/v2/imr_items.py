@@ -126,12 +126,21 @@ def list_imr_items(
     asset_id: Optional[UUID] = Query(None, alias="asset_id"),
     overdue_only: bool = Query(False, alias="overdue_only"),
     module_group: Optional[str] = Query(None, alias="module_group"),
+    snapshot_id: Optional[UUID] = Query(None, alias="snapshot_id"),
     skip: int = Query(0, ge=0),
     limit: int = Query(200, ge=1, le=500),
 ):
-    """List IMR items for current tenant."""
+    """List IMR items for current tenant.
+
+    By default returns only current items (imr_snapshot_id IS NULL).
+    Pass snapshot_id to view items from a specific historical snapshot.
+    """
     query = db.query(ImrItem).filter(ImrItem.tenant_id == current_user.tenant_id)
     query = active_query(query, ImrItem)
+    if snapshot_id:
+        query = query.filter(ImrItem.imr_snapshot_id == snapshot_id)
+    else:
+        query = query.filter(ImrItem.imr_snapshot_id.is_(None))
     if pearo_status:
         query = query.filter(ImrItem.pearo_status == pearo_status)
     if priority:

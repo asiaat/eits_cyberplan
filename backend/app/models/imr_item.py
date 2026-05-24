@@ -32,6 +32,8 @@ class ImrItem(SoftDeleteMixin, Base):
     created_at = Column(DateTime(timezone=True), server_default="now()")
     updated_at = Column(DateTime(timezone=True), server_default="now()", onupdate="now")
     
+    imr_snapshot_id = Column(UUID(as_uuid=True), ForeignKey("imr_snapshots.id", ondelete="SET NULL"), nullable=True, index=True)
+
     # New fields for enhanced IMR tracking
     mapped_module_id = Column(UUID(as_uuid=True), nullable=True)
     created_by = Column(UUID(as_uuid=True), ForeignKey("local_users.id", ondelete="SET NULL"), nullable=True)
@@ -42,6 +44,7 @@ class ImrItem(SoftDeleteMixin, Base):
     cost_eur = Column(Numeric(12, 2), nullable=True)
 
     tenant = relationship("AppTenant")
+    imr_snapshot = relationship("ImrSnapshot", back_populates="imr_items")
     asset_module_mapping = relationship("AssetModuleMapping", back_populates="imr_items")
     bp_module_mapping = relationship("BusinessProcessModuleMapping", back_populates="imr_items")
     measure = relationship("EitsCatalogMeasure", back_populates="imr_items")

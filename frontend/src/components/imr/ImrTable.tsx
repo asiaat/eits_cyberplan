@@ -15,7 +15,9 @@ interface ImrTableProps {
     asset_id?: string
     overdue_only?: boolean
     module_group?: string
+    snapshot_id?: string
   }
+  readOnly?: boolean
 }
 
 export function ImrTable({ onEditItem, filters }: ImrTableProps) {

@@ -567,6 +567,16 @@ def delete_asset_v2(
             detail=f"Cannot delete: asset is linked to {len(linked_processes)} business process(es): {', '.join(process_names)}. Unlink the asset first."
         )
 
+    active_mappings = db.query(AssetModuleMapping).filter(
+        AssetModuleMapping.asset_id == asset_id,
+        AssetModuleMapping.deleted_at.is_(None),
+    ).count()
+    if active_mappings:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete: asset has {active_mappings} active module mapping(s) used in IMR. Deactivate the mappings first."
+        )
+
     asset.soft_delete(current_user.global_user_id)
     db.commit()
 

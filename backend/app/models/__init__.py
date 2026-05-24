@@ -40,6 +40,7 @@ from app.models.risk_measure_link import RiskMeasureLink, DamageCategoryThreshol
 from app.models.business_process_dependency import BusinessProcessDependency
 from .bp_module_mapping import BusinessProcessModuleMapping
 from .protectionmode_selection import ProtectionModeSelection
+from .imr_snapshot import ImrSnapshot
 
 __all__ = [
     # Tier A - Subscription Layer
@@ -96,4 +97,5 @@ __all__ = [
     "ProcessModuleAssignment",
     "BusinessProcessModuleMapping",
     "ProtectionModeSelection",
+    "ImrSnapshot",
 ]
