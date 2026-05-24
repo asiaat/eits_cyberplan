@@ -4,7 +4,7 @@ import { useImrApi } from "@/lib/use-imr-api"
 import { useTranslation } from "@/lib/i18n"
 import { ImrStatusBadge, ImrPriorityBadge, ImrValidationIndicator } from "./ImrStatusBadge"
 
-type SortField = "code" | "status" | "priority" | "assetCount" | "dueDate" | "profile" | "responsible" | "todo" | "cost"
+type SortField = "code" | "status" | "priority" | "assetCount" | "dueDate" | "profile" | "responsible" | "todo" | "cost" | "bp"
 type SortOrder = "asc" | "desc"
 
 interface ImrTableProps {
@@ -80,10 +80,11 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
         case "status":
           cmp = a.pearo_status.localeCompare(b.pearo_status)
           break
-        case "priority":
+        case "priority": {
           const priorityOrder = { P1: 1, P2: 2, P3: 3 }
           cmp = (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2)
           break
+        }
         case "assetCount":
           cmp = (a.linked_asset_count || 0) - (b.linked_asset_count || 0)
           break
@@ -102,6 +103,12 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
         case "cost":
           cmp = (a.cost_eur || 0) - (b.cost_eur || 0)
           break
+        case "bp": {
+          const aBp = (a.bp_names || []).join(", ")
+          const bBp = (b.bp_names || []).join(", ")
+          cmp = aBp.localeCompare(bBp)
+          break
+        }
       }
       return sortOrder === "asc" ? cmp : -cmp
     })
@@ -154,13 +161,19 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
               {t("implementationPlan.table.code")}<SortIcon field="code" />
             </th>
             <th className="py-2 px-2">{t("implementationPlan.table.measure")}</th>
-            <th 
+            <th
               className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-24"
               onClick={() => handleSort("status")}
             >
               {t("implementationPlan.table.status")}<SortIcon field="status" />
             </th>
-            <th 
+            <th
+              className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-28"
+              onClick={() => handleSort("bp")}
+            >
+              {t("implementationPlan.table.bp")}<SortIcon field="bp" />
+            </th>
+            <th
               className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-20"
               onClick={() => handleSort("priority")}
             >
@@ -228,6 +241,17 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
                 </td>
                 <td className="py-2 px-2">
                   <ImrStatusBadge status={item.pearo_status} size="sm" />
+                </td>
+                <td className="py-2 px-2">
+                  {item.bp_names && item.bp_names.length > 0 ? (
+                    <div className="flex flex-col gap-0.5">
+                      {item.bp_names.map((name, i) => (
+                        <span key={i} className="text-xs font-medium text-blue-700 dark:text-blue-300">{name}</span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-slate-400">—</span>
+                  )}
                 </td>
                 <td className="py-2 px-2">
                   <ImrPriorityBadge priority={item.priority} />

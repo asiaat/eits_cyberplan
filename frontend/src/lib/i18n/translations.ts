@@ -612,6 +612,7 @@ organization: {
         noData: "No IMR items found",
         unassigned: "Unassigned",
         assetCount: "Assets",
+        bp: "BP",
       },
       status: {
         U: "Unknown",
@@ -1454,6 +1455,7 @@ inactive: "Mitteaktiivne",
         noData: "IMR kirjeid ei leitud",
         unassigned: "Määramata",
         assetCount: "Vara",
+        bp: "ÄP",
       },
       status: {
         U: "Teadmata",

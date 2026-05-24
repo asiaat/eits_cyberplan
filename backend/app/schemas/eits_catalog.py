@@ -371,6 +371,7 @@ class ImrItemResponse(ImrItemBase):
     updated_at: datetime
     measure: Optional[MeasureInfo] = None
     linked_asset_count: int = 0
+    bp_names: list[str] = []
 
     model_config = ConfigDict(from_attributes=True)
 

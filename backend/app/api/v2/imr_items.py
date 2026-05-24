@@ -13,6 +13,9 @@ from app.api.deps import DB
 from app.api.v2.auth import get_current_user_v2, LocalUser
 from app.models.imr_item import ImrItem
 from app.models.asset_module_mapping import AssetModuleMapping
+from app.models.bp_module_mapping import BusinessProcessModuleMapping
+from app.models.business_process import BusinessProcess
+from app.models.process_asset import ProcessAsset
 from app.models.eits_catalog_measure import EitsCatalogMeasure
 from app.models.eits_module import EitsModule
 from app.models.asset import Asset
@@ -30,6 +33,37 @@ from app.core.audit import log_audit as audit_log
 from app.core.utils import active_query
 
 router = APIRouter()
+
+
+def _get_bp_names(db: Session, item: ImrItem) -> list[str]:
+    """Resolve all BP names associated with an IMR item."""
+    bp_names: set[str] = set()
+
+    # Via bp_module_mapping_id direct link
+    if item.bp_module_mapping_id:
+        mapping = db.query(BusinessProcessModuleMapping).filter(
+            BusinessProcessModuleMapping.id == item.bp_module_mapping_id
+        ).first()
+        if mapping:
+            bp = db.query(BusinessProcess).filter(BusinessProcess.id == mapping.business_process_id).first()
+            if bp and bp.name:
+                bp_names.add(bp.name)
+
+    # Via asset_module_mapping_id → asset → process_assets → BPs
+    if item.asset_module_mapping_id:
+        mapping = db.query(AssetModuleMapping).filter(
+            AssetModuleMapping.id == item.asset_module_mapping_id
+        ).first()
+        if mapping:
+            process_assets = db.query(ProcessAsset).filter(
+                ProcessAsset.asset_id == mapping.asset_id
+            ).all()
+            for pa in process_assets:
+                bp = db.query(BusinessProcess).filter(BusinessProcess.id == pa.business_process_id).first()
+                if bp and bp.name:
+                    bp_names.add(bp.name)
+
+    return sorted(bp_names)
 
 
 def _build_imr_response(db: Session, item: ImrItem, linked_asset_count: int = 0) -> ImrItemResponse:
@@ -59,6 +93,9 @@ def _build_imr_response(db: Session, item: ImrItem, linked_asset_count: int = 0)
     if not profile and measure:
         profile = "PÕHIMEEDE" if measure.measure_level == "BASE" else "PIIRATULT"
     
+    # Resolve BP names
+    bp_names = _get_bp_names(db, item)
+    
     return ImrItemResponse(
         id=item.id,
         tenant_id=item.tenant_id,
@@ -87,6 +124,7 @@ def _build_imr_response(db: Session, item: ImrItem, linked_asset_count: int = 0)
         todo_description=item.todo_description,
         cost_eur=float(item.cost_eur) if item.cost_eur else None,
         linked_asset_count=linked_asset_count,
+        bp_names=bp_names,
     )
 
 
