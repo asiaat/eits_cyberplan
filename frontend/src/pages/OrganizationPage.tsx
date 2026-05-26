@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { AlertTriangle } from "lucide-react"
+import { ErrorDialog } from "@/components/ui/error-dialog"
+import { WarningDialog } from "@/components/ui/warning-dialog"
 
 interface OrgInfo {
   id: string
@@ -80,6 +82,8 @@ export default function OrganizationPage() {
   const [newDivisionName, setNewDivisionName] = useState("")
   const [savingOrg, setSavingOrg] = useState(false)
   const [deletingDivisionId, setDeletingDivisionId] = useState<string | null>(null)
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
+  const [warningDialog, setWarningDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
 
   const [newUserName, setNewUserName] = useState("")
   const [newUserEmail, setNewUserEmail] = useState("")
@@ -183,7 +187,7 @@ export default function OrganizationPage() {
       setTenant({ ...tenant, ...updated.data })
     } catch (error: any) {
       console.error("Failed to save:", error)
-      alert(error.response?.data?.detail || "Failed to save")
+      setErrorDialog({ open: true, message: error.response?.data?.detail || "Failed to save" })
     }
     setSavingOrg(false)
   }
@@ -203,7 +207,7 @@ export default function OrganizationPage() {
       console.log("Division saved:", res.data)
     } catch (error: any) {
       console.error("Failed to save division:", error.response?.data || error.message)
-      alert(t("organization.failedToSaveDivision") + (error.response?.data?.detail || error.message))
+      setErrorDialog({ open: true, message: t("organization.failedToSaveDivision") + (error.response?.data?.detail || error.message) })
     }
   }
 
@@ -221,7 +225,7 @@ export default function OrganizationPage() {
   const handleDivisionDeleteClick = async (divisionId: string) => {
     const inUse = await checkDivisionInUse(divisionId)
     if (inUse) {
-      alert(t("organization.divisionInUse"))
+      setWarningDialog({ open: true, message: t("organization.divisionInUse") })
       return
     }
     setDeletingDivisionId(divisionId)
@@ -350,7 +354,7 @@ export default function OrganizationPage() {
 
   const createOrganization = async () => {
     if (!newOrgName || !newOrgRegistryCode || !newOrgAdminName || !newOrgAdminEmail || !newOrgAdminPassword) {
-      alert("Please fill in all required fields (marked with *)")
+      setWarningDialog({ open: true, message: "Please fill in all required fields (marked with *)" })
       return
     }
     setCreatingOrg(true)
@@ -379,7 +383,7 @@ export default function OrganizationPage() {
       loadOrganizations()
     } catch (error: any) {
       console.error("Failed to create org:", error)
-      alert(error.response?.data?.detail || "Failed to create organization")
+      setErrorDialog({ open: true, message: error.response?.data?.detail || "Failed to create organization" })
     }
     setCreatingOrg(false)
   }
@@ -768,6 +772,20 @@ export default function OrganizationPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ErrorDialog
+        open={errorDialog.open}
+        onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}
+        title="Error"
+        message={errorDialog.message}
+      />
+
+      <WarningDialog
+        open={warningDialog.open}
+        onOpenChange={(open) => setWarningDialog(prev => ({ ...prev, open }))}
+        title="Warning"
+        message={warningDialog.message}
+      />
     </div>
   )
 }

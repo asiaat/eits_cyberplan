@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
 import { AlertTriangle, Link2, Unlink, Plus, ExternalLink, Trash2, ArrowRight, ArrowLeft, ArrowUpDown, ArrowUp, ArrowDown, LayoutGrid, List } from "lucide-react"
+import { ErrorDialog } from "@/components/ui/error-dialog"
 import {
   Dialog,
   DialogContent,
@@ -129,6 +130,7 @@ export default function BusinessProcessesPage() {
   const [divisions, setDivisions] = useState<Division[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("")
   const [divisionFilter, setDivisionFilter] = useState<string>("")
@@ -327,7 +329,7 @@ export default function BusinessProcessesPage() {
       fetchProcesses()
     } catch (err: any) {
       console.error("DEBUG handleSubmit error:", err.response?.data || err)
-      alert(err.response?.data?.detail || "Failed to save")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to save" })
     } finally {
       setSaving(false)
     }
@@ -339,7 +341,7 @@ export default function BusinessProcessesPage() {
       setDeletingId(null)
       fetchProcesses()
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to delete")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to delete" })
     }
   }
 
@@ -361,7 +363,7 @@ export default function BusinessProcessesPage() {
       setNewDepDescription("")
       fetchDependencies(selectedBP.id)
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to add dependency")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to add dependency" })
     }
   }
 
@@ -371,7 +373,7 @@ export default function BusinessProcessesPage() {
       await apiClient.delete(`/business-processes/${selectedBP.id}/dependencies/${depId}`)
       fetchDependencies(selectedBP.id)
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to delete dependency")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to delete dependency" })
     }
   }
 
@@ -386,7 +388,7 @@ export default function BusinessProcessesPage() {
       setSearchEvidence("")
       fetchBPEvidences(selectedBP.id)
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to link evidence")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to link evidence" })
     }
   }
 
@@ -396,7 +398,7 @@ export default function BusinessProcessesPage() {
       await apiClient.delete(`/business-processes/${selectedBP.id}/evidence-links/${linkId}`)
       fetchBPEvidences(selectedBP.id)
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to unlink evidence")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to unlink evidence" })
     }
   }
 
@@ -1357,6 +1359,13 @@ export default function BusinessProcessesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ErrorDialog
+        open={errorDialog.open}
+        onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}
+        title="Error"
+        message={errorDialog.message}
+      />
     </div>
   )
 }

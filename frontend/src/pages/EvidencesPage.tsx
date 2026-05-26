@@ -15,6 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { ErrorDialog } from "@/components/ui/error-dialog"
 
 interface LinkedBP {
   process_id: string
@@ -97,6 +98,7 @@ export default function EvidencesPage() {
   const [evidences, setEvidences] = useState<EvidenceItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
   const [search, setSearch] = useState("")
   const [showUpload, setShowUpload] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -188,7 +190,7 @@ export default function EvidencesPage() {
       setDeleteId(null)
       fetchEvidences()
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to delete")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to delete" })
     }
   }
 
@@ -541,6 +543,13 @@ export default function EvidencesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ErrorDialog
+        open={errorDialog.open}
+        onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}
+        title="Error"
+        message={errorDialog.message}
+      />
     </div>
   )
 }

@@ -1,5 +1,6 @@
 """API dependencies."""
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -9,12 +10,13 @@ from app.db.session import get_db, get_session_maker
 from app.models.user import User
 from app.models.role import Role
 from app.core.security import decode_token
-from uuid import UUID
+from app.schemas.user import TenantUser
 
 
 def get_session_local():
     """Get session maker for dependency injection."""
     return get_session_maker()
+
 
 DB = Annotated[Session, Depends(get_db)]
 
@@ -53,45 +55,51 @@ def get_current_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
-def require_role(role_code: str):
-    def role_checker(current_user: CurrentUser, db: DB):
-        membership = current_user.memberships.first()
-        if not membership:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="No tenant membership",
-            )
-        if membership.role.code != role_code:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Role '{role_code}' required",
-            )
-        return current_user
-    return role_checker
-
-
-def require_admin(current_user: CurrentUser):
+def get_current_tenant_user(
+    current_user: CurrentUser,
+    db: DB,
+) -> TenantUser:
+    """Get current user with resolved tenant_id from membership."""
     membership = current_user.memberships.first()
     if not membership:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="No tenant membership",
         )
-    if membership.role.code != "admin":
+    if not membership.tenant_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin role required",
+            detail="No tenant associated with membership",
         )
-    return current_user
+    return TenantUser(
+        id=current_user.id,
+        email=current_user.email,
+        name=current_user.name,
+        tenant_id=membership.tenant_id,
+        role_code=membership.role.code if membership.role else "viewer",
+    )
+
+
+TenantUserDep = Annotated[TenantUser, Depends(get_current_tenant_user)]
+
+
+def require_role(role_code: str):
+    """Require a specific role for the current user's tenant membership."""
+    def role_checker(tenant_user: TenantUserDep):
+        if tenant_user.role_code != role_code:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Role '{role_code}' required",
+            )
+        return tenant_user
     return role_checker
 
 
-def require_admin(current_user: CurrentUser):
+def require_admin(tenant_user: TenantUserDep):
     """Require admin role."""
-    membership = current_user.memberships.first()
-    if not membership or membership.role.code != "admin":
+    if tenant_user.role_code != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin role required",
         )
-    return current_user
+    return tenant_user

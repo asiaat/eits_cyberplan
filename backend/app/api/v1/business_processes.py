@@ -5,7 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import DB, CurrentUser
+from app.api.deps import DB, TenantUserDep
 from app.models.business_process import BusinessProcess
 from app.models.asset import Asset
 from app.models.process_asset import ProcessAsset
@@ -26,7 +26,7 @@ router = APIRouter()
 @router.get("/", response_model=list[BusinessProcessListItem])
 def list_business_processes(
     db: DB,
-    current_user: CurrentUser,
+    tenant_user: TenantUserDep,
     status_filter: Optional[str] = Query(None, alias="status"),
     owner_id: Optional[UUID] = Query(None, alias="owner_id"),
     division_id: Optional[str] = Query(None, alias="division_id"),
@@ -35,7 +35,7 @@ def list_business_processes(
 ):
     """List business processes for the current tenant."""
     query = db.query(BusinessProcess).filter(
-        BusinessProcess.tenant_id == current_user.tenant_id
+        BusinessProcess.tenant_id == tenant_user.tenant_id
     )
 
     if status_filter:
@@ -79,12 +79,12 @@ def list_business_processes(
 @router.post("/", response_model=BusinessProcessResponse, status_code=status.HTTP_201_CREATED)
 def create_business_process(
     db: DB,
-    current_user: CurrentUser,
+    tenant_user: TenantUserDep,
     data: BusinessProcessCreate,
 ):
     """Create a new business process."""
     bp = BusinessProcess(
-        tenant_id=current_user.tenant_id,
+        tenant_id=tenant_user.tenant_id,
         name=data.name,
         description=data.description,
         purpose=data.purpose,
@@ -103,13 +103,13 @@ def create_business_process(
     for asset_id in (data.asset_ids or []):
         asset = db.query(Asset).filter(
             Asset.id == asset_id,
-            Asset.tenant_id == current_user.tenant_id
+            Asset.tenant_id == tenant_user.tenant_id
         ).first()
         if not asset:
             db.rollback()
             raise HTTPException(status_code=404, detail=f"Asset {asset_id} not found")
         link = ProcessAsset(
-            tenant_id=current_user.tenant_id,
+            tenant_id=tenant_user.tenant_id,
             business_process_id=bp.id,
             asset_id=asset_id,
         )
@@ -120,8 +120,8 @@ def create_business_process(
 
     audit_log(
         db=db,
-        tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.id),
+        tenant_id=str(tenant_user.tenant_id),
+        actor_user_id=str(tenant_user.id),
         action="create",
         entity_type="business_process",
         entity_id=bp.id,
@@ -134,13 +134,13 @@ def create_business_process(
 @router.get("/{process_id}", response_model=BusinessProcessResponse)
 def get_business_process(
     db: DB,
-    current_user: CurrentUser,
+    tenant_user: TenantUserDep,
     process_id: UUID,
 ):
     """Get a business process by ID."""
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
-        BusinessProcess.tenant_id == current_user.tenant_id,
+        BusinessProcess.tenant_id == tenant_user.tenant_id,
     ).first()
 
     if not bp:
@@ -152,14 +152,14 @@ def get_business_process(
 @router.patch("/{process_id}", response_model=BusinessProcessResponse)
 def update_business_process(
     db: DB,
-    current_user: CurrentUser,
+    tenant_user: TenantUserDep,
     process_id: UUID,
     data: BusinessProcessUpdate,
 ):
     """Update a business process."""
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
-        BusinessProcess.tenant_id == current_user.tenant_id,
+        BusinessProcess.tenant_id == tenant_user.tenant_id,
     ).first()
 
     if not bp:
@@ -191,8 +191,8 @@ def update_business_process(
 
     audit_log(
         db=db,
-        tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.id),
+        tenant_id=str(tenant_user.tenant_id),
+        actor_user_id=str(tenant_user.id),
         action="update",
         entity_type="business_process",
         entity_id=bp.id,
@@ -206,13 +206,13 @@ def update_business_process(
 @router.delete("/{process_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_business_process(
     db: DB,
-    current_user: CurrentUser,
+    tenant_user: TenantUserDep,
     process_id: UUID,
 ):
     """Delete a business process."""
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
-        BusinessProcess.tenant_id == current_user.tenant_id,
+        BusinessProcess.tenant_id == tenant_user.tenant_id,
     ).first()
 
     if not bp:
@@ -224,8 +224,8 @@ def delete_business_process(
 
     audit_log(
         db=db,
-        tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.id),
+        tenant_id=str(tenant_user.tenant_id),
+        actor_user_id=str(tenant_user.id),
         action="delete",
         entity_type="business_process",
         entity_id=bp.id,
@@ -239,14 +239,14 @@ def delete_business_process(
 @router.post("/{process_id}/assets", status_code=status.HTTP_201_CREATED)
 def add_process_asset(
     db: DB,
-    current_user: CurrentUser,
+    tenant_user: TenantUserDep,
     process_id: UUID,
     data: ProcessAssetLinkCreate,
 ):
     """Link an asset to a business process."""
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
-        BusinessProcess.tenant_id == current_user.tenant_id,
+        BusinessProcess.tenant_id == tenant_user.tenant_id,
     ).first()
 
     if not bp:
@@ -254,7 +254,7 @@ def add_process_asset(
 
     asset = db.query(Asset).filter(
         Asset.id == data.asset_id,
-        Asset.tenant_id == current_user.tenant_id,
+        Asset.tenant_id == tenant_user.tenant_id,
     ).first()
 
     if not asset:
@@ -269,7 +269,7 @@ def add_process_asset(
         raise HTTPException(status_code=400, detail="Asset already linked")
 
     link = ProcessAsset(
-        tenant_id=current_user.tenant_id,
+        tenant_id=tenant_user.tenant_id,
         business_process_id=process_id,
         asset_id=data.asset_id,
         relation_description=data.relation_description,
@@ -279,8 +279,8 @@ def add_process_asset(
 
     audit_log(
         db=db,
-        tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.id),
+        tenant_id=str(tenant_user.tenant_id),
+        actor_user_id=str(tenant_user.id),
         action="link_asset",
         entity_type="business_process",
         entity_id=process_id,
@@ -293,14 +293,14 @@ def add_process_asset(
 @router.delete("/{process_id}/assets/{asset_id}", status_code=status.HTTP_204_NO_CONTENT)
 def remove_process_asset(
     db: DB,
-    current_user: CurrentUser,
+    tenant_user: TenantUserDep,
     process_id: UUID,
     asset_id: UUID,
 ):
     """Unlink an asset from a business process."""
     bp = db.query(BusinessProcess).filter(
         BusinessProcess.id == process_id,
-        BusinessProcess.tenant_id == current_user.tenant_id,
+        BusinessProcess.tenant_id == tenant_user.tenant_id,
     ).first()
 
     if not bp:
@@ -319,8 +319,8 @@ def remove_process_asset(
 
     audit_log(
         db=db,
-        tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.id),
+        tenant_id=str(tenant_user.tenant_id),
+        actor_user_id=str(tenant_user.id),
         action="unlink_asset",
         entity_type="business_process",
         entity_id=process_id,

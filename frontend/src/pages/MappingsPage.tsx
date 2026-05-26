@@ -7,6 +7,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
 import { Link2, Unlink, AlertTriangle, Shield, CheckCircle2, XCircle, CheckSquare, Loader2, GitBranch } from "lucide-react"
+import { ErrorDialog } from "@/components/ui/error-dialog"
+import { WarningDialog } from "@/components/ui/warning-dialog"
 import { Tree } from "react-arborist"
 import type { NodeRendererProps } from "react-arborist"
 
@@ -113,6 +115,8 @@ export default function MappingsPage() {
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
+  const [warningDialog, setWarningDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
   const [mainTab, setMainTab] = useState("assets")
   const [assetTypeTab, setAssetTypeTab] = useState("all")
   const [moduleGroupTab, setModuleGroupTab] = useState("ISMS")
@@ -169,7 +173,7 @@ export default function MappingsPage() {
       const active = (modeRes.data || []).find((m: ProtectionModeItem) => m.is_active)
       setProtectionMode(active || null)
     } catch {
-      alert("Failed to load data")
+      setErrorDialog({ open: true, message: "Failed to load data" })
     } finally {
       setLoading(false)
     }
@@ -333,7 +337,7 @@ export default function MappingsPage() {
 
   const handleMapModuleToBp = async () => {
     if (!bpTargetId || !bpModuleId) {
-      alert("Select both a BP and a module")
+      setWarningDialog({ open: true, message: "Select both a BP and a module" })
       return
     }
     setSaving(true)
@@ -345,7 +349,7 @@ export default function MappingsPage() {
       setBpModuleId("")
       await fetchData()
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to map module")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to map module" })
     } finally {
       setSaving(false)
     }
@@ -357,7 +361,7 @@ export default function MappingsPage() {
       await apiClient.delete(`/modeling/map/${id}`, { params: { target_type: "asset" } })
       await fetchData()
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to remove mapping")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to remove mapping" })
     }
   }
 
@@ -367,13 +371,13 @@ export default function MappingsPage() {
       await apiClient.delete(`/modeling/map/${id}`, { params: { target_type: "business_process" } })
       await fetchData()
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to remove mapping")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to remove mapping" })
     }
   }
 
   const handleEditProtectionNeed = (bp: BpItem) => {
     if (activeMode) {
-      alert(t("mappings.modeLocked"))
+      setWarningDialog({ open: true, message: t("mappings.modeLocked") })
       return
     }
     setEditingBp(bp)
@@ -398,7 +402,7 @@ export default function MappingsPage() {
       setEditingBp(null)
       await fetchData()
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to update protection needs")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to update protection needs" })
     } finally {
       setSaving(false)
     }
@@ -509,7 +513,7 @@ export default function MappingsPage() {
       await apiClient.delete(`/assets/${assetId}/relations/${relationId}`)
       await fetchAllAssetRelations()
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to delete relation")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to delete relation" })
     }
   }
 
@@ -1396,6 +1400,20 @@ childEntries.forEach(({ rel, childId, childName, childType }) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <ErrorDialog
+        open={errorDialog.open}
+        onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}
+        title="Error"
+        message={errorDialog.message}
+      />
+
+      <WarningDialog
+        open={warningDialog.open}
+        onOpenChange={(open) => setWarningDialog(prev => ({ ...prev, open }))}
+        title="Warning"
+        message={warningDialog.message}
+      />
     </div>
   )
 }

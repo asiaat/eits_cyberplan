@@ -18,6 +18,7 @@ import {
   Plus, Search, Building2, Mail, Phone, Edit, Trash2, User,
   X, ChevronRight, Users as UsersIcon, AlertTriangle,
 } from "lucide-react"
+import { ErrorDialog } from "@/components/ui/error-dialog"
 
 interface OrgInfo {
   id: string
@@ -72,6 +73,7 @@ export default function SupportPeoplePage() {
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null)
   const [search, setSearch] = useState("")
   const [deletingPersonId, setDeletingPersonId] = useState<string | null>(null)
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
 
   const [showCreate, setShowCreate] = useState(false)
   const [newPerson, setNewPerson] = useState({
@@ -758,6 +760,13 @@ export default function SupportPeoplePage() {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ErrorDialog
+      open={errorDialog.open}
+      onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}
+      title="Error"
+      message={errorDialog.message}
+    />
     </>
   )
 
@@ -809,7 +818,7 @@ export default function SupportPeoplePage() {
       loadData()
     }).catch((err: any) => {
       const msg = err?.response?.data?.detail || t("support.people.cannotDelete")
-      alert(msg)
+      setErrorDialog({ open: true, message: msg })
     })
   }
 
