@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-ITS CyberPlan — Technical Specification v0.1.0</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --bg-hover: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --primary: #58a6ff;
+    --accent: #3fb950;
+    --warn: #d29922;
+    --danger: #f85149;
+    --font: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    line-height: 1.7;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1, h2, h3, h4 { font-family: var(--font); color: var(--primary); margin-top: 2rem; letter-spacing: 0.02em; }
+  h1 { font-size: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-top: 0; }
+  h2 { font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { font-size: 1.1rem; color: var(--accent); margin-top: 1.5rem; }
+  h4 { font-size: 1rem; color: var(--text); margin-top: 1rem; }
+  p, li { margin-bottom: 0.6rem; }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { color: var(--warn); }
+  code, pre {
+    font-family: var(--font);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+  code { padding: 0.15em 0.4em; }
+  pre {
+    padding: 1rem;
+    overflow-x: auto;
+    line-height: 1.5;
+    margin: 0.8rem 0;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--bg-card); color: var(--primary); font-weight: 600; }
+  tr:hover { background: var(--bg-hover); }
+  .meta { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  .badge {
+    display: inline-block;
+    padding: 0.15em 0.6em;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: var(--font);
+  }
+  .badge-primary { background: #1f6feb33; color: var(--primary); border: 1px solid #1f6feb66; }
+  .badge-green  { background: #3fb95033; color: var(--accent);  border: 1px solid #3fb95066; }
+  .badge-yellow { background: #d2992233; color: var(--warn);   border: 1px solid #d2992266; }
+  .badge-red    { background: #f8514933; color: var(--danger); border: 1px solid #f8514966; }
+  .box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+  }
+  .box-title { font-weight: 600; color: var(--primary); margin-bottom: 0.25rem; font-family: var(--font); }
+  .diagram-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1rem 0;
+    font-family: var(--font);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-muted);
+  }
+  .diagram-box strong { color: var(--primary); }
+  .diagram-box em { color: var(--accent); font-style: normal; }
+  .diagram-box mark { background: none; color: var(--warn); }
+  ul, ol { padding-left: 1.5rem; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .toc { margin: 1.5rem 0; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+  .toc a { display: block; padding: 0.2rem 0; }
+  .toc a::before { content: "▸ "; color: var(--text-muted); }
+  .toc a:hover::before { color: var(--primary); }
+  .toc ul { list-style: none; padding-left: 1.2rem; }
+  .toc > ul { padding-left: 0; }
+  .tag { color: var(--text-muted); font-size: 0.8rem; font-family: var(--font); }
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    table { font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>E-ITS CyberPlan — Technical Specification</h1>
+<p class="meta">
+  <span class="badge badge-primary">v0.1.0</span>&ensp;
+  <span class="tag">2026-05-26</span>&ensp;·&ensp;
+  <span class="tag">E-ITS Management System</span>&ensp;·&ensp;
+  <span class="tag">DRAFT</span>
+</p>
+
+<div class="box">
+  <div class="box-title">Purpose</div>
+  This document describes the architecture, components, modules, services, data model, infrastructure,
+  and security model of the <strong>E-ITS CyberPlan</strong> system at version 0.1.0.
+  It serves as the technical reference for developers, architects, and security reviewers.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="toc">Table of Contents</h2>
+<div class="toc">
+  <a href="#context">1. System Context</a>
+  <a href="#backend">2. Backend Architecture</a>
+  <ul>
+    <li><a href="#backend-v2">2.1 API v2 Routers</a></li>
+    <li><a href="#backend-core">2.2 Core Modules</a></li>
+    <li><a href="#backend-services">2.3 Services Layer</a></li>
+    <li><a href="#backend-models">2.4 Data Model</a></li>
+    <li><a href="#backend-migrations">2.5 Migrations</a></li>
+  </ul>
+  <a href="#frontend">3. Frontend Architecture</a>
+  <ul>
+    <li><a href="#frontend-pages">3.1 Pages</a></li>
+    <li><a href="#frontend-components">3.2 Components</a></li>
+    <li><a href="#frontend-state">3.3 State &amp; Utilities</a></li>
+    <li><a href="#frontend-routing">3.4 Routing</a></li>
+  </ul>
+  <a href="#infra">4. Infrastructure</a>
+  <a href="#security">5. Security Model</a>
+  <a href="#dataflow">6. Data Flow</a>
+  <a href="#scripts">7. Scripts &amp; Automation</a>
+  <a href="#glossary">8. Glossary</a>
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="context">1. System Context</h2>
+
+<p>
+The system runs as six Docker Compose services. The frontend SPA communicates
+with the backend REST API. The backend orchestrates business logic, RBAC,
+audit logging, and tenant isolation, backed by PostgreSQL, Redis, and MinIO.
+</p>
+
+<div class="diagram-box">
+<strong>┌─────────────────────────────────────────────────────────────┐</strong>
+<strong>│                   Docker Compose (local)                      │</strong>
+<strong>│                                                               │</strong>
+│  ┌──────────┐     ┌──────────┐     ┌──────────────────────┐      │
+│  │ postgres │     │  redis   │     │       minio          │      │
+│  │  :5432   │     │  :6379   │     │  :9000 / :9001       │      │
+│  └────┬─────┘     └────┬─────┘     └──────────┬───────────┘      │
+│       │                │                       │                  │
+│  ┌────▼────────────────▼───────────────────────▼──────────────┐   │
+│  │                     backend                                 │   │
+│  │            FastAPI + Uvicorn  :8000                        │   │
+│  │            SQLAlchemy + Alembic                              │   │
+│  └───────────────────────────┬──────────────────────────────────┘   │
+│                              │                                      │
+│  ┌───────────────────────────▼──────────────────────────────────┐   │
+│  │                     frontend                                 │   │
+│  │            Vite + React  :5173                               │   │
+│  │            Tailwind + shadcn/ui                              │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  <em>Production: nginx reverse proxy (infra/nginx/nginx.conf)</em>          │
+<strong>└─────────────────────────────────────────────────────────────┘</strong></div>
+
+<table>
+  <tr><th>Service</th><th>Image</th><th>Port</th><th>Purpose</th></tr>
+  <tr><td>postgres</td><td>postgres:16-alpine</td><td>5432</td><td>Primary database</td></tr>
+  <tr><td>redis</td><td>redis:7-alpine</td><td>6379</td><td>Queue / cache</td></tr>
+  <tr><td>minio</td><td>minio/minio:latest</td><td>9000, 9001</td><td>S3-compatible object storage for evidence</td></tr>
+  <tr><td>backend</td><td>Custom (infra/docker/backend.Dockerfile)</td><td>8000</td><td>FastAPI application</td></tr>
+  <tr><td>frontend</td><td>Custom (infra/docker/frontend.Dockerfile)</td><td>5173</td><td>Vite dev server / React SPA</td></tr>
+  <tr><td>nginx</td><td>nginx:latest (production only)</td><td>80</td><td>Reverse proxy (basic, no CSP set)</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="backend">2. Backend Architecture</h2>
+
+<p>
+Python 3.11+ FastAPI application with SQLAlchemy 2.x ORM, Alembic migrations,
+JWT authentication, and RBAC. Two API versions co-exist: <strong>v1</strong>
+(legacy, 15 routers) and <strong>v2</strong> (active, 24 routers with Tier A/B
+multi-tenancy). Only v2 is mounted on the application entrypoint.
+</p>
+
+<h3 id="backend-v2">2.1 API v2 Routers</h3>
+
+<table>
+  <tr><th>Prefix</th><th>Tags</th><th>Module</th><th>Responsibility</th></tr>
+  <tr><td>/api/v2/auth</td><td><span class="badge badge-green">v2-auth</span></td><td>auth</td><td>Login, register, token refresh</td></tr>
+  <tr><td>/api/v2/tenants</td><td><span class="badge badge-green">v2-tenants</span></td><td>tenants</td><td>Tenant CRUD</td></tr>
+  <tr><td>/api/v2/users</td><td><span class="badge badge-green">v2-users</span></td><td>users</td><td>User management</td></tr>
+  <tr><td>/api/v2/organizations</td><td><span class="badge badge-green">v2-organizations</span></td><td>organizations</td><td>Org settings &amp; divisions</td></tr>
+  <tr><td>/api/v2/persons</td><td><span class="badge badge-green">v2-persons</span></td><td>persons</td><td>Contact person registry</td></tr>
+  <tr><td>/api/v2/organization</td><td><span class="badge badge-green">v2-organization</span></td><td>organization</td><td>Current org context</td></tr>
+  <tr><td>/api/v2/alerts</td><td><span class="badge badge-green">v2-alerts</span></td><td>alerts</td><td>Alert system</td></tr>
+  <tr><td>/api/v2/roles</td><td><span class="badge badge-green">v2-roles</span></td><td>roles</td><td>Role &amp; permission management</td></tr>
+  <tr><td>/api/v2/business-processes</td><td><span class="badge badge-green">v2-bp</span></td><td>business_processes</td><td>BP CRUD, dependencies, CIA</td></tr>
+  <tr><td>/api/v2/assets</td><td><span class="badge badge-green">v2-assets</span></td><td>assets</td><td>Asset register, relations, types</td></tr>
+  <tr><td>/api/v2/targets</td><td><span class="badge badge-green">v2-targets</span></td><td>targets</td><td>Unified target object browser</td></tr>
+  <tr><td>/api/v2/catalog</td><td><span class="badge badge-green">v2-catalog</span></td><td>catalog</td><td>E-ITS catalog versions, modules, measures, threats</td></tr>
+  <tr><td>/api/v2/security-profiles</td><td><span class="badge badge-green">v2-sp</span></td><td>security_profiles</td><td>Security profile CRUD</td></tr>
+  <tr><td>/api/v2/eits</td><td><span class="badge badge-green">v2-eits</span></td><td>damage_assessments</td><td>Damage assessment scenarios</td></tr>
+  <tr><td>/api/v2/asset-module-mappings</td><td><span class="badge badge-green">v2-asset-mappings</span></td><td>asset_module_mappings</td><td>Module-to-asset mapping</td></tr>
+  <tr><td>/api/v2/imr</td><td><span class="badge badge-green">v2-imr</span></td><td>imr_items</td><td>IMR items (CRUD, status, bulk)</td></tr>
+  <tr><td>/api/v2/risks</td><td><span class="badge badge-green">v2-risks</span></td><td>risks_v2</td><td>Risk register, risk-measure links</td></tr>
+  <tr><td>/api/v2/bp-evidences</td><td><span class="badge badge-green">v2-bp-evidences</span></td><td>bp_evidences</td><td>Evidence linked to business processes</td></tr>
+  <tr><td>/api/v2/evidence</td><td><span class="badge badge-green">v2-evidence</span></td><td>evidence_upload</td><td>File upload, evidence CRUD</td></tr>
+  <tr><td>/api/v2/protection-mode</td><td><span class="badge badge-green">v2-protection-mode</span></td><td>protection_mode</td><td>Protection mode (turbeviis) selections</td></tr>
+  <tr><td>/api/v2/modeling</td><td><span class="badge badge-green">v2-modeling</span></td><td>modeling</td><td>Business process modeling</td></tr>
+  <tr><td>/api/v2/imr-snapshots</td><td><span class="badge badge-green">v2-imr-snapshots</span></td><td>imr_snapshots</td><td>IMR point-in-time snapshots</td></tr>
+</table>
+
+<h3 id="backend-core">2.2 Core Modules</h3>
+
+<table>
+  <tr><th>Module</th><th>File</th><th>Purpose</th></tr>
+  <tr><td>Config</td><td><code>core/config.py</code></td><td>Pydantic settings from <code>.env</code> via <code>pydantic-settings</code></td></tr>
+  <tr><td>Security</td><td><code>core/security.py</code></td><td>JWT (HS256) create/decode, bcrypt password hashing via passlib</td></tr>
+  <tr><td>Permissions</td><td><code>core/permissions.py</code></td><td>RBAC helpers: <code>get_user_permissions</code>, <code>has_permission</code>, <code>set_role_permissions</code></td></tr>
+  <tr><td>Audit</td><td><code>core/audit.py</code></td><td><code>log_audit()</code> and <code>get_audit_trail()</code> helpers</td></tr>
+  <tr><td>DB Session</td><td><code>db/session.py</code></td><td>SQLAlchemy engine, session factory, <code>get_db</code> dependency</td></tr>
+  <tr><td>DB Init</td><td><code>db/init_db.py</code></td><td>Seed data: roles, permissions, demo entities</td></tr>
+  <tr><td>API Deps</td><td><code>api/deps.py</code></td><td><code>get_current_user</code>, <code>require_admin</code>, <code>require_role</code></td></tr>
+</table>
+
+<h3 id="backend-services">2.3 Services Layer</h3>
+
+<table>
+  <tr><th>Service</th><th>File</th><th>Responsibility</th></tr>
+  <tr><td>Business Process</td><td><code>services/business_process_service.py</code></td><td>BP creation, update, dependencies</td></tr>
+  <tr><td>Evidence</td><td><code>services/evidence_service.py</code></td><td>Evidence upload, linking, lifecycle</td></tr>
+  <tr><td>Protection Inheritance</td><td><code>services/protection_inheritance_service.py</code></td><td>CIA need inheritance through asset relations</td></tr>
+  <tr><td>IMR (v2)</td><td><code>services/v2/imr_service.py</code></td><td>IMR generation, CRUD, status updates</td></tr>
+  <tr><td>IMR Regeneration (v2)</td><td><code>services/v2/imr_regeneration_service.py</code></td><td>Regenerate IMR while preserving user edits</td></tr>
+  <tr><td>Modeling (v2)</td><td><code>services/v2/modeling_service.py</code></td><td>BP modeling logic</td></tr>
+</table>
+
+<h3 id="backend-models">2.4 Data Model</h3>
+
+<p>45+ SQLAlchemy models organized in two tenant tiers:</p>
+
+<h4>Tier A — Subscription / Cross-Tenant</h4>
+<table>
+  <tr><th>Model</th><th>Table</th><th>Notes</th></tr>
+  <tr><td><code>AppTenant</code></td><td>app_tenants</td><td>Root tenant entity with divisions (JSON array)</td></tr>
+  <tr><td><code>GlobalUser</code></td><td>global_users</td><td>Cross-tenant user identity, MFA fields</td></tr>
+  <tr><td><code>TenantUser</code></td><td>tenant_users</td><td>Links GlobalUser to AppTenant</td></tr>
+  <tr><td><code>EitsCatalogVersion</code></td><td>eits_catalog_versions</td><td>Versioned catalog imports</td></tr>
+  <tr><td><code>EitsModule</code></td><td>eits_modules</td><td>E-ITS baseline modules</td></tr>
+  <tr><td><code>EitsMeasure</code></td><td>eits_measures</td><td>E-ITS security measures</td></tr>
+  <tr><td><code>EitsModuleMeasure</code></td><td>eits_module_measures</td><td>Module-Measure relationship</td></tr>
+  <tr><td><code>EitsCatalogMeasure</code></td><td>eits_catalog_measures</td><td>Extended catalog measure (v2)</td></tr>
+  <tr><td><code>EitsThreat</code></td><td>eits_threats</td><td>Catalog-level threats</td></tr>
+  <tr><td><code>DamageScenario</code></td><td>damage_scenarios</td><td>Catalog-level damage scenarios</td></tr>
+  <tr><td><code>AssetTypeCategory</code></td><td>asset_type_categories</td><td>Catalog-level asset type taxonomy</td></tr>
+</table>
+
+<h4>Tier B — Per-Tenant Data</h4>
+<table>
+  <tr><th>Model</th><th>Table</th><th>Notes</th></tr>
+  <tr><td><code>LocalUser</code></td><td>local_users</td><td>Tenant-scoped user profile</td></tr>
+  <tr><td><code>EITSRole</code></td><td>eits_roles</td><td>Tenant-scoped role definition</td></tr>
+  <tr><td><code>Role</code></td><td>roles</td><td>Legacy role model</td></tr>
+  <tr><td><code>Permission</code></td><td>permissions</td><td>Granular permission codes</td></tr>
+  <tr><td><code>RolePermission</code></td><td>role_permissions</td><td>Role-to-permission mapping</td></tr>
+  <tr><td><code>Membership</code></td><td>memberships</td><td>User-to-Role binding within tenant</td></tr>
+  <tr><td><code>BusinessProcess</code></td><td>business_processes</td><td>BP with CIA needs, division_id, owner</td></tr>
+  <tr><td><code>BusinessProcessDependency</code></td><td>business_process_dependencies</td><td>BP-to-BP dependency edges</td></tr>
+  <tr><td><code>Asset</code></td><td>assets</td><td>Asset register with type, CIA, criticality</td></tr>
+  <tr><td><code>AssetRelation</code></td><td>asset_relations</td><td>Asset-to-asset edges (directed)</td></tr>
+  <tr><td><code>AssetRelationType</code></td><td>asset_relation_types</td><td>Relation type taxonomy</td></tr>
+  <tr><td><code>ProcessAsset</code></td><td>process_assets</td><td>BP-to-Asset links</td></tr>
+  <tr><td><code>ObjectModuleMapping</code></td><td>object_module_mappings</td><td>Any target-to-Module mapping (v1)</td></tr>
+  <tr><td><code>AssetModuleMapping</code></td><td>asset_module_mappings</td><td>Asset-to-Module mapping (v2)</td></tr>
+  <tr><td><code>BusinessProcessModuleMapping</code></td><td>bp_module_mappings</td><td>BP-to-Module mapping (v2)</td></tr>
+  <tr><td><code>ImplementationPlanItem</code></td><td>implementation_plan_items</td><td>IMR items (v1, legacy)</td></tr>
+  <tr><td><code>ImrItem</code></td><td>imr_items</td><td>IMR items (v2, current)</td></tr>
+  <tr><td><code>ImrSnapshot</code></td><td>imr_snapshots</td><td>Point-in-time IMR state</td></tr>
+  <tr><td><code>Risk</code></td><td>risks</td><td>Risk register entries</td></tr>
+  <tr><td><code>RiskMeasureLink</code></td><td>risk_measure_links</td><td>Risk-to-Measure associations</td></tr>
+  <tr><td><code>Evidence</code></td><td>evidences</td><td>Evidence metadata (file/URL/text)</td></tr>
+  <tr><td><code>EvidenceLink</code></td><td>evidence_links</td><td>Polymorphic evidence-to-entity links</td></tr>
+  <tr><td><code>AuditLog</code></td><td>audit_logs</td><td>Immutable change history</td></tr>
+  <tr><td><code>Comment</code></td><td>comments</td><td>Polymorphic comments on entities</td></tr>
+  <tr><td><code>Alert</code></td><td>alerts</td><td>User notifications</td></tr>
+  <tr><td><code>Person</code></td><td>persons</td><td>Contact person records</td></tr>
+  <tr><td><code>OrganizationPeople</code></td><td>organization_people</td><td>Links persons to tenants</td></tr>
+  <tr><td><code>SecurityProfile</code></td><td>security_profiles</td><td>Security posture per target</td></tr>
+  <tr><td><code>DamageAssessment</code></td><td>damage_assessments</td><td>Damage assessment per target</td></tr>
+  <tr><td><code>ProtectionNeedSummary</code></td><td>protection_need_summaries</td><td>CIA summary per target</td></tr>
+  <tr><td><code>ProtectionModeSelection</code></td><td>protectionmode_selections</td><td>Protection mode choices</td></tr>
+  <tr><td><code>DamageCategoryThreshold</code></td><td>damage_category_thresholds</td><td>Threshold configuration</td></tr>
+  <tr><td><code>ProcessModuleAssignment</code></td><td>process_module_assignments</td><td>BP module assignments</td></tr>
+</table>
+
+<h3 id="backend-migrations">2.5 Migrations</h3>
+<p>
+50 Alembic migration files in <code>backend/alembic/versions/</code> track the
+full schema evolution from initial tables (2024) through the v2 E-ITS Tier A/B
+restructuring, IMR snapshots, protection mode, and various merge heads.
+All migrations are reversible where practical.
+</p>
+
+<!-- ====================================================================== -->
+<h2 id="frontend">3. Frontend Architecture</h2>
+
+<p>
+React 18 + TypeScript SPA, built with Vite 5, styled with Tailwind CSS 3 +
+shadcn/ui (Radix primitives). Auth state managed via custom <code>use-auth</code>
+hook with JWT stored in localStorage. API calls go through a shared Axios
+instance that injects <code>Authorization: Bearer</code> and
+<code>X-Tenant-ID</code> headers.
+</p>
+
+<h3 id="frontend-pages">3.1 Pages</h3>
+
+<table>
+  <tr><th>Route</th><th>Component</th><th>Description</th></tr>
+  <tr><td><code>/login</code></td><td>LoginPage</td><td>JWT login form</td></tr>
+  <tr><td><code>/select-org</code></td><td>SelectOrgPage</td><td>Multi-org selection after login</td></tr>
+  <tr><td><code>/</code></td><td>DashboardPage</td><td>KPIs, IMR progress, risks, evidence gaps</td></tr>
+  <tr><td><code>/processes</code></td><td>BusinessProcessesPage</td><td>BP table + detail + dependencies</td></tr>
+  <tr><td><code>/assets</code></td><td>AssetsPage</td><td>Asset register + relations graph</td></tr>
+  <tr><td><code>/targets</code></td><td>TargetsPage</td><td>Unified target browser</td></tr>
+  <tr><td><code>/protection-mode</code></td><td>ProtectionModePage</td><td>CIA + protection mode settings</td></tr>
+  <tr><td><code>/catalog</code></td><td>CatalogPage</td><td>E-ITS module/measure browser</td></tr>
+  <tr><td><code>/mappings</code></td><td>MappingsPage</td><td>Module-to-target mapping UI</td></tr>
+  <tr><td><code>/implementation-plan</code></td><td>ImplementationPlanPage</td><td>IMR table + filters + bulk edit</td></tr>
+  <tr><td><code>/risks</code></td><td>RisksPage</td><td>Risk register + heatmap</td></tr>
+  <tr><td><code>/evidences</code></td><td>EvidencesPage</td><td>Evidence management + upload</td></tr>
+  <tr><td><code>/audit</code></td><td>AuditViewPage</td><td>Readiness view (hidden from nav)</td></tr>
+  <tr><td><code>/terminology</code></td><td>TerminologyPage</td><td>E-ITS glossary</td></tr>
+  <tr><td><code>/organization</code></td><td>OrganizationPage</td><td>Org details + divisions</td></tr>
+  <tr><td><code>/support/people</code></td><td>SupportPeoplePage</td><td>Support contact persons</td></tr>
+  <tr><td><code>/alerts</code></td><td>AlertsPage</td><td>Alert inbox</td></tr>
+  <tr><td><code>/settings</code></td><td>SettingsPage</td><td>User preferences</td></tr>
+  <tr><td><code>/admin</code></td><td>AdminPage</td><td>System admin (users, roles, catalog import)</td></tr>
+</table>
+
+<h3 id="frontend-components">3.2 Shared Components</h3>
+
+<table>
+  <tr><th>Component</th><th>Path</th><th>Notes</th></tr>
+  <tr><td>Layout</td><td><code>components/Layout.tsx</code></td><td>Collapsible sidebar + top header shell</td></tr>
+  <tr><td>ThemeToggle</td><td><code>components/ThemeToggle.tsx</code></td><td>Dark/light mode switch</td></tr>
+  <tr><td>UserMenu</td><td><code>components/UserMenu.tsx</code></td><td>User dropdown (profile, logout)</td></tr>
+  <tr><td>OrgSelector</td><td><code>components/OrgSelector.tsx</code></td><td>Organization switcher</td></tr>
+  <tr><td>AlertBell</td><td><code>components/AlertBell.tsx</code></td><td>Alert notification bell</td></tr>
+  <tr><td>RoleAccordion</td><td><code>components/RoleAccordion.tsx</code></td><td>Role/permission editor</td></tr>
+  <tr><td>level-badge</td><td><code>components/level-badge.tsx</code></td><td>CIA level badge display</td></tr>
+  <tr><td>ImrTable</td><td><code>components/imr/ImrTable.tsx</code></td><td>IMR data table with filtering</td></tr>
+  <tr><td>ImrItemModal</td><td><code>components/imr/ImrItemModal.tsx</code></td><td>IMR item detail/edit modal</td></tr>
+  <tr><td>ImrStatusBadge</td><td><code>components/imr/ImrStatusBadge.tsx</code></td><td>Status indicator badge</td></tr>
+  <tr><td>ImrDashboardStats</td><td><code>components/imr/ImrDashboardStats.tsx</code></td><td>IMR stats cards</td></tr>
+  <tr><td>SnapshotSelector</td><td><code>components/imr/SnapshotSelector.tsx</code></td><td>Snapshot version picker</td></tr>
+</table>
+
+<p><strong>UI primitives</strong> (shadcn/ui): <code>button, badge, card, dialog, input, label, select, switch, tabs</code> — all in <code>components/ui/</code>.</p>
+
+<h3 id="frontend-state">3.3 State &amp; Utilities</h3>
+
+<table>
+  <tr><th>Module</th><th>Path</th><th>Purpose</th></tr>
+  <tr><td>api-client</td><td><code>lib/api-client.ts</code></td><td>Axios instance + interceptors (JWT, X-Tenant-ID)</td></tr>
+  <tr><td>permissions</td><td><code>lib/permissions.ts</code></td><td>Permission code constants</td></tr>
+  <tr><td>utils</td><td><code>lib/utils.ts</code></td><td>Shared helpers (cn, formatting)</td></tr>
+  <tr><td>use-auth</td><td><code>hooks/use-auth.ts</code></td><td>Auth state, login, token, org selection</td></tr>
+  <tr><td>use-current-org</td><td><code>hooks/use-current-org.ts</code></td><td>Current org context</td></tr>
+  <tr><td>use-permission</td><td><code>hooks/use-permission.ts</code></td><td>Client-side permission checking</td></tr>
+  <tr><td>use-theme</td><td><code>hooks/use-theme.ts</code></td><td>Dark mode toggle + persistence</td></tr>
+  <tr><td>use-imr-api</td><td><code>hooks/use-imr-api.ts</code></td><td>IMR API helpers</td></tr>
+  <tr><td>i18n</td><td><code>lib/i18n/</code></td><td>Provider + EN/ET translations + language selector</td></tr>
+  <tr><td>AlertContext</td><td><code>contexts/AlertContext.tsx</code></td><td>Alert state context provider</td></tr>
+</table>
+
+<h3 id="frontend-routing">3.4 Routing</h3>
+
+<p>
+React Router v6 <code>BrowserRouter</code>. Protected routes check
+<code>isAuthenticated</code> and <code>selectedOrgId</code> before rendering
+the <code>Layout</code> wrapper. Unauthenticated users redirect to
+<code>/login</code>; users without an org selection go to <code>/select-org</code>.
+</p>
+
+<pre>
+&lt;Routes&gt;
+  &lt;Route path="/login" element={&lt;LoginPage /&gt;} /&gt;
+  &lt;Route path="/select-org" element={&lt;SelectOrgPage /&gt;} /&gt;
+  &lt;Route path="/" element={&lt;ProtectedRoute&gt;&lt;DashboardPage /&gt;&lt;/ProtectedRoute&gt;} /&gt;
+  &lt;!-- 17 more protected routes --&gt;
+&lt;/Routes&gt;
+</pre>
+
+<!-- ====================================================================== -->
+<h2 id="infra">4. Infrastructure</h2>
+
+<table>
+  <tr><th>Layer</th><th>Technology</th><th>Location</th></tr>
+  <tr><td>Container orchestration</td><td>Docker Compose</td><td><code>docker-compose.yml</code>, <code>docker-compose.override.yml</code></td></tr>
+  <tr><td>Backend image</td><td><code>infra/docker/backend.Dockerfile</code></td><td>Python 3.11 + uvicorn</td></tr>
+  <tr><td>Frontend image</td><td><code>infra/docker/frontend.Dockerfile</code></td><td>Node + Vite dev server</td></tr>
+  <tr><td>Production proxy</td><td><code>infra/nginx/nginx.conf</code></td><td>Basic reverse proxy (no CSP)</td></tr>
+  <tr><td>Build automation</td><td><code>Makefile</code></td><td>20 targets (setup, dev, migrate, test, quality, ...)</td></tr>
+  <tr><td>Environment</td><td><code>.env.example</code></td><td>Template for <code>.env</code></td></tr>
+</table>
+
+<h3>Makefile Targets</h3>
+<pre>
+setup              Install dependencies + prepare local env
+dev                Run backend + frontend in dev mode
+backend-install    Install Python dependencies
+frontend-install   Install Node dependencies
+migrate            Apply Alembic migrations
+migration          Create new migration (MESSAGE=...)
+seed               Seed demo data
+test               Run all tests
+test-backend       Run backend tests (pytest)
+test-frontend      Run frontend tests (vitest)
+lint               Run linters (ruff, eslint)
+format             Format code (ruff, prettier)
+typecheck          Run type checkers (mypy, tsc)
+quality            lint + format + typecheck + test
+openapi            Export OpenAPI JSON
+down               Stop all Docker services
+clean              Remove generated files
+</pre>
+
+<h3>Dev Startup Flow</h3>
+<pre>
+cp .env.example .env
+docker compose up -d postgres redis minio
+make backend-install
+make frontend-install
+make migrate
+make seed
+make dev
+</pre>
+
+<!-- ====================================================================== -->
+<h2 id="security">5. Security Model</h2>
+
+<table>
+  <tr><th>Aspect</th><th>Implementation</th></tr>
+  <tr><td>Authentication</td><td>JWT (HS256) via python-jose. Bearer token in <code>Authorization</code> header.</td></tr>
+  <tr><td>Password hashing</td><td>bcrypt via passlib. Hash rounds: default.</td></tr>
+  <tr><td>MFA</td><td>Supported in model (<code>global_users.mfa_secret</code>), implemented via pyotp.</td></tr>
+  <tr><td>Authorization</td><td>RBAC with role-permission mapping. Admin has all permissions implicitly.</td></tr>
+  <tr><td>Tenant isolation</td><td>Every tenant-scoped table has <code>tenant_id</code>. Queries filter by <code>X-Tenant-ID</code> header.</td></tr>
+  <tr><td>Audit logging</td><td>Append-only <code>audit_logs</code> table with before/after JSON snapshots.</td></tr>
+  <tr><td>File storage</td><td>MinIO (S3-compatible). Evidence files are private by default.</td></tr>
+  <tr><td>File upload validation</td><td>Type and size checks at API layer.</td></tr>
+  <tr><td>CORS</td><td>Configured via <code>BACKEND_CORS_ORIGINS</code> env var.</td></tr>
+  <tr><td>Security headers</td><td>Set on Vite dev server only (CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy).</td></tr>
+</table>
+
+<div class="box">
+  <div class="box-title">Security Gap</div>
+  The production nginx config (<code>infra/nginx/nginx.conf</code>) does <strong>not</strong> set
+  <code>Content-Security-Policy</code> or any other security headers. The CSP is only configured
+  on the Vite dev server (<code>frontend/vite.config.ts:20-30</code>) and includes
+  <code>'unsafe-inline'</code> and <code>'unsafe-eval'</code>, which are required for
+  HMR in development but should be removed in production.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="dataflow">6. Data Flow</h2>
+
+<h3>6.1 Request Lifecycle</h3>
+<pre>
+Browser ──► Vite/nginx ──► FastAPI
+                              │
+                    ┌─────────▼─────────┐
+                    │  Middleware        │
+                    │  ├ CORS            │
+                    │  └ (no CSP in nginx)│
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  API Dependency   │
+                    │  ├ get_current_user│
+                    │  ├ require_role    │
+                    │  └ X-Tenant-ID    │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  Route Handler    │
+                    │  (thin, calls     │
+                    │   service layer)  │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  Service Layer    │
+                    │  ├ Business logic │
+                    │  ├ Permission chk │
+                    │  └ Audit logging │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  Repository/ORM   │
+                    │  (SQLAlchemy)     │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  PostgreSQL       │
+                    │  or MinIO         │
+                    └───────────────────┘
+</pre>
+
+<h3>6.2 Authentication Flow</h3>
+<pre>
+1. POST /api/v2/auth/login  (email + password)
+2. Server validates credentials, returns JWT + user info
+3. Frontend stores token in localStorage
+4. Every subsequent request includes:
+     Authorization: Bearer &lt;token&gt;
+     X-Tenant-ID: &lt;org_uuid&gt;
+5. Server decodes JWT, looks up user, checks membership
+6. Route handler may call require_role() or has_permission()
+</pre>
+
+<h3>6.3 IMR Generation Flow</h3>
+<pre>
+1. User maps E-ITS modules to a target (asset or BP)
+2. POST /api/v2/imr/generate
+3. Service resolves module → measures via eits_module_measures
+4. Creates ImrItem records (one per measure)
+5. Skips duplicates (same tenant + target + version + measure)
+6. Returns generated IMR items
+7. User can then assign owners, priorities, due dates
+</pre>
+
+<h3>6.4 Evidence Upload Flow</h3>
+<pre>
+1. User uploads file via POST /api/v2/evidence/upload
+2. Backend validates file type and size
+3. File stored in MinIO bucket: eits-evidence/
+4. Evidence metadata stored in PostgreSQL
+5. Evidence can be linked to any entity via evidence_links
+   (target_type: imr_item | measure | risk | asset | bp)
+</pre>
+
+<!-- ====================================================================== -->
+<h2 id="scripts">7. Scripts &amp; Automation</h2>
+
+<table>
+  <tr><th>Script</th><th>Location</th><th>Purpose</th></tr>
+  <tr><td>ETL Catalog Import</td><td><code>backend/scripts/etl_eits_catalog.py</code></td><td>Import E-ITS catalog from RIA source (XLSX)</td></tr>
+  <tr><td>Backfill Evidence Stats</td><td><code>backend/scripts/backfill_evidence_stats.py</code></td><td>Data migration helper for evidence stats</td></tr>
+  <tr><td>ZAP Baseline</td><td><code>backend/scripts/zap/zap_baseline.sh</code></td><td>DAST security scan against portal</td></tr>
+  <tr><td>ZAP MinIO</td><td><code>backend/scripts/zap/zap-minio.sh</code></td><td>DAST security scan against MinIO</td></tr>
+  <tr><td>OpenAPI Export</td><td><code>scripts/export_openapi.py</code> (implied)</td><td>Generate OpenAPI JSON schema</td></tr>
+  <tr><td>Seed Demo Data</td><td><code>backend/app/db/init_db.py</code></td><td>Initialize roles, permissions, demo entities</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="glossary">8. Glossary</h2>
+
+<table>
+  <tr><th>Term</th><th>Definition</th></tr>
+  <tr><td>E-ITS</td><td>Eesti InfoTurbeStandard — Estonian Information Security Standard</td></tr>
+  <tr><td>ISMS</td><td>Information Security Management System</td></tr>
+  <tr><td>IMR</td><td>Information security Measures Implementation Plan</td></tr>
+  <tr><td>Tenant</td><td>Organization using the system (data isolation boundary)</td></tr>
+  <tr><td>Tier A</td><td>Subscription-level (cross-tenant) catalog data</td></tr>
+  <tr><td>Tier B</td><td>Per-tenant operational data</td></tr>
+  <tr><td>BP</td><td>Business Process</td></tr>
+  <tr><td>CIA</td><td>Confidentiality, Integrity, Availability — protection needs</td></tr>
+  <tr><td>RBAC</td><td>Role-Based Access Control</td></tr>
+  <tr><td>JWT</td><td>JSON Web Token (stateless authentication)</td></tr>
+  <tr><td>MinIO</td><td>S3-compatible object storage for evidence files</td></tr>
+  <tr><td>shadcn/ui</td><td>React component library built on Radix UI primitives + Tailwind</td></tr>
+</table>
+
+<hr>
+
+<p class="meta" style="text-align: center;">
+  End of Technical Specification v0.1.0 &mdash; E-ITS CyberPlan<br>
+  <span class="tag">Maintained as part of the project repository at docs/man/technical-spec-v0.1.0.html</span>
+</p>
+
+</body>
+</html>
