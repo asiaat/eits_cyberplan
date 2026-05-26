@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
 import { Shield, FileIcon, Link2, Unlink, CheckCircle, AlertTriangle } from "lucide-react"
+import { ErrorDialog } from "@/components/ui/error-dialog"
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,7 @@ export default function ProtectionModePage() {
   const [approachCodes, setApproachCodes] = useState<{ approaches: ApproachItem[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
   const [showEvidenceDialog, setShowEvidenceDialog] = useState(false)
   const [selectedSelection, setSelectedSelection] = useState<ProtectionModeSelection | null>(null)
   const [availableEvidences, setAvailableEvidences] = useState<EvidenceItem[]>([])
@@ -126,7 +128,7 @@ export default function ProtectionModePage() {
       }, 100)
     } catch (err: any) {
       console.error("Failed to change protection mode:", err)
-      alert(err.response?.data?.detail || "Failed to change protection mode")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to change protection mode" })
     } finally {
       setChangingMode(false)
     }
@@ -157,7 +159,7 @@ export default function ProtectionModePage() {
       setSelectedSelection(null)
     } catch (err: any) {
       console.error("Failed to link evidence:", err)
-      alert(err.response?.data?.detail || "Failed to link evidence")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to link evidence" })
     }
   }
 
@@ -167,7 +169,7 @@ export default function ProtectionModePage() {
       setSelections(selections.map(s => s.id === selectionId ? response.data : s))
     } catch (err: any) {
       console.error("Failed to unlink evidence:", err)
-      alert(err.response?.data?.detail || "Failed to unlink evidence")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to unlink evidence" })
     }
   }
 
@@ -183,7 +185,7 @@ export default function ProtectionModePage() {
       fetchSelections()
     } catch (err: any) {
       console.error("Failed to deactivate:", err)
-      alert(err.response?.data?.detail || "Failed to deactivate")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to deactivate" })
     }
   }
 
@@ -486,6 +488,13 @@ export default function ProtectionModePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ErrorDialog
+        open={errorDialog.open}
+        onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}
+        title="Error"
+        message={errorDialog.message}
+      />
     </div>
   )
 }

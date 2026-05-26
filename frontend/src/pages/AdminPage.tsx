@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Crown, Plus } from "lucide-react"
 import RoleAccordion from "@/components/RoleAccordion"
+import { ErrorDialog } from "@/components/ui/error-dialog"
 
 interface Role {
   id: string
@@ -38,6 +39,7 @@ export default function AdminPage() {
   const { t } = useTranslation()
   const { isAdmin } = usePermission()
   const [activeTab, setActiveTab] = useState("roles")
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
   
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
@@ -141,7 +143,7 @@ export default function AdminPage() {
       setEditingRoleId(null)
       loadData()
     } catch (error: any) {
-      alert(error.response?.data?.detail || "Failed to delete role")
+      setErrorDialog({ open: true, message: error.response?.data?.detail || "Failed to delete role" })
     }
   }
 
@@ -377,6 +379,13 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       )}
+
+      <ErrorDialog
+        open={errorDialog.open}
+        onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}
+        title="Error"
+        message={errorDialog.message}
+      />
     </div>
   )
 }

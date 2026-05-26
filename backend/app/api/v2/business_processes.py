@@ -13,6 +13,7 @@ from app.models.business_process import BusinessProcess
 from app.models.bp_module_mapping import BusinessProcessModuleMapping
 from app.models.user import User
 from app.models.business_process_dependency import BusinessProcessDependency
+from app.models.protectionmode_selection import ProtectionModeSelection
 from app.schemas.business_process import (
     BusinessProcessCreate,
     BusinessProcessUpdate,

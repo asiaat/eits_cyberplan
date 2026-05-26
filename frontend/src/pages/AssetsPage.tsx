@@ -16,6 +16,8 @@ import {
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/hooks/use-auth"
 import { AlertTriangle, Search, ChevronDown, ChevronRight, Unlink, Link2, LayoutGrid, List, ArrowUpDown, ArrowUp, ArrowDown, BookOpen, Loader2, X, Upload } from "lucide-react"
+import { ErrorDialog } from "@/components/ui/error-dialog"
+import { WarningDialog } from "@/components/ui/warning-dialog"
 import {
   flexRender,
   getCoreRowModel,
@@ -118,6 +120,8 @@ export default function AssetsPage() {
   const [persons, setPersons] = useState<Person[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
+  const [warningDialog, setWarningDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("")
   const [statusFilter, setStatusFilter] = useState<string>("")
@@ -574,7 +578,7 @@ export default function AssetsPage() {
       fetchAssets()
     } catch (err: any) {
       console.error("DEBUG handleSubmit error:", err.response?.data || err)
-      alert(err.response?.data?.detail || "Failed to save")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to save" })
     } finally {
       setSaving(false)
     }
@@ -681,7 +685,7 @@ export default function AssetsPage() {
       fetchAssets()
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || "Unknown error"
-      alert(t("assets.moduleAssignError", { error: errorMsg }))
+      setErrorDialog({ open: true, message: t("assets.moduleAssignError", { error: errorMsg }) })
     } finally {
       setAssigningModule(false)
     }
@@ -718,11 +722,11 @@ export default function AssetsPage() {
         params: { asset_id: selectedAssetForModule.id },
       })
       setShowModuleDialog(false)
-      alert(t("assets.moduleAssignedSuccess", { code: "?", count: 0 }))
+      setWarningDialog({ open: true, message: t("assets.moduleAssignedSuccess", { code: "?", count: 0 }) })
       fetchAssets()
     } catch (err: any) {
       const errorMsg = err.response?.data?.detail || "Unknown error"
-      alert(t("assets.moduleAssignError", { error: errorMsg }))
+      setErrorDialog({ open: true, message: t("assets.moduleAssignError", { error: errorMsg }) })
     } finally {
       setAssigningModule(false)
     }
@@ -760,7 +764,7 @@ export default function AssetsPage() {
       setUnlinkedProcesses([])
       fetchAssets()
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to link process")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to link process" })
     } finally {
       setLinkingProcess(false)
     }
@@ -774,7 +778,7 @@ export default function AssetsPage() {
       await apiClient.delete(`/assets/${assetId}/processes/${processId}`)
       fetchAssets()
     } catch (err: any) {
-      alert(err.response?.data?.detail || "Failed to unlink process")
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to unlink process" })
     }
   }
 
@@ -1740,6 +1744,20 @@ export default function AssetsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ErrorDialog
+        open={errorDialog.open}
+        onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}
+        title="Error"
+        message={errorDialog.message}
+      />
+
+      <WarningDialog
+        open={warningDialog.open}
+        onOpenChange={(open) => setWarningDialog(prev => ({ ...prev, open }))}
+        title="Warning"
+        message={warningDialog.message}
+      />
     </div>
   )
 }
