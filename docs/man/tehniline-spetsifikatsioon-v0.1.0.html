@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="et">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-ITS CyberPlan — Tehniline Spetsifikatsioon v0.1.0</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --bg-card: #161b22;
+    --bg-hover: #1c2333;
+    --border: #30363d;
+    --text: #e6edf3;
+    --text-muted: #8b949e;
+    --primary: #58a6ff;
+    --accent: #3fb950;
+    --warn: #d29922;
+    --danger: #f85149;
+    --font: 'SF Mono', 'Cascadia Code', 'JetBrains Mono', 'Consolas', monospace;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    line-height: 1.7;
+    padding: 2rem;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  h1, h2, h3, h4 { font-family: var(--font); color: var(--primary); margin-top: 2rem; letter-spacing: 0.02em; }
+  h1 { font-size: 2rem; border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-top: 0; }
+  h2 { font-size: 1.4rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; }
+  h3 { font-size: 1.1rem; color: var(--accent); margin-top: 1.5rem; }
+  h4 { font-size: 1rem; color: var(--text); margin-top: 1rem; }
+  p, li { margin-bottom: 0.6rem; }
+  a { color: var(--primary); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { color: var(--warn); }
+  code, pre {
+    font-family: var(--font);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.85rem;
+  }
+  code { padding: 0.15em 0.4em; }
+  pre {
+    padding: 1rem;
+    overflow-x: auto;
+    line-height: 1.5;
+    margin: 0.8rem 0;
+  }
+  pre code { background: none; border: none; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  th { background: var(--bg-card); color: var(--primary); font-weight: 600; }
+  tr:hover { background: var(--bg-hover); }
+  .meta { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 2rem; }
+  .badge {
+    display: inline-block;
+    padding: 0.15em 0.6em;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: var(--font);
+  }
+  .badge-primary { background: #1f6feb33; color: var(--primary); border: 1px solid #1f6feb66; }
+  .badge-green  { background: #3fb95033; color: var(--accent);  border: 1px solid #3fb95066; }
+  .badge-yellow { background: #d2992233; color: var(--warn);   border: 1px solid #d2992266; }
+  .badge-red    { background: #f8514933; color: var(--danger); border: 1px solid #f8514966; }
+  .box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--primary);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1rem 0;
+  }
+  .box-title { font-weight: 600; color: var(--primary); margin-bottom: 0.25rem; font-family: var(--font); }
+  .diagram-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+    margin: 1rem 0;
+    font-family: var(--font);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--text-muted);
+  }
+  .diagram-box strong { color: var(--primary); }
+  .diagram-box em { color: var(--accent); font-style: normal; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .toc { margin: 1.5rem 0; padding: 1rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; }
+  .toc a { display: block; padding: 0.2rem 0; color: var(--text); }
+  .toc a::before { content: "▸ "; color: var(--text-muted); }
+  .toc a:hover { color: var(--primary); }
+  .toc a:hover::before { color: var(--primary); }
+  .toc ul { list-style: none; padding-left: 1.2rem; }
+  .toc > ul { padding-left: 0; }
+  .tag { color: var(--text-muted); font-size: 0.8rem; font-family: var(--font); }
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    table { font-size: 0.8rem; }
+  }
+</style>
+</head>
+<body>
+
+<h1>E-ITS CyberPlan — Tehniline Spetsifikatsioon</h1>
+<p class="meta">
+  <span class="badge badge-primary">v0.1.0</span>&ensp;
+  <span class="tag">26. mai 2026</span>&ensp;·&ensp;
+  <span class="tag">E-ITS haldussüsteem</span>&ensp;·&ensp;
+  <span class="tag">MUSTAND</span>
+</p>
+
+<div class="box">
+  <div class="box-title">Eesmärk</div>
+  Käesolev dokument kirjeldab <strong>E-ITS CyberPlan</strong> süsteemi arhitektuuri,
+  komponente, mooduleid, teenuseid, andmemudelit, taristut ja turvamudelit versiooni
+  0.1.0 seisuga. See on tehniline võrdlusmaterjal arendajatele, arhitektidele ja
+  turvaülevaatajatele.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="toc">Sisukord</h2>
+<div class="toc">
+  <a href="#kontekst">1. Süsteemi kontekst</a>
+  <a href="#backend">2. Backend arhitektuur</a>
+  <ul>
+    <li><a href="#backend-v2">2.1 API v2 marsruudid</a></li>
+    <li><a href="#backend-core">2.2 Tuummoodulid</a></li>
+    <li><a href="#backend-services">2.3 Teeninduskiht</a></li>
+    <li><a href="#backend-models">2.4 Andmemudel</a></li>
+    <li><a href="#backend-migrations">2.5 Migratsioonid</a></li>
+  </ul>
+  <a href="#frontend">3. Frontend arhitektuur</a>
+  <ul>
+    <li><a href="#frontend-pages">3.1 Lehed</a></li>
+    <li><a href="#frontend-components">3.2 Komponendid</a></li>
+    <li><a href="#frontend-state">3.3 Oleku &amp; abivahendid</a></li>
+    <li><a href="#frontend-routing">3.4 Marsruutimine</a></li>
+  </ul>
+  <a href="#infra">4. Taristu</a>
+  <a href="#turve">5. Turvamudel</a>
+  <a href="#andmevoog">6. Andmevoog</a>
+  <a href="#skriptid">7. Skriptid ja automatiseerimine</a>
+  <a href="#sonastik">8. Sõnastik</a>
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="kontekst">1. Süsteemi kontekst</h2>
+
+<p>
+Süsteem koosneb kuuest Docker Compose teenusest. Frontend SPA suhtleb backend
+REST API-ga. Backend orkestreerib äriloogikat, RBAC-d, auditlogi ja rentniku
+isoleerimist, kasutades PostgreSQL-i, Redis-it ja MinIO-d.
+</p>
+
+<div class="diagram-box">
+<strong>┌─────────────────────────────────────────────────────────────┐</strong>
+<strong>│                   Docker Compose (lokaalne)                   │</strong>
+<strong>│                                                               │</strong>
+│  ┌──────────┐     ┌──────────┐     ┌──────────────────────┐      │
+│  │ postgres │     │  redis   │     │       minio          │      │
+│  │  :5432   │     │  :6379   │     │  :9000 / :9001       │      │
+│  └────┬─────┘     └────┬─────┘     └──────────┬───────────┘      │
+│       │                │                       │                  │
+│  ┌────▼────────────────▼───────────────────────▼──────────────┐   │
+│  │                     backend                                 │   │
+│  │            FastAPI + Uvicorn  :8000                        │   │
+│  │            SQLAlchemy + Alembic                              │   │
+│  └───────────────────────────┬──────────────────────────────────┘   │
+│                              │                                      │
+│  ┌───────────────────────────▼──────────────────────────────────┐   │
+│  │                     frontend                                 │   │
+│  │            Vite + React  :5173                               │   │
+│  │            Tailwind + shadcn/ui                              │   │
+│  └─────────────────────────────────────────────────────────────┘   │
+│                                                                     │
+│  <em>Tootmises: nginx pöördproksi (infra/nginx/nginx.conf)</em>          │
+<strong>└─────────────────────────────────────────────────────────────┘</strong></div>
+
+<table>
+  <tr><th>Teenus</th><th>Image</th><th>Port</th><th>Eesmärk</th></tr>
+  <tr><td>postgres</td><td>postgres:16-alpine</td><td>5432</td><td>Peamine andmebaas</td></tr>
+  <tr><td>redis</td><td>redis:7-alpine</td><td>6379</td><td>Järjekord / puhver</td></tr>
+  <tr><td>minio</td><td>minio/minio:latest</td><td>9000, 9001</td><td>S3-ühilduv objektihoidla tõenditele</td></tr>
+  <tr><td>backend</td><td>Kohandatud (infra/docker/backend.Dockerfile)</td><td>8000</td><td>FastAPI rakendus</td></tr>
+  <tr><td>frontend</td><td>Kohandatud (infra/docker/frontend.Dockerfile)</td><td>5173</td><td>Vite arendusserver / React SPA</td></tr>
+  <tr><td>nginx</td><td>nginx:latest (tootmises)</td><td>80</td><td>Pöördproksi (ilma CSP-ta)</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="backend">2. Backend arhitektuur</h2>
+
+<p>
+Python 3.11+ FastAPI rakendus SQLAlchemy 2.x ORM-i, Alembic migratsioonide,
+JWT autentimise ja RBAC-ga. Koos eksisteerib kaks API versiooni:
+<strong>v1</strong> (pärand, 15 marsruutijat) ja <strong>v2</strong> (aktiivne,
+24 marsruutijat Tier A/B mitme rentniku arhitektuuriga). V2 on ainus
+rakenduse sisenemispunkti ühendatud versioon.
+</p>
+
+<h3 id="backend-v2">2.1 API v2 marsruudid</h3>
+
+<table>
+  <tr><th>Eesliide</th><th>Sildid</th><th>Moodul</th><th>Vastutusala</th></tr>
+  <tr><td>/api/v2/auth</td><td><span class="badge badge-green">v2-auth</span></td><td>auth</td><td>Sisselogimine, registreerimine, tokeni uuendamine</td></tr>
+  <tr><td>/api/v2/tenants</td><td><span class="badge badge-green">v2-tenants</span></td><td>tenants</td><td>Rentniku CRUD</td></tr>
+  <tr><td>/api/v2/users</td><td><span class="badge badge-green">v2-users</span></td><td>users</td><td>Kasutajate haldus</td></tr>
+  <tr><td>/api/v2/organizations</td><td><span class="badge badge-green">v2-organizations</span></td><td>organizations</td><td>Organisatsiooni seaded ja allüksused</td></tr>
+  <tr><td>/api/v2/persons</td><td><span class="badge badge-green">v2-persons</span></td><td>persons</td><td>Kontaktisikute register</td></tr>
+  <tr><td>/api/v2/organization</td><td><span class="badge badge-green">v2-organization</span></td><td>organization</td><td>Praeguse organisatsiooni kontekst</td></tr>
+  <tr><td>/api/v2/alerts</td><td><span class="badge badge-green">v2-alerts</span></td><td>alerts</td><td>Teavituste süsteem</td></tr>
+  <tr><td>/api/v2/roles</td><td><span class="badge badge-green">v2-roles</span></td><td>roles</td><td>Rollide ja õiguste haldus</td></tr>
+  <tr><td>/api/v2/business-processes</td><td><span class="badge badge-green">v2-bp</span></td><td>business_processes</td><td>Äriprotsesside CRUD, sõltuvused, CIA</td></tr>
+  <tr><td>/api/v2/assets</td><td><span class="badge badge-green">v2-assets</span></td><td>assets</td><td>Varade register, seosed, tüübid</td></tr>
+  <tr><td>/api/v2/targets</td><td><span class="badge badge-green">v2-targets</span></td><td>targets</td><td>Ühtne sihtobjektide sirvija</td></tr>
+  <tr><td>/api/v2/catalog</td><td><span class="badge badge-green">v2-catalog</span></td><td>catalog</td><td>E-ITS kataloog (versioonid, moodulid, meetmed, ohud)</td></tr>
+  <tr><td>/api/v2/security-profiles</td><td><span class="badge badge-green">v2-sp</span></td><td>security_profiles</td><td>Turvaprofiilide CRUD</td></tr>
+  <tr><td>/api/v2/eits</td><td><span class="badge badge-green">v2-eits</span></td><td>damage_assessments</td><td>Kahju hindamise stsenaariumid</td></tr>
+  <tr><td>/api/v2/asset-module-mappings</td><td><span class="badge badge-green">v2-asset-mappings</span></td><td>asset_module_mappings</td><td>Moodulite vastendamine varadele</td></tr>
+  <tr><td>/api/v2/imr</td><td><span class="badge badge-green">v2-imr</span></td><td>imr_items</td><td>IMR kirjed (CRUD, staatus, hulgitoimingud)</td></tr>
+  <tr><td>/api/v2/risks</td><td><span class="badge badge-green">v2-risks</span></td><td>risks_v2</td><td>Riskiregister, riski-meetme seosed</td></tr>
+  <tr><td>/api/v2/bp-evidences</td><td><span class="badge badge-green">v2-bp-evidences</span></td><td>bp_evidences</td><td>Tõendid seotud äriprotsessidega</td></tr>
+  <tr><td>/api/v2/evidence</td><td><span class="badge badge-green">v2-evidence</span></td><td>evidence_upload</td><td>Failide üleslaadimine, tõendite CRUD</td></tr>
+  <tr><td>/api/v2/protection-mode</td><td><span class="badge badge-green">v2-protection-mode</span></td><td>protection_mode</td><td>Turbeviisi valikud</td></tr>
+  <tr><td>/api/v2/modeling</td><td><span class="badge badge-green">v2-modeling</span></td><td>modeling</td><td>Äriprotsesside modelleerimine</td></tr>
+  <tr><td>/api/v2/imr-snapshots</td><td><span class="badge badge-green">v2-imr-snapshots</span></td><td>imr_snapshots</td><td>IMR hetktõmmised</td></tr>
+</table>
+
+<h3 id="backend-core">2.2 Tuummoodulid</h3>
+
+<table>
+  <tr><th>Moodul</th><th>Fail</th><th>Eesmärk</th></tr>
+  <tr><td>Config</td><td><code>core/config.py</code></td><td>Pydantic seaded <code>.env</code> failist</td></tr>
+  <tr><td>Security</td><td><code>core/security.py</code></td><td>JWT (HS256) loomine/kontroll, bcrypt parooliräsindus</td></tr>
+  <tr><td>Permissions</td><td><code>core/permissions.py</code></td><td>RBAC: kasutaja õiguste haldus rollide kaudu</td></tr>
+  <tr><td>Audit</td><td><code>core/audit.py</code></td><td><code>log_audit()</code> ja <code>get_audit_trail()</code> abifunktsioonid</td></tr>
+  <tr><td>DB Session</td><td><code>db/session.py</code></td><td>SQLAlchemy mootor, sessioonitehas, <code>get_db</code> sõltuvus</td></tr>
+  <tr><td>DB Init</td><td><code>db/init_db.py</code></td><td>Algandmete laadimine: rollid, õigused, demoandmed</td></tr>
+  <tr><td>API Deps</td><td><code>api/deps.py</code></td><td><code>get_current_user</code>, <code>require_admin</code>, <code>require_role</code></td></tr>
+</table>
+
+<h3 id="backend-services">2.3 Teeninduskiht</h3>
+
+<table>
+  <tr><th>Teenus</th><th>Fail</th><th>Vastutusala</th></tr>
+  <tr><td>Äriprotsess</td><td><code>services/business_process_service.py</code></td><td>BP loomine, uuendamine, sõltuvused</td></tr>
+  <tr><td>Tõendid</td><td><code>services/evidence_service.py</code></td><td>Tõendite üleslaadimine, sidumine, elutsükkel</td></tr>
+  <tr><td>Kaitsevajaduse pärandamine</td><td><code>services/protection_inheritance_service.py</code></td><td>CIA vajaduste pärandamine varasuhete kaudu</td></tr>
+  <tr><td>IMR (v2)</td><td><code>services/v2/imr_service.py</code></td><td>IMR genereerimine, CRUD, staatuse uuendused</td></tr>
+  <tr><td>IMR taastamine (v2)</td><td><code>services/v2/imr_regeneration_service.py</code></td><td>IMR taastamine, säilitades kasutaja muudatused</td></tr>
+  <tr><td>Modelleerimine (v2)</td><td><code>services/v2/modeling_service.py</code></td><td>Äriprotsesside modelleerimine</td></tr>
+</table>
+
+<h3 id="backend-models">2.4 Andmemudel</h3>
+
+<p>45+ SQLAlchemy mudelit kahel rentnikutasemel:</p>
+
+<h4>Tier A — Tellimustaseme (rentnikuülene) andmed</h4>
+<table>
+  <tr><th>Mudel</th><th>Tabel</th><th>Märkused</th></tr>
+  <tr><td><code>AppTenant</code></td><td>app_tenants</td><td>Juura rentnikuüksus koos allüksustega (JSON)</td></tr>
+  <tr><td><code>GlobalUser</code></td><td>global_users</td><td>Rentnikuülene kasutajaidentiteet, MFA väljad</td></tr>
+  <tr><td><code>TenantUser</code></td><td>tenant_users</td><td>Seob GlobalUser-i AppTenant-ga</td></tr>
+  <tr><td><code>EitsCatalogVersion</code></td><td>eits_catalog_versions</td><td>Versioonihaldusega kataloogi import</td></tr>
+  <tr><td><code>EitsModule</code></td><td>eits_modules</td><td>E-ITS lähtemoodulid</td></tr>
+  <tr><td><code>EitsMeasure</code></td><td>eits_measures</td><td>E-ITS turvameetmed</td></tr>
+  <tr><td><code>EitsModuleMeasure</code></td><td>eits_module_measures</td><td>Mooduli-meetme seos</td></tr>
+  <tr><td><code>EitsCatalogMeasure</code></td><td>eits_catalog_measures</td><td>Täiendatud kataloogimeede (v2)</td></tr>
+  <tr><td><code>EitsThreat</code></td><td>eits_threats</td><td>Kataloogitaseme ohud</td></tr>
+  <tr><td><code>DamageScenario</code></td><td>damage_scenarios</td><td>Kataloogitaseme kahjustsenaariumid</td></tr>
+  <tr><td><code>AssetTypeCategory</code></td><td>asset_type_categories</td><td>Kataloogitaseme varatüüpide taksonoomia</td></tr>
+</table>
+
+<h4>Tier B — Rentnikupõhised andmed</h4>
+<table>
+  <tr><th>Mudel</th><th>Tabel</th><th>Märkused</th></tr>
+  <tr><td><code>LocalUser</code></td><td>local_users</td><td>Rentniku skoobiga kasutajaprofiil</td></tr>
+  <tr><td><code>EITSRole</code></td><td>eits_roles</td><td>Rentnikupõhine rollimääratlus</td></tr>
+  <tr><td><code>Role</code></td><td>roles</td><td>Pärandrollimudel</td></tr>
+  <tr><td><code>Permission</code></td><td>permissions</td><td>Detailne õiguste koodiloend</td></tr>
+  <tr><td><code>RolePermission</code></td><td>role_permissions</td><td>Rolli-õiguse seos</td></tr>
+  <tr><td><code>Membership</code></td><td>memberships</td><td>Kasutaja rolli sidumine rentnikus</td></tr>
+  <tr><td><code>BusinessProcess</code></td><td>business_processes</td><td>Äriprotsess CIA vajaduste, allüksuse ja omanikuga</td></tr>
+  <tr><td><code>BusinessProcessDependency</code></td><td>business_process_dependencies</td><td>BP-BP sõltuvusservad</td></tr>
+  <tr><td><code>Asset</code></td><td>assets</td><td>Vararegister tüübi, CIA ja kriitilisusega</td></tr>
+  <tr><td><code>AssetRelation</code></td><td>asset_relations</td><td>Vara-vara servad (suunatud)</td></tr>
+  <tr><td><code>AssetRelationType</code></td><td>asset_relation_types</td><td>Seose tüüpide taksonoomia</td></tr>
+  <tr><td><code>ProcessAsset</code></td><td>process_assets</td><td>BP-vara lingid</td></tr>
+  <tr><td><code>ObjectModuleMapping</code></td><td>object_module_mappings</td><td>Mis tahes sihtmärgi-mooduli vastendus (v1)</td></tr>
+  <tr><td><code>AssetModuleMapping</code></td><td>asset_module_mappings</td><td>Vara-mooduli vastendus (v2)</td></tr>
+  <tr><td><code>BusinessProcessModuleMapping</code></td><td>bp_module_mappings</td><td>BP-mooduli vastendus (v2)</td></tr>
+  <tr><td><code>ImplementationPlanItem</code></td><td>implementation_plan_items</td><td>IMR kirjed (v1, pärand)</td></tr>
+  <tr><td><code>ImrItem</code></td><td>imr_items</td><td>IMR kirjed (v2, aktiivne)</td></tr>
+  <tr><td><code>ImrSnapshot</code></td><td>imr_snapshots</td><td>IMR hetktõmmised</td></tr>
+  <tr><td><code>Risk</code></td><td>risks</td><td>Riskiregistri kirjed</td></tr>
+  <tr><td><code>RiskMeasureLink</code></td><td>risk_measure_links</td><td>Riski-meetme seosed</td></tr>
+  <tr><td><code>Evidence</code></td><td>evidences</td><td>Tõendi metaandmed (fail/URL/tekst)</td></tr>
+  <tr><td><code>EvidenceLink</code></td><td>evidence_links</td><td>Polümorfne tõend-üksuse seos</td></tr>
+  <tr><td><code>AuditLog</code></td><td>audit_logs</td><td>Muutumatu muudatuste ajalugu</td></tr>
+  <tr><td><code>Comment</code></td><td>comments</td><td>Polümorfsed kommentaarid üksustele</td></tr>
+  <tr><td><code>Alert</code></td><td>alerts</td><td>Kasutaja teavitused</td></tr>
+  <tr><td><code>Person</code></td><td>persons</td><td>Kontaktisiku andmed</td></tr>
+  <tr><td><code>OrganizationPeople</code></td><td>organization_people</td><td>Isikute sidumine rentnikuga</td></tr>
+  <tr><td><code>SecurityProfile</code></td><td>security_profiles</td><td>Turvaprofiil sihtmärgi kohta</td></tr>
+  <tr><td><code>DamageAssessment</code></td><td>damage_assessments</td><td>Kahju hindamine sihtmärgi kohta</td></tr>
+  <tr><td><code>ProtectionNeedSummary</code></td><td>protection_need_summaries</td><td>CIA kokkuvõte sihtmärgi kohta</td></tr>
+  <tr><td><code>ProtectionModeSelection</code></td><td>protectionmode_selections</td><td>Turbeviisi valikud</td></tr>
+  <tr><td><code>DamageCategoryThreshold</code></td><td>damage_category_thresholds</td><td>Lävendite konfiguratsioon</td></tr>
+  <tr><td><code>ProcessModuleAssignment</code></td><td>process_module_assignments</td><td>BP mooduli määramised</td></tr>
+</table>
+
+<h3 id="backend-migrations">2.5 Migratsioonid</h3>
+<p>
+50 Alembic migratsioonifaili kataloogis <code>backend/alembic/versions/</code>
+jälgivad skeemi täielikku arengut alates algsetest tabelitest (2024) läbi
+v2 E-ITS Tier A/B ümberkorralduse, IMR hetktõmmiste, turbeviiside ja
+mitmete liitmigratsioonide. Kõik migratsioonid on tagasipööratavad.
+</p>
+
+<!-- ====================================================================== -->
+<h2 id="frontend">3. Frontend arhitektuur</h2>
+
+<p>
+React 18 + TypeScript SPA, ehitatud Vite 5-ga, kujundatud Tailwind CSS 3 +
+shadcn/ui (Radix aluskomponendid). Autentimise olekut haldab kohandatud
+<code>use-auth</code> hooks, JWT salvestatakse localStorage-s. API päringud
+lähevad läbi jagatud Axios eksemplari, mis lisab päistesse
+<code>Authorization: Bearer</code> ja <code>X-Tenant-ID</code>.
+</p>
+
+<h3 id="frontend-pages">3.1 Lehed</h3>
+
+<table>
+  <tr><th>Marsruut</th><th>Komponent</th><th>Kirjeldus</th></tr>
+  <tr><td><code>/login</code></td><td>LoginPage</td><td>JWT sisselogimisvorm</td></tr>
+  <tr><td><code>/select-org</code></td><td>SelectOrgPage</td><td>Mitme organisatsiooni valik</td></tr>
+  <tr><td><code>/</code></td><td>DashboardPage</td><td>Mõõdikud, IMR edenemine, riskid, tõendite puudujäägid</td></tr>
+  <tr><td><code>/processes</code></td><td>BusinessProcessesPage</td><td>BP tabel + detail + sõltuvused</td></tr>
+  <tr><td><code>/assets</code></td><td>AssetsPage</td><td>Vararegister + seoste graaf</td></tr>
+  <tr><td><code>/targets</code></td><td>TargetsPage</td><td>Ühtne sihtmärkide sirvija</td></tr>
+  <tr><td><code>/protection-mode</code></td><td>ProtectionModePage</td><td>CIA + turbeviisi seaded</td></tr>
+  <tr><td><code>/catalog</code></td><td>CatalogPage</td><td>E-ITS moodulite/meetmete sirvija</td></tr>
+  <tr><td><code>/mappings</code></td><td>MappingsPage</td><td>Mooduli-sihtmärgi vastendamise UI</td></tr>
+  <tr><td><code>/implementation-plan</code></td><td>ImplementationPlanPage</td><td>IMR tabel + filtrid + hulgimuutmine</td></tr>
+  <tr><td><code>/risks</code></td><td>RisksPage</td><td>Riskiregister + soojuskaart</td></tr>
+  <tr><td><code>/evidences</code></td><td>EvidencesPage</td><td>Tõendite haldus + üleslaadimine</td></tr>
+  <tr><td><code>/audit</code></td><td>AuditViewPage</td><td>Valmiduse vaade (peidetud navigatsioonist)</td></tr>
+  <tr><td><code>/terminology</code></td><td>TerminologyPage</td><td>E-ITS sõnastik</td></tr>
+  <tr><td><code>/organization</code></td><td>OrganizationPage</td><td>Organisatsiooni andmed + allüksused</td></tr>
+  <tr><td><code>/support/people</code></td><td>SupportPeoplePage</td><td>Toetavad kontaktisikud</td></tr>
+  <tr><td><code>/alerts</code></td><td>AlertsPage</td><td>Teavituste postkast</td></tr>
+  <tr><td><code>/settings</code></td><td>SettingsPage</td><td>Kasutaja eelistused</td></tr>
+  <tr><td><code>/admin</code></td><td>AdminPage</td><td>Süsteemi administreerimine (kasutajad, rollid, kataloogi import)</td></tr>
+</table>
+
+<h3 id="frontend-components">3.2 Jagatud komponendid</h3>
+
+<table>
+  <tr><th>Komponent</th><th>Asukoht</th><th>Märkused</th></tr>
+  <tr><td>Layout</td><td><code>components/Layout.tsx</code></td><td>Kokkupandav külgriba + päise kest</td></tr>
+  <tr><td>ThemeToggle</td><td><code>components/ThemeToggle.tsx</code></td><td>Tume/valge režiimi lüliti</td></tr>
+  <tr><td>UserMenu</td><td><code>components/UserMenu.tsx</code></td><td>Kasutaja rippmenüü (profiil, väljalogimine)</td></tr>
+  <tr><td>OrgSelector</td><td><code>components/OrgSelector.tsx</code></td><td>Organisatsiooni vahetaja</td></tr>
+  <tr><td>AlertBell</td><td><code>components/AlertBell.tsx</code></td><td>Teavituste kelluke</td></tr>
+  <tr><td>RoleAccordion</td><td><code>components/RoleAccordion.tsx</code></td><td>Rollide/õiguste redaktor</td></tr>
+  <tr><td>level-badge</td><td><code>components/level-badge.tsx</code></td><td>CIA taseme märk</td></tr>
+  <tr><td>ImrTable</td><td><code>components/imr/ImrTable.tsx</code></td><td>IMR andmetabel filtreerimisega</td></tr>
+  <tr><td>ImrItemModal</td><td><code>components/imr/ImrItemModal.tsx</code></td><td>IMR kirje detailide/muutmise modaal</td></tr>
+  <tr><td>ImrStatusBadge</td><td><code>components/imr/ImrStatusBadge.tsx</code></td><td>Oleku indikaator</td></tr>
+  <tr><td>ImrDashboardStats</td><td><code>components/imr/ImrDashboardStats.tsx</code></td><td>IMR statistika kaardid</td></tr>
+  <tr><td>SnapshotSelector</td><td><code>components/imr/SnapshotSelector.tsx</code></td><td>Hetktõmmise valija</td></tr>
+</table>
+
+<p><strong>UI algkomponendid</strong> (shadcn/ui): <code>button, badge, card, dialog, input, label, select, switch, tabs</code> — kõik kataloogis <code>components/ui/</code>.</p>
+
+<h3 id="frontend-state">3.3 Olek ja abivahendid</h3>
+
+<table>
+  <tr><th>Moodul</th><th>Asukoht</th><th>Eesmärk</th></tr>
+  <tr><td>api-client</td><td><code>lib/api-client.ts</code></td><td>Axios eksemplar + vahesaatjad (JWT, X-Tenant-ID)</td></tr>
+  <tr><td>permissions</td><td><code>lib/permissions.ts</code></td><td>Õiguste koodikonstandid</td></tr>
+  <tr><td>utils</td><td><code>lib/utils.ts</code></td><td>Jagatud abifunktsioonid (cn, vormindus)</td></tr>
+  <tr><td>use-auth</td><td><code>hooks/use-auth.ts</code></td><td>Autentimise olek, sisselogimine, token, organisatsiooni valik</td></tr>
+  <tr><td>use-current-org</td><td><code>hooks/use-current-org.ts</code></td><td>Praeguse organisatsiooni kontekst</td></tr>
+  <tr><td>use-permission</td><td><code>hooks/use-permission.ts</code></td><td>Kliendipoolne õiguste kontroll</td></tr>
+  <tr><td>use-theme</td><td><code>lib/use-theme.ts</code></td><td>Tumerežiimi lüliti + püsivus</td></tr>
+  <tr><td>use-imr-api</td><td><code>lib/use-imr-api.ts</code></td><td>IMR API abifunktsioonid</td></tr>
+  <tr><td>i18n</td><td><code>lib/i18n/</code></td><td>Tõlkepakkuja + EN/ET tõlked + keelevalija</td></tr>
+  <tr><td>AlertContext</td><td><code>contexts/AlertContext.tsx</code></td><td>Teavituste oleku kontekst</td></tr>
+</table>
+
+<h3 id="frontend-routing">3.4 Marsruutimine</h3>
+
+<p>
+React Router v6 <code>BrowserRouter</code>. Kaitstud marsruudid kontrollivad
+<code>isAuthenticated</code> ja <code>selectedOrgId</code> enne
+<code>Layout</code> ümbrise renderdamist. Autentimata kasutajad suunatakse
+<code>/login</code>; organisatsiooni valimata kasutajad <code>/select-org</code>.
+</p>
+
+<pre>
+&lt;Routes&gt;
+  &lt;Route path="/login" element={&lt;LoginPage /&gt;} /&gt;
+  &lt;Route path="/select-org" element={&lt;SelectOrgPage /&gt;} /&gt;
+  &lt;Route path="/" element={&lt;ProtectedRoute&gt;&lt;DashboardPage /&gt;&lt;/ProtectedRoute&gt;} /&gt;
+  &lt;!-- 17 muud kaitstud marsruuti --&gt;
+&lt;/Routes&gt;
+</pre>
+
+<!-- ====================================================================== -->
+<h2 id="infra">4. Taristu</h2>
+
+<table>
+  <tr><th>Kiht</th><th>Tehnoloogia</th><th>Asukoht</th></tr>
+  <tr><td>Konteinertaristu</td><td>Docker Compose</td><td><code>docker-compose.yml</code>, <code>docker-compose.override.yml</code></td></tr>
+  <tr><td>Backend image</td><td><code>infra/docker/backend.Dockerfile</code></td><td>Python 3.11 + uvicorn</td></tr>
+  <tr><td>Frontend image</td><td><code>infra/docker/frontend.Dockerfile</code></td><td>Node + Vite arendusserver</td></tr>
+  <tr><td>Tootmise proksi</td><td><code>infra/nginx/nginx.conf</code></td><td>Lihtne pöördproksi (ilma CSP-ta)</td></tr>
+  <tr><td>Ehituse automatiseerimine</td><td><code>Makefile</code></td><td>20 sihtmärki (setup, dev, migrate, test, quality, ...)</td></tr>
+  <tr><td>Keskkond</td><td><code>.env.example</code></td><td>Mall <code>.env</code> faili loomiseks</td></tr>
+</table>
+
+<h3>Makefile sihtmärgid</h3>
+<pre>
+setup              Paigalda sõltuvused + seadista lokaalne keskkond
+dev                Käivita backend + frontend arendusrežiimis
+backend-install    Paigalda Pythoni sõltuvused
+frontend-install   Paigalda Node sõltuvused
+migrate            Rakenda Alembic migratsioonid
+migration          Loo uus migratsioon (MESSAGE=...)
+seed               Laadi algandmed
+test               Käivita kõik testid
+test-backend       Käivita backend testid (pytest)
+test-frontend      Käivita frontend testid (vitest)
+lint               Käivita lintimine (ruff, eslint)
+format             Vorminda kood (ruff, prettier)
+typecheck          Käivita tüübikontroll (mypy, tsc)
+quality            lint + format + typecheck + test
+openapi           Ekspordi OpenAPI JSON
+down               Peata kõik Docker teenused
+clean              Eemalda genereeritud failid
+</pre>
+
+<h3>Arenduse käivitamine</h3>
+<pre>
+cp .env.example .env
+docker compose up -d postgres redis minio
+make backend-install
+make frontend-install
+make migrate
+make seed
+make dev
+</pre>
+
+<!-- ====================================================================== -->
+<h2 id="turve">5. Turvamudel</h2>
+
+<table>
+  <tr><th>Aspekt</th><th>Rakendus</th></tr>
+  <tr><td>Autentimine</td><td>JWT (HS256) python-jose kaudu. Bearer token <code>Authorization</code> päises.</td></tr>
+  <tr><td>Parooliräsindus</td><td>bcrypt passlib kaudu.</td></tr>
+  <tr><td>MFA</td><td>Toetatud mudelis (<code>global_users.mfa_secret</code>), realiseeritud pyotp kaudu.</td></tr>
+  <tr><td>Autoriseerimine</td><td>RBAC rolli-õiguse vastendusega. Adminil on kõik õigused.</td></tr>
+  <tr><td>Rentniku isoleerimine</td><td>Igal rentnikupõhisel tabelil on <code>tenant_id</code>. Päringud filtreeritakse <code>X-Tenant-ID</code> päise järgi.</td></tr>
+  <tr><td>Auditlogi</td><td>Muudetamatu <code>audit_logs</code> tabel enne/pärast JSON hetktõmmistega.</td></tr>
+  <tr><td>Failihoidla</td><td>MinIO (S3-ühilduv). Tõendid on vaikimisi privaatsed.</td></tr>
+  <tr><td>Failide üleslaadimise kontroll</td><td>Tüübi- ja suuruskontroll API kihil.</td></tr>
+  <tr><td>CORS</td><td>Seadistatav <code>BACKEND_CORS_ORIGINS</code> keskkonnamuutujaga.</td></tr>
+  <tr><td>Turvapäised</td><td>Seadistatud ainult Vite arendusserveris (CSP, X-Content-Type-Options, X-Frame-Options, Referrer-Policy).</td></tr>
+</table>
+
+<div class="box">
+  <div class="box-title">Turvalünk</div>
+  Tootmise nginx konfiguratsioon (<code>infra/nginx/nginx.conf</code>) <strong>ei</strong> sea
+  <code>Content-Security-Policy</code> ega muid turvapäiseid. CSP on konfigureeritud ainult
+  Vite arendusserveris (<code>frontend/vite.config.ts:20-30</code>) ja sisaldab
+  <code>'unsafe-inline'</code> ja <code>'unsafe-eval'</code>, mis on vajalikud
+  HMR-i jaoks arenduses, kuid tuleks tootmises eemaldada.
+</div>
+
+<!-- ====================================================================== -->
+<h2 id="andmevoog">6. Andmevoog</h2>
+
+<h3>6.1 Päringu elutsükkel</h3>
+<pre>
+Brauser ──► Vite/nginx ──► FastAPI
+                              │
+                    ┌─────────▼─────────┐
+                    │  Vahetarkvara     │
+                    │  ├ CORS           │
+                    │  └ (CSP puudub    │
+                    │     nginx-is)     │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  API sõltuvused   │
+                    │  ├ get_current_user│
+                    │  ├ require_role    │
+                    │  └ X-Tenant-ID    │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  Marsruudi käsitlus│
+                    │  (õhuke, kutsub   │
+                    │   teenusekihti)   │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  Teenusekiht      │
+                    │  ├ Äriloogika     │
+                    │  ├ Õiguste kontroll│
+                    │  └ Auditlogi      │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  Repository/ORM   │
+                    │  (SQLAlchemy)     │
+                    └─────────┬─────────┘
+                              │
+                    ┌─────────▼─────────┐
+                    │  PostgreSQL       │
+                    │  või MinIO        │
+                    └───────────────────┘
+</pre>
+
+<h3>6.2 Autentimise voog</h3>
+<pre>
+1. POST /api/v2/auth/login  (e-post + parool)
+2. Server kontrollib mandaate, tagastab JWT + kasutaja info
+3. Frontend salvestab tokeni localStorage-sse
+4. Iga järgnev päring sisaldab:
+     Authorization: Bearer &lt;token&gt;
+     X-Tenant-ID: &lt;org_uuid&gt;
+5. Server dekodeerib JWT, otsib kasutaja, kontrollib liikmelisust
+6. Marsruudi käsitleja võib kutsuda require_role() või has_permission()
+</pre>
+
+<h3>6.3 IMR genereerimise voog</h3>
+<pre>
+1. Kasutaja vastendab E-ITS moodulid sihtmärgiga (vara või BP)
+2. POST /api/v2/imr/generate
+3. Teenus lahendab mooduli → meetmed eits_module_measures kaudu
+4. Loob ImrItem kirjed (üks meetme kohta)
+5. Hüppab üle duplikaatidest (sama rentnik + sihtmärk + versioon + meede)
+6. Tagastab loodud IMR kirjed
+7. Kasutaja saab määrata omanikud, prioriteedid, tähtajad
+</pre>
+
+<h3>6.4 Tõendi üleslaadimise voog</h3>
+<pre>
+1. Kasutaja laadib faili POST /api/v2/evidence/upload
+2. Backend kontrollib faili tüüpi ja suurust
+3. Fail salvestatakse MinIO panges: eits-evidence/
+4. Tõendi metaandmed salvestatakse PostgreSQL-i
+5. Tõendit saab siduda mis tahes üksusega evidence_links kaudu
+   (target_type: imr_item | measure | risk | asset | bp)
+</pre>
+
+<!-- ====================================================================== -->
+<h2 id="skriptid">7. Skriptid ja automatiseerimine</h2>
+
+<table>
+  <tr><th>Skript</th><th>Asukoht</th><th>Eesmärk</th></tr>
+  <tr><td>ETL kataloogi import</td><td><code>backend/scripts/etl_eits_catalog.py</code></td><td>E-ITS kataloogi import RIA allikast (XLSX)</td></tr>
+  <tr><td>Tõendite statistika tagasitäitmine</td><td><code>backend/scripts/backfill_evidence_stats.py</code></td><td>Andmemigratsiooni abivahend tõendite statistika jaoks</td></tr>
+  <tr><td>ZAP baasjoon</td><td><code>backend/scripts/zap/zap_baseline.sh</code></td><td>DAST turvaskaneerimine portaali vastu</td></tr>
+  <tr><td>ZAP MinIO</td><td><code>backend/scripts/zap/zap-minio.sh</code></td><td>DAST turvaskaneerimine MinIO vastu</td></tr>
+  <tr><td>OpenAPI eksport</td><td><code>scripts/export_openapi.py</code> (viidatud)</td><td>OpenAPI JSON skeemi genereerimine</td></tr>
+  <tr><td>Algandmete laadimine</td><td><code>backend/app/db/init_db.py</code></td><td>Rollide, õiguste ja demoandmete lähtestamine</td></tr>
+</table>
+
+<!-- ====================================================================== -->
+<h2 id="sonastik">8. Sõnastik</h2>
+
+<table>
+  <tr><th>Termin</th><th>Definitsioon</th></tr>
+  <tr><td>E-ITS</td><td>Eesti Infoturbestandard — Eesti infoturbe standard</td></tr>
+  <tr><td>ISMS</td><td>Information Security Management System — infoturbe juhtimissüsteem</td></tr>
+  <tr><td>IMR</td><td>Infoturbe meetmete rakendamise kava</td></tr>
+  <tr><td>Rentnik (tenant)</td><td>Süsteemi kasutav organisatsioon (andmete isoleerimise piir)</td></tr>
+  <tr><td>Tier A</td><td>Tellimustaseme (rentnikuülesed) kataloogiandmed</td></tr>
+  <tr><td>Tier B</td><td>Rentnikupõhised operatiivandmed</td></tr>
+  <tr><td>BP</td><td>Äriprotsess</td></tr>
+  <tr><td>CIA</td><td>Confidentiality, Integrity, Availability — kaitsevajadused: konfidentsiaalsus, terviklus, käideldavus</td></tr>
+  <tr><td>RBAC</td><td>Rollipõhine ligipääsukontroll</td></tr>
+  <tr><td>JWT</td><td>JSON Web Token — staatusteta autentimismehhanism</td></tr>
+  <tr><td>MinIO</td><td>S3-ühilduv objektihoidla tõendite failidele</td></tr>
+  <tr><td>shadcn/ui</td><td>React komponendikogu Radix UI algkomponentidel + Tailwind</td></tr>
+</table>
+
+<hr>
+
+<p class="meta" style="text-align: center;">
+  Tehnilise spetsifikatsiooni v0.1.0 lõpp &mdash; E-ITS CyberPlan<br>
+  <span class="tag">Hoitakse projekti repos kataloogis docs/man/tehniline-spetsifikatsioon-v0.1.0.html</span>
+</p>
+
+</body>
+</html>
