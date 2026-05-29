@@ -13,6 +13,7 @@ from app.models.business_process import BusinessProcess
 from app.models.bp_module_mapping import BusinessProcessModuleMapping
 from app.models.user import User
 from app.models.business_process_dependency import BusinessProcessDependency
+from app.models.imr_item import ImrItem
 from app.models.protectionmode_selection import ProtectionModeSelection
 from app.schemas.business_process import (
     BusinessProcessCreate,
@@ -314,12 +315,16 @@ def delete_business_process_v2(
     active_mappings = db.query(BusinessProcessModuleMapping).filter(
         BusinessProcessModuleMapping.business_process_id == process_id,
         BusinessProcessModuleMapping.deleted_at.is_(None),
-    ).count()
-    if active_mappings:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Cannot delete: business process has {active_mappings} active module mapping(s) used in IMR. Deactivate the mappings first."
-        )
+    ).all()
+
+    for mapping in active_mappings:
+        current_items = db.query(ImrItem).filter(
+            ImrItem.bp_module_mapping_id == mapping.id,
+            ImrItem.imr_snapshot_id.is_(None),
+        ).all()
+        for item in current_items:
+            item.soft_delete(current_user.global_user_id)
+        mapping.soft_delete(current_user.global_user_id)
 
     db.query(ProcessAsset).filter(
         ProcessAsset.business_process_id == process_id

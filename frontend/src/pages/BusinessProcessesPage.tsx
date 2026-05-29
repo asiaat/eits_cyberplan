@@ -341,7 +341,7 @@ export default function BusinessProcessesPage() {
       setDeletingId(null)
       fetchProcesses()
     } catch (err: any) {
-      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to delete" })
+      setErrorDialog({ open: true, message: t("businessProcesses.failedToDelete") })
     }
   }
 
