@@ -8,13 +8,13 @@ import AlertTable from "@/components/alerts/AlertTable"
 import { CheckCircle, Clock, AlertTriangle, FileText, Shield, TrendingUp, ListChecks } from "lucide-react"
 
 interface DashboardSummary {
-  total_measures: number
-  implemented_measures: number
-  in_progress_measures: number
-  not_started_measures: number
-  overdue_measures: number
+  total_imr_items: number
+  implemented_items: number
+  in_progress_items: number
+  not_started_items: number
+  overdue_items: number
   high_risks: number
-  measures_without_evidence: number
+  items_without_evidence: number
   imr_completion_percentage: number
   audit_readiness_score: number
 }
@@ -108,12 +108,12 @@ export default function DashboardPage() {
 
   const stats = summary
     ? [
-        { label: t("dashboard.totalMeasures"), value: summary.total_measures, icon: ListChecks, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-100 dark:bg-blue-950" },
-        { label: t("dashboard.implemented"), value: summary.implemented_measures, icon: CheckCircle, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-950" },
-        { label: t("dashboard.inProgress"), value: summary.in_progress_measures, icon: Clock, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-100 dark:bg-amber-950" },
-        { label: t("dashboard.overdue"), value: summary.overdue_measures, icon: AlertTriangle, color: "text-red-600 dark:text-red-400", bg: "bg-red-100 dark:bg-red-950" },
+        { label: t("dashboard.totalMeasures"), value: summary.total_imr_items, icon: ListChecks, color: "text-blue-600 dark:text-blue-400", bg: "bg-blue-100 dark:bg-blue-950" },
+        { label: t("dashboard.implemented"), value: summary.implemented_items, icon: CheckCircle, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-100 dark:bg-emerald-950" },
+        { label: t("dashboard.inProgress"), value: summary.in_progress_items, icon: Clock, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-100 dark:bg-amber-950" },
+        { label: t("dashboard.overdue"), value: summary.overdue_items, icon: AlertTriangle, color: "text-red-600 dark:text-red-400", bg: "bg-red-100 dark:bg-red-950" },
         { label: t("dashboard.highRisks"), value: summary.high_risks, icon: Shield, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-100 dark:bg-orange-950" },
-        { label: t("dashboard.measuresWithoutEvidence"), value: summary.measures_without_evidence, icon: FileText, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-100 dark:bg-purple-950" },
+        { label: t("dashboard.measuresWithoutEvidence"), value: summary.items_without_evidence, icon: FileText, color: "text-purple-600 dark:text-purple-400", bg: "bg-purple-100 dark:bg-purple-950" },
       ]
     : []
 
@@ -189,11 +189,11 @@ export default function DashboardPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4 w-full mt-6 text-center">
                     <div>
-                      <div className="text-2xl font-bold">{summary.total_measures}</div>
+                      <div className="text-2xl font-bold">{summary.total_imr_items}</div>
                       <div className="text-xs text-muted-foreground">{t("dashboard.totalMeasures")}</div>
                     </div>
                     <div>
-                      <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{summary.implemented_measures}</div>
+                      <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{summary.implemented_items}</div>
                       <div className="text-xs text-muted-foreground">{t("dashboard.implemented")}</div>
                     </div>
                   </div>

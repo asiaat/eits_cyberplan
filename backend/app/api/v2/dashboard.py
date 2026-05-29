@@ -26,28 +26,33 @@ def dashboard_summary_v2(
     """Get comprehensive dashboard summary with key metrics."""
     tenant_id = current_user.tenant_id
 
-    total_measures = db.query(ImrItem).filter(
-        ImrItem.tenant_id == tenant_id
+    total_imr_items = db.query(ImrItem).filter(
+        ImrItem.tenant_id == tenant_id,
+        ImrItem.imr_snapshot_id.is_(None),
     ).count()
 
-    implemented_measures = db.query(ImrItem).filter(
+    implemented_items = db.query(ImrItem).filter(
         ImrItem.tenant_id == tenant_id,
+        ImrItem.imr_snapshot_id.is_(None),
         ImrItem.pearo_status == "R",
     ).count()
 
-    in_progress_measures = db.query(ImrItem).filter(
+    in_progress_items = db.query(ImrItem).filter(
         ImrItem.tenant_id == tenant_id,
+        ImrItem.imr_snapshot_id.is_(None),
         ImrItem.pearo_status == "E",
     ).count()
 
-    not_started_measures = db.query(ImrItem).filter(
+    not_started_items = db.query(ImrItem).filter(
         ImrItem.tenant_id == tenant_id,
+        ImrItem.imr_snapshot_id.is_(None),
         ImrItem.pearo_status == "U",
     ).count()
 
     today = date.today()
-    overdue_measures = db.query(ImrItem).filter(
+    overdue_items = db.query(ImrItem).filter(
         ImrItem.tenant_id == tenant_id,
+        ImrItem.imr_snapshot_id.is_(None),
         ImrItem.due_date < today,
         ImrItem.pearo_status != "R",
     ).count()
@@ -59,6 +64,7 @@ def dashboard_summary_v2(
 
     implemented_ids = db.query(ImrItem.id).filter(
         ImrItem.tenant_id == tenant_id,
+        ImrItem.imr_snapshot_id.is_(None),
         ImrItem.pearo_status == "R",
     ).subquery()
 
@@ -68,30 +74,31 @@ def dashboard_summary_v2(
         EvidenceLink.target_id.in_(db.query(implemented_ids.c.id)),
     ).subquery()
 
-    measures_without_evidence = db.query(ImrItem).filter(
+    items_without_evidence = db.query(ImrItem).filter(
         ImrItem.tenant_id == tenant_id,
+        ImrItem.imr_snapshot_id.is_(None),
         ImrItem.pearo_status == "R",
         ~ImrItem.id.in_(db.query(linked_evidence.c.target_id)),
     ).count()
 
     imr_completion_percentage = 0
-    if total_measures > 0:
-        imr_completion_percentage = round((implemented_measures / total_measures) * 100, 1)
+    if total_imr_items > 0:
+        imr_completion_percentage = round((implemented_items / total_imr_items) * 100, 1)
 
     audit_readiness_score = 0
-    if total_measures > 0:
-        evidence_ratio = (implemented_measures - measures_without_evidence) / implemented_measures if implemented_measures > 0 else 0
-        risk_factor = 1.0 - (high_risks / max(total_measures, 1)) * 0.3
+    if total_imr_items > 0:
+        evidence_ratio = (implemented_items - items_without_evidence) / implemented_items if implemented_items > 0 else 0
+        risk_factor = 1.0 - (high_risks / max(total_imr_items, 1)) * 0.3
         audit_readiness_score = round((imr_completion_percentage / 100) * evidence_ratio * 100 * risk_factor, 1)
 
     return {
-        "total_measures": total_measures,
-        "implemented_measures": implemented_measures,
-        "in_progress_measures": in_progress_measures,
-        "not_started_measures": not_started_measures,
-        "overdue_measures": overdue_measures,
+        "total_imr_items": total_imr_items,
+        "implemented_items": implemented_items,
+        "in_progress_items": in_progress_items,
+        "not_started_items": not_started_items,
+        "overdue_items": overdue_items,
         "high_risks": high_risks,
-        "measures_without_evidence": measures_without_evidence,
+        "items_without_evidence": items_without_evidence,
         "imr_completion_percentage": imr_completion_percentage,
         "audit_readiness_score": audit_readiness_score,
     }
@@ -105,12 +112,12 @@ def imr_progress_v2(
     """Get detailed IMR progress breakdown."""
     tenant_id = current_user.tenant_id
 
-    u = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.pearo_status == "U").count()
-    p = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.pearo_status == "P").count()
-    e = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.pearo_status == "E").count()
-    a = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.pearo_status == "A").count()
-    r = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.pearo_status == "R").count()
-    o = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.pearo_status == "O").count()
+    u = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.imr_snapshot_id.is_(None), ImrItem.pearo_status == "U").count()
+    p = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.imr_snapshot_id.is_(None), ImrItem.pearo_status == "P").count()
+    e = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.imr_snapshot_id.is_(None), ImrItem.pearo_status == "E").count()
+    a = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.imr_snapshot_id.is_(None), ImrItem.pearo_status == "A").count()
+    r = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.imr_snapshot_id.is_(None), ImrItem.pearo_status == "R").count()
+    o = db.query(ImrItem).filter(ImrItem.tenant_id == tenant_id, ImrItem.imr_snapshot_id.is_(None), ImrItem.pearo_status == "O").count()
 
     total = u + p + e + a + r + o
 
