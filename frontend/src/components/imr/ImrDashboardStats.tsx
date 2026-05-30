@@ -11,6 +11,7 @@ export type StatsFilter = {
 interface ImrDashboardStatsProps {
   activeFilter?: StatsFilter
   onFilterChange?: (filter: StatsFilter) => void
+  refreshKey?: number
 }
 
 const STATUS_ORDER = ["P", "E", "A", "R", "O", "U"] as const
@@ -34,14 +35,14 @@ function isActive(filter: StatsFilter | undefined, type: "priority" | "pearo_sta
   return filter?.type === type && filter?.value === value
 }
 
-export function ImrDashboardStats({ activeFilter, onFilterChange }: ImrDashboardStatsProps) {
+export function ImrDashboardStats({ activeFilter, onFilterChange, refreshKey }: ImrDashboardStatsProps) {
   const { t } = useTranslation()
   const { loading, error, getImrSummary } = useImrApi()
   const [stats, setStats] = useState<ImrSummaryStatistics | null>(null)
 
   useEffect(() => {
     loadStats()
-  }, [])
+  }, [refreshKey])
 
   const loadStats = async () => {
     const data = await getImrSummary()
