@@ -21,7 +21,6 @@ HTTP_PORT="${HTTP_PORT:-5071}"
 HTTPS_PORT="${HTTPS_PORT:-5471}"
 COMPOSE_FILE="deploy/docker-compose.yml"
 
-# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -63,6 +62,9 @@ else
     cd "$APP_DIR"
 fi
 
+# Strip stale deploy/.env that would interfere with .env loading
+rm -f deploy/.env
+
 # ------------------------------------------------------------------
 # 3. Detect VPS IP
 # ------------------------------------------------------------------
@@ -77,7 +79,7 @@ if [ -z "$VPS_IP" ]; then
 fi
 
 # ------------------------------------------------------------------
-# 4. Generate .env at repo root (docker compose loads it from cwd)
+# 4. Generate .env at repo root
 # ------------------------------------------------------------------
 if [ -f .env ] && grep -q "change-me" .env 2>/dev/null; then
     warn ".env exists but contains placeholder values — regenerating."
@@ -129,50 +131,36 @@ else
     info ".env already exists with custom values — keeping it."
 fi
 
-# Common compose options: use project directory so .env is loaded from repo root
-COMPOSE_OPTS="-f $COMPOSE_FILE --project-directory $APP_DIR"
+# Compose options: always use --env-file for deterministic .env loading
+COMPOSE_OPTS="--env-file $APP_DIR/.env -f $COMPOSE_FILE --project-directory $APP_DIR"
 
 # ------------------------------------------------------------------
-# 5. Build and start services
+# 5. Remove old containers, build and start fresh
 # ------------------------------------------------------------------
-info "Building and starting services (HTTP :$HTTP_PORT, HTTPS :$HTTPS_PORT)..."
+info "Removing old containers..."
+docker compose $COMPOSE_OPTS down --remove-orphans 2>/dev/null || true
 
+info "Building and starting services (HTTP :$HTTP_PORT)..."
 HTTP_PORT="$HTTP_PORT" HTTPS_PORT="$HTTPS_PORT" \
 docker compose $COMPOSE_OPTS up -d --build
 
 # ------------------------------------------------------------------
-# 6. Wait for database
+# 6. Wait for backend to become healthy (migrations + seed run in entrypoint)
 # ------------------------------------------------------------------
-info "Waiting for PostgreSQL to become ready..."
+info "Waiting for backend to be ready..."
 for i in $(seq 1 30); do
-    if docker compose $COMPOSE_OPTS exec -T postgres \
-        pg_isready -U "${POSTGRES_USER:-eits}" -d "${POSTGRES_DB:-eits}" &>/dev/null 2>&1; then
-        info "PostgreSQL is ready."
+    if docker compose $COMPOSE_OPTS exec -T backend curl -s --max-time 2 http://localhost:8000/health &>/dev/null; then
+        info "Backend is healthy."
         break
     fi
     if [ "$i" -eq 30 ]; then
-        error "PostgreSQL did not become ready within 60 seconds."
+        warn "Backend health check timed out — check logs: docker compose -f $COMPOSE_FILE logs backend"
     fi
     sleep 2
 done
 
 # ------------------------------------------------------------------
-# 7. Run database migrations
-# ------------------------------------------------------------------
-info "Running Alembic migrations..."
-docker compose $COMPOSE_OPTS exec -T backend .venv/bin/alembic upgrade head
-info "Migrations complete."
-
-# ------------------------------------------------------------------
-# 8. Seed demo data
-# ------------------------------------------------------------------
-info "Seeding demo data..."
-docker compose $COMPOSE_OPTS exec -T backend .venv/bin/python -m app.db.init_db || \
-    warn "Seeding failed (may already have data — safe to ignore)."
-info "Seeding complete."
-
-# ------------------------------------------------------------------
-# 9. Done
+# 7. Done
 # ------------------------------------------------------------------
 echo ""
 echo -e "${GREEN}============================================${NC}"
@@ -184,13 +172,12 @@ echo ""
 echo -e "  ${GREEN}http://${VPS_IP}:${HTTP_PORT}${NC}"
 echo ""
 echo "  To view logs:"
-echo "    docker compose -f ${COMPOSE_FILE} logs -f"
+echo "    docker compose --env-file .env -f deploy/docker-compose.yml logs -f"
 echo ""
 echo "  To stop:"
-echo "    docker compose -f ${COMPOSE_FILE} down"
+echo "    docker compose --env-file .env -f deploy/docker-compose.yml down"
 echo ""
 
-# Print generated secrets for the admin to save
 echo "  ┌─────────────────────────────────────────────────┐"
 echo "  │  IMPORTANT: Save these credentials securely!    │"
 echo "  │  They will not be shown again.                  │"

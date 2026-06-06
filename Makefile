@@ -86,16 +86,16 @@ down:
 	docker compose down
 
 prod-build:
-	docker compose -f deploy/docker-compose.yml build
+	docker compose --env-file .env -f deploy/docker-compose.yml build
 
 prod-up:
-	docker compose -f deploy/docker-compose.yml up -d
+	docker compose --env-file .env -f deploy/docker-compose.yml up -d
 
 prod-down:
-	docker compose -f deploy/docker-compose.yml down
+	docker compose --env-file .env -f deploy/docker-compose.yml down
 
 prod-logs:
-	docker compose -f deploy/docker-compose.yml logs -f
+	docker compose --env-file .env -f deploy/docker-compose.yml logs -f
 
 deploy:
 	bash deploy/deploy.sh

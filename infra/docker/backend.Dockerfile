@@ -5,15 +5,20 @@ WORKDIR /app/backend
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    postgresql-client \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend /app/backend/
+COPY infra/docker/backend-entrypoint.sh /app/backend/
+RUN chmod +x /app/backend/backend-entrypoint.sh
 
 RUN rm -rf .venv && \
     pip install --upgrade pip --no-cache-dir && \
     pip install uv --no-cache-dir && \
     uv sync --no-dev
+
+ENTRYPOINT ["/app/backend/backend-entrypoint.sh"]
 
 RUN addgroup --system --gid 1001 appgroup && \
     adduser --system --uid 1001 --ingroup appgroup appuser && \

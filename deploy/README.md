@@ -5,11 +5,12 @@ This directory contains everything needed to deploy the E-ITS Management System 
 ## Contents
 
 | File | Purpose |
-|---|---|
+|---|---|---|
 | `docker-compose.yml` | Production service stack: nginx, backend, postgres, redis, minio |
 | `nginx.conf` | Nginx config — serves the built frontend (SPA), reverse-proxies `/api` to the backend |
 | `deploy.sh` | One-shot deployment script — installs Docker, clones repo, generates secrets, starts services |
 | `.env.example` | Reference template for environment variables |
+| `../infra/docker/backend-entrypoint.sh` | Backend container entrypoint — waits for postgres, runs migrations, seeds data, then starts uvicorn |
 
 ## Architecture
 
@@ -95,7 +96,9 @@ cd /opt/eits && bash deploy/deploy.sh
 
 ### Step 3: Run the Deploy Script
 
-Whether you used Option A (one-liner) or Option B (manual copy + `bash deploy/deploy.sh`), the script will now run. Here is exactly what you will see:
+Whether you used Option A (one-liner) or Option B (manual copy + `bash deploy/deploy.sh`), the script will now run. The backend has a built-in entrypoint that automatically runs migrations and seeds the database on first start, so the deploy script is simpler than before.
+
+Here is exactly what you will see:
 
 ```
 [INFO]  Checking prerequisites...
@@ -105,23 +108,17 @@ Cloning into '/opt/eits'...
 remote: Enumerating objects: ...
 [INFO]  Generating .env with random secrets...
 [INFO]  .env generated.
-[INFO]  Building and starting services (HTTP :5071, HTTPS :5471)...
+[INFO]  Removing old containers...
+[INFO]  Building and starting services (HTTP :5071)...
 [+] Building 15.2s (15/15) FINISHED
- => [backend internal] ...
- => [frontend builder 2/6] ...
- => [frontend stage-2 2/2] ...
 [+] Running 5/5
  ✔ Container eits_postgres  Started
  ✔ Container eits_redis     Started
  ✔ Container eits_minio     Started
  ✔ Container eits_backend   Started
  ✔ Container eits_nginx     Started
-[INFO]  Waiting for PostgreSQL to become ready...
-[INFO]  PostgreSQL is ready.
-[INFO]  Running Alembic migrations...
-[INFO]  Migrations complete.
-[INFO]  Seeding demo data...
-[INFO]  Seeding complete.
+[INFO]  Waiting for backend to be ready...
+[INFO]  Backend is healthy.
 
 ============================================
   Deployment Complete!
@@ -132,10 +129,10 @@ remote: Enumerating objects: ...
   http://203.0.113.10:5071
 
   To view logs:
-    docker compose -f deploy/docker-compose.yml logs -f
+    docker compose --env-file .env -f deploy/docker-compose.yml logs -f
 
   To stop:
-    docker compose -f deploy/docker-compose.yml down
+    docker compose --env-file .env -f deploy/docker-compose.yml down
 
   ┌─────────────────────────────────────────────────┐
   │  IMPORTANT: Save these credentials securely!    │
@@ -147,6 +144,14 @@ remote: Enumerating objects: ...
   MinIO access key:     9a8b7c6d5e4f...
   MinIO secret key:     1a2b3c4d5e6f...
 ```
+
+While the backend container starts, it automatically:
+1. Waits for PostgreSQL to become ready
+2. Runs `alembic upgrade head` (creates/updates tables)
+3. Seeds default data (roles, permissions, admin user) if the database is empty
+4. Starts uvicorn (the Python web server)
+
+If the database already has data, steps 2-3 are safe to re-run — they are idempotent. If the database is fresh, the backend container will restart once (Docker's `restart: unless-stopped` policy) and the entrypoint retries automatically.
 
 **Save the generated credentials** somewhere safe (like a password manager). They are shown only once.
 
@@ -173,7 +178,7 @@ curl http://localhost:5071/health
 To check all containers are running:
 
 ```bash
-docker compose -f /opt/eits/deploy/docker-compose.yml ps
+docker compose --env-file .env -f /opt/eits/deploy/docker-compose.yml ps
 ```
 
 Expected output:
@@ -209,40 +214,42 @@ bash <(curl -sL https://raw.githubusercontent.com/asiaat/eits_cyberplan/main/dep
 
 The script is idempotent — existing data is preserved (database volumes, minio data). Only the application code and images are updated.
 
+**Note:** `git pull` may fail if there are local changes (e.g., if you edited `.env` inside the repo). This is safe — the deploy script keeps your existing `.env` and only updates application code. To discard local changes: `cd /opt/eits && git stash && git pull`.
+
 ## Manual Commands
 
 If you prefer to manage the services manually:
 
 ```bash
 # Build images
-docker compose -f /opt/eits/deploy/docker-compose.yml build
+docker compose --env-file .env -f deploy/docker-compose.yml build
 
 # Start services with custom port
-HTTP_PORT=5071 docker compose -f /opt/eits/deploy/docker-compose.yml up -d
+HTTP_PORT=5071 docker compose --env-file .env -f deploy/docker-compose.yml up -d
 
 # View logs
-docker compose -f /opt/eits/deploy/docker-compose.yml logs -f
+docker compose --env-file .env -f deploy/docker-compose.yml logs -f
 
 # Tail only backend logs
-docker compose -f /opt/eits/deploy/docker-compose.yml logs -f backend
+docker compose --env-file .env -f deploy/docker-compose.yml logs -f backend
 
-# Run migrations (after a code update that changes the database schema)
-docker compose -f /opt/eits/deploy/docker-compose.yml exec backend alembic upgrade head
+# Run migrations manually (normally auto-run by entrypoint on container start)
+docker compose --env-file .env -f deploy/docker-compose.yml exec backend alembic upgrade head
 
-# Seed demo data (if starting with an empty database)
-docker compose -f /opt/eits/deploy/docker-compose.yml exec backend python -m app.db.init_db
+# Seed demo data manually (normally auto-run by entrypoint)
+docker compose --env-file .env -f deploy/docker-compose.yml exec backend python -m app.db.init_db
 
 # Stop all services (data is preserved in volumes)
-docker compose -f /opt/eits/deploy/docker-compose.yml down
+docker compose --env-file .env -f deploy/docker-compose.yml down
 
 # Stop and DELETE all data (volumes included) — be careful!
-docker compose -f /opt/eits/deploy/docker-compose.yml down -v
+docker compose --env-file .env -f deploy/docker-compose.yml down -v
 
 # Restart a single service (e.g., after config change)
-docker compose -f /opt/eits/deploy/docker-compose.yml restart backend
+docker compose --env-file .env -f deploy/docker-compose.yml restart backend
 ```
 
-Or use the Makefile from your local clone (works if you're on the VPS or locally with the repo):
+Or use the Makefile (the `--env-file .env` flag is baked into these targets):
 
 ```bash
 make prod-build    # Build production images
@@ -266,7 +273,7 @@ make deploy        # Run full deploy script
 HTTP_PORT=8080 bash deploy/deploy.sh
 
 # Or after deployment (stop, recreate, restart):
-HTTP_PORT=8080 docker compose -f deploy/docker-compose.yml up -d
+HTTP_PORT=8080 docker compose --env-file .env -f deploy/docker-compose.yml up -d
 ```
 
 If you change the port, also update `.env`:
@@ -306,8 +313,10 @@ The deploy script generates a `.env` file in `/opt/eits/.env` automatically. You
 
 ```bash
 nano /opt/eits/.env     # Edit variables
-docker compose -f /opt/eits/deploy/docker-compose.yml restart backend nginx  # Apply changes
+docker compose --env-file .env -f /opt/eits/deploy/docker-compose.yml restart backend nginx  # Apply changes
 ```
+
+Always use `--env-file .env` when running docker compose commands manually — this ensures the `.env` file from the repo root is used, even when the compose file is in the `deploy/` subdirectory. The `Makefile` and `deploy.sh` already include this flag automatically.
 
 Key variables:
 
@@ -359,7 +368,7 @@ MINIO_SECURE=true
 8. Rebuild and restart:
 
 ```bash
-cd /opt/eits && docker compose -f deploy/docker-compose.yml up -d --build
+cd /opt/eits && docker compose --env-file .env -f deploy/docker-compose.yml up -d --build
 ```
 
 Now access the app at **https://yourdomain.com:5471**
@@ -375,7 +384,7 @@ certbot renew --dry-run
 # Add a cron job to renew and copy certs
 crontab -e
 # Add this line:
-0 3 * * * certbot renew --quiet && cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem /opt/eits/certs/ && cp /etc/letsencrypt/live/yourdomain.com/privkey.pem /opt/eits/certs/ && docker compose -f /opt/eits/deploy/docker-compose.yml restart nginx
+0 3 * * * certbot renew --quiet && cp /etc/letsencrypt/live/yourdomain.com/fullchain.pem /opt/eits/certs/ && cp /etc/letsencrypt/live/yourdomain.com/privkey.pem /opt/eits/certs/ && docker compose --env-file .env -f /opt/eits/deploy/docker-compose.yml restart nginx
 ```
 
 ## Troubleshooting
@@ -384,9 +393,9 @@ crontab -e
 
 ```bash
 # Check logs for the failing service:
-docker compose -f /opt/eits/deploy/docker-compose.yml logs backend
-docker compose -f /opt/eits/deploy/docker-compose.yml logs nginx
-docker compose -f /opt/eits/deploy/docker-compose.yml logs postgres
+docker compose --env-file .env -f deploy/docker-compose.yml logs backend
+docker compose --env-file .env -f deploy/docker-compose.yml logs nginx
+docker compose --env-file .env -f deploy/docker-compose.yml logs postgres
 ```
 
 ### Port already in use
@@ -398,12 +407,12 @@ If port 5071 is already taken by another service:
 ss -tlnp | grep 5071
 
 # Use a different port:
-HTTP_PORT=8080 docker compose -f /opt/eits/deploy/docker-compose.yml up -d
+HTTP_PORT=8080 docker compose --env-file .env -f deploy/docker-compose.yml up -d
 ```
 
 ### Cannot connect to the app
 
-1. Check if services are running: `docker compose -f /opt/eits/deploy/docker-compose.yml ps`
+1. Check if services are running: `docker compose --env-file .env -f deploy/docker-compose.yml ps`
 2. Check the firewall: `ufw status` (if using ufw) or check Hostinger hPanel firewall rules
 3. Ensure port 5071 is open in the VPS firewall
 
@@ -411,13 +420,13 @@ HTTP_PORT=8080 docker compose -f /opt/eits/deploy/docker-compose.yml up -d
 
 ```bash
 # Check if postgres is healthy:
-docker compose -f /opt/eits/deploy/docker-compose.yml ps postgres
+docker compose --env-file .env -f deploy/docker-compose.yml ps postgres
 
 # Restart postgres if needed:
-docker compose -f /opt/eits/deploy/docker-compose.yml restart postgres
+docker compose --env-file .env -f deploy/docker-compose.yml restart postgres
 
 # Wait for it, then restart backend:
-docker compose -f /opt/eits/deploy/docker-compose.yml restart backend
+docker compose --env-file .env -f deploy/docker-compose.yml restart backend
 ```
 
 ### Forgot the admin password
@@ -425,7 +434,7 @@ docker compose -f /opt/eits/deploy/docker-compose.yml restart backend
 The seed script creates a default admin user. Re-run it:
 
 ```bash
-docker compose -f /opt/eits/deploy/docker-compose.yml exec backend python -m app.db.init_db
+docker compose --env-file .env -f deploy/docker-compose.yml exec backend python -m app.db.init_db
 ```
 
 Check `backend/app/db/init_db.py` for the default credentials.
@@ -449,11 +458,11 @@ docker builder prune
 
 ```bash
 # Create a backup
-docker compose -f /opt/eits/deploy/docker-compose.yml exec -T postgres \
+docker compose --env-file .env -f /opt/eits/deploy/docker-compose.yml exec -T postgres \
   pg_dump -U eits eits > /opt/eits/backups/backup_$(date +%Y%m%d_%H%M%S).sql
 
 # Restore from backup
-cat backup_file.sql | docker compose -f /opt/eits/deploy/docker-compose.yml exec -T postgres \
+cat backup_file.sql | docker compose --env-file .env -f /opt/eits/deploy/docker-compose.yml exec -T postgres \
   psql -U eits eits
 ```
 
@@ -473,7 +482,7 @@ To wipe everything and start fresh:
 
 ```bash
 cd /opt/eits
-docker compose -f deploy/docker-compose.yml down -v   # Stops services and deletes volumes
+docker compose --env-file .env -f deploy/docker-compose.yml down -v   # Stops services and deletes volumes
 rm .env                                                 # Remove secrets
 bash deploy/deploy.sh                                   # Redeploy from scratch
 ```
