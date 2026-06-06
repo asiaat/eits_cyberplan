@@ -194,7 +194,7 @@ export default function OrganizationPage() {
 
   const addDivision = async () => {
     if (!newDivisionName.trim() || !tenant) return
-    const newDivision = { id: crypto.randomUUID(), name: newDivisionName.trim() }
+    const newDivision = { id: crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`, name: newDivisionName.trim() }
     const updatedDivisions = [...(tenant.divisions || []), newDivision]
     setTenant({ ...tenant, divisions: updatedDivisions })
     setNewDivisionName("")
