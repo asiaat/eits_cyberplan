@@ -147,14 +147,36 @@ docker compose $COMPOSE_OPTS up -d --build
 # ------------------------------------------------------------------
 # 6. Wait for backend to become healthy (migrations + seed run in entrypoint)
 # ------------------------------------------------------------------
+health_check() {
+    docker compose $COMPOSE_OPTS exec -T backend curl -s --max-time 2 http://localhost:8000/health &>/dev/null
+}
+
 info "Waiting for backend to be ready..."
 for i in $(seq 1 60); do
-    if docker compose $COMPOSE_OPTS exec -T backend curl -s --max-time 2 http://localhost:8000/health &>/dev/null; then
+    if health_check; then
         info "Backend is healthy."
         break
     fi
     if [ "$i" -eq 60 ]; then
-        warn "Backend health check timed out — check logs: docker compose -f $COMPOSE_FILE logs backend"
+        if docker compose $COMPOSE_OPTS logs backend 2>&1 | grep -q "password authentication failed"; then
+            warn "Postgres volume has a stale password. Wiping it and retrying..."
+            docker compose $COMPOSE_OPTS down 2>/dev/null || true
+            docker volume rm -f eits_postgres_data 2>/dev/null || true
+            HTTP_PORT="$HTTP_PORT" HTTPS_PORT="$HTTPS_PORT" \
+            docker compose $COMPOSE_OPTS up -d
+            for j in $(seq 1 60); do
+                if health_check; then
+                    info "Backend is healthy after volume reset."
+                    break
+                fi
+                if [ "$j" -eq 60 ]; then
+                    warn "Backend still unhealthy after volume reset — check logs: docker compose -f $COMPOSE_FILE logs backend"
+                fi
+                sleep 2
+            done
+        else
+            warn "Backend health check timed out — check logs: docker compose -f $COMPOSE_FILE logs backend"
+        fi
     fi
     sleep 2
 done
