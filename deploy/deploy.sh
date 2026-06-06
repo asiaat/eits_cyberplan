@@ -161,12 +161,8 @@ for i in $(seq 1 60); do
         break
     fi
     if [ "$i" -eq 60 ]; then
-        for c in eits_postgres eits_redis eits_minio eits_backend eits_nginx; do
-            docker rm -f "$c" 2>/dev/null || true
-        done
         warn "Checking for stale postgres password..."
-        if docker volume inspect eits_postgres_data &>/dev/null && \
-           docker logs eits_backend 2>&1 | grep -q "password authentication failed"; then
+        if docker logs eits_backend 2>&1 | grep -q "password authentication failed"; then
             warn "Postgres volume has a stale password. Wiping it and retrying..."
             docker volume rm -f eits_postgres_data 2>/dev/null || true
             HTTP_PORT="$HTTP_PORT" HTTPS_PORT="$HTTPS_PORT" \
