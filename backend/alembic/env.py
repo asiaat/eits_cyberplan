@@ -36,6 +36,9 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
+    import os
+    if "DATABASE_URL" in os.environ:
+        config.set_main_option("sqlalchemy.url", os.environ["DATABASE_URL"])
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
