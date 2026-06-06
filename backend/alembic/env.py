@@ -46,13 +46,10 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        # Widen alembic_version column for long revision IDs (>32 chars)
+        # Ensure alembic_version table has a wide enough column for long revision IDs
         connection.execute(
             sa_text(
-                "DO $$ BEGIN "
-                "ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128); "
-                "EXCEPTION WHEN undefined_table THEN NULL; "
-                "END $$;"
+                "CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(128) PRIMARY KEY)"
             )
         )
         connection.commit()
