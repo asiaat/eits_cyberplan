@@ -471,6 +471,8 @@ def main() -> int:
         with get_session() as session:
             try:
                 version = load(session, data, year, source_url, file_hash, args.dry_run)
+                version_id = version.id
+                version_ver = version.version
             except SQLAlchemyError as e:
                 logger.error("Database error: %s", e)
                 session.rollback()
@@ -485,8 +487,6 @@ def main() -> int:
 
     elapsed = (datetime.now(UTC) - start).total_seconds()
     logger.info("ETL completed in %.1fs", elapsed)
-    version_id = version.id
-    version_ver = version.version
     logger.info("Catalog version: %s (%s)", version_id, version_ver)
     return 0
 
