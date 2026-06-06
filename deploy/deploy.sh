@@ -79,20 +79,20 @@ fi
 # ------------------------------------------------------------------
 # 4. Generate .env (if not already present with custom values)
 # ------------------------------------------------------------------
-if [ -f .env ] && grep -q "change-me" .env 2>/dev/null; then
-    warn ".env exists but contains placeholder values — regenerating."
-    rm -f .env
+if [ -f deploy/.env ] && grep -q "change-me" deploy/.env 2>/dev/null; then
+    warn "deploy/.env exists but contains placeholder values — regenerating."
+    rm -f deploy/.env
 fi
 
-if [ ! -f .env ]; then
-    info "Generating .env with random secrets..."
+if [ ! -f deploy/.env ]; then
+    info "Generating deploy/.env with random secrets..."
 
     POSTGRES_PASSWORD=$(openssl rand -hex 32)
     JWT_SECRET_KEY=$(openssl rand -hex 32)
     MINIO_ACCESS_KEY=$(openssl rand -hex 16)
     MINIO_SECRET_KEY=$(openssl rand -hex 32)
 
-    cat > .env <<EOF
+    cat > deploy/.env <<EOF
 APP_ENV=staging
 APP_NAME=eits-cyberplan
 
@@ -124,9 +124,9 @@ BACKEND_CORS_ORIGINS=http://${VPS_IP}:${HTTP_PORT}
 LOG_LEVEL=INFO
 EOF
 
-    info ".env generated."
+    info "deploy/.env generated."
 else
-    info ".env already exists with custom values — keeping it."
+    info "deploy/.env already exists with custom values — keeping it."
 fi
 
 # ------------------------------------------------------------------
