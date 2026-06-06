@@ -15,17 +15,18 @@ for i in $(seq 1 30); do
 done
 
 echo "Running database migrations..."
-if .venv/bin/alembic upgrade heads 2>/dev/null; then
-    echo "Migrations complete."
-elif .venv/bin/alembic upgrade head 2>/dev/null; then
-    echo "Migrations complete."
-else
-    echo "WARNING: alembic upgrade failed. Trying specific heads..."
-    for head in $(.venv/bin/alembic heads 2>/dev/null | awk '{print $1}'); do
-        echo "Applying head: $head"
-        .venv/bin/alembic upgrade "$head" || true
-    done
-    echo "Migrations applied."
+success=0
+for attempt in 1 2 3; do
+    if .venv/bin/alembic upgrade heads 2>/dev/null; then
+        echo "Migrations complete (attempt $attempt)."
+        success=1
+        break
+    fi
+    echo "Migration attempt $attempt failed, retrying in 5s..."
+    sleep 5
+done
+if [ "$success" -eq 0 ]; then
+    echo "WARNING: Migrations did not complete successfully."
 fi
 
 echo "Seeding demo data..."
