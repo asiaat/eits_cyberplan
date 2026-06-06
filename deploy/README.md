@@ -295,39 +295,39 @@ Quick reference:
 | Deploy | `bash deploy/deploy.sh` |
 | Clear containers (keep data) | `bash deploy/clear.sh` |
 | Full reset | `bash deploy/clear.sh --volumes` |
-| View logs | `docker compose --env-file .env -f deploy/docker-compose.yml logs -f` |
-| Stop (keep data) | `docker compose --env-file .env -f deploy/docker-compose.yml down` |
-| Stop & delete data | `docker compose --env-file .env -f deploy/docker-compose.yml down -v` |
+| View logs | `docker compose -p eits --env-file .env -f deploy/docker-compose.yml logs -f` |
+| Stop (keep data) | `docker compose -p eits --env-file .env -f deploy/docker-compose.yml down` |
+| Stop & delete data | `docker compose -p eits --env-file .env -f deploy/docker-compose.yml down -v` |
 
 If you prefer to manage the services manually:
 
 ```bash
 # Build images
-docker compose --env-file .env -f deploy/docker-compose.yml build
+docker compose -p eits --env-file .env -f deploy/docker-compose.yml build
 
 # Start services with custom port
-HTTP_PORT=5071 docker compose --env-file .env -f deploy/docker-compose.yml up -d
+HTTP_PORT=8080 docker compose -p eits --env-file .env -f deploy/docker-compose.yml up -d
 
 # View logs
-docker compose --env-file .env -f deploy/docker-compose.yml logs -f
+docker compose -p eits --env-file .env -f deploy/docker-compose.yml logs -f
 
 # Tail only backend logs
-docker compose --env-file .env -f deploy/docker-compose.yml logs -f backend
+docker compose -p eits --env-file .env -f deploy/docker-compose.yml logs -f backend
 
 # Run migrations manually (normally auto-run by entrypoint on container start)
-docker compose --env-file .env -f deploy/docker-compose.yml exec backend alembic upgrade head
+docker compose -p eits --env-file .env -f deploy/docker-compose.yml exec backend /app/backend/.venv/bin/python -m alembic upgrade head
 
 # Seed demo data manually (normally auto-run by entrypoint)
-docker compose --env-file .env -f deploy/docker-compose.yml exec backend python -m app.db.init_db
+docker compose -p eits --env-file .env -f deploy/docker-compose.yml exec backend /app/backend/.venv/bin/python -m app.db.init_db
 
 # Stop all services (data is preserved in volumes)
-docker compose --env-file .env -f deploy/docker-compose.yml down
+docker compose -p eits --env-file .env -f deploy/docker-compose.yml down
 
 # Stop and DELETE all data (volumes included) — be careful!
-docker compose --env-file .env -f deploy/docker-compose.yml down -v
+docker compose -p eits --env-file .env -f deploy/docker-compose.yml down -v
 
 # Restart a single service (e.g., after config change)
-docker compose --env-file .env -f deploy/docker-compose.yml restart backend
+docker compose -p eits --env-file .env -f deploy/docker-compose.yml restart backend
 ```
 
 Or use the Makefile (the `--env-file .env` flag is baked into these targets):
