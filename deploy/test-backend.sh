@@ -48,7 +48,7 @@ echo ""
 info "Running pytest..."
 echo ""
 
-docker compose -p "$PROJECT_NAME" --env-file "$APP_DIR/.env" -f "$COMPOSE_FILE" exec -T backend /app/backend/.venv/bin/python -m pytest /app/backend/backend/tests/ -v --tb=short 2>&1 || true
+docker compose -p "$PROJECT_NAME" --env-file "$APP_DIR/.env" -f "$COMPOSE_FILE" exec -T backend /app/backend/.venv/bin/python -m pytest /app/backend/tests/ -v --tb=short 2>&1 || true
 
 echo ""
 echo "========================================"
