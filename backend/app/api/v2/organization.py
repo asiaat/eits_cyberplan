@@ -154,7 +154,6 @@ def create_worker(db: DB, request: CreateWorkerRequest, current_user: LocalUser 
             tenant_id=tenant_id,
             asset_type="person",
             person_id=person.id,
-            status="active"
         )
         db.add(asset)
         db.commit()
