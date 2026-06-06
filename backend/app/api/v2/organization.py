@@ -12,6 +12,7 @@ from app.models.local_user import LocalUser
 from app.models.asset import Asset
 from app.models.user import User
 from app.models.role import Role
+from app.models.person import Person
 
 router = APIRouter()
 
@@ -207,8 +208,8 @@ def unlink_worker(asset_id: UUID, db: DB, current_user: LocalUser = CurrentUserV
 @router.post("/people/{asset_id}/create-user", status_code=status.HTTP_201_CREATED)
 def create_user_from_worker(asset_id: UUID, db: DB, request: CreateUserFromAssetRequest = None, current_user: LocalUser = CurrentUserV2, x_tenant_id: Optional[str] = None):
     """Create user from person asset."""
-    from app.models.person import Person
-    from app.core.security import get_password_hash
+    import logging
+    logger = logging.getLogger(__name__)
 
     tenant_id = get_tenant_id(current_user, x_tenant_id)
 
@@ -227,32 +228,36 @@ def create_user_from_worker(asset_id: UUID, db: DB, request: CreateUserFromAsset
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
 
-    if not person.email:
-        raise HTTPException(status_code=400, detail="Person has no email")
+    if not person.email or not person.email.strip():
+        raise HTTPException(status_code=400, detail="Person has no email address. Please add email first.")
 
     existing_user = db.query(User).filter(User.email == person.email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
 
     password = request.password if request and request.password else "changeme123"
-    
+
     user = User(
-        email=person.email,
+        email=person.email.strip(),
         name=person.name,
         hashed_password=get_password_hash(password),
         is_active=True
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to create user: {str(e)}")
     db.refresh(user)
 
-    asset.owner_user_id = str(user.id)
+    asset.owner_user_id = user.id
     db.commit()
 
     return {
         "id": str(user.id),
         "email": user.email,
-        "full_name": user.full_name
+        "name": user.name
     }
 
 
