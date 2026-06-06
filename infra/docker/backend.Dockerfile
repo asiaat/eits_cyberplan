@@ -16,7 +16,7 @@ RUN chmod +x /app/backend/backend-entrypoint.sh
 RUN rm -rf .venv && \
     pip install --upgrade pip --no-cache-dir && \
     pip install uv --no-cache-dir && \
-    uv sync --no-dev
+    uv sync
 
 ENTRYPOINT ["/app/backend/backend-entrypoint.sh"]
 
