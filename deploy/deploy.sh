@@ -199,7 +199,15 @@ for i in $(seq 1 60); do
 done
 
 # ------------------------------------------------------------------
-# 7. Done
+# 7. Re-seed admin user (delete and recreate)
+# ------------------------------------------------------------------
+info "Resetting admin user..."
+run_compose exec -T postgres psql -h localhost -U eits -d eits -c "DELETE FROM memberships WHERE user_id IN (SELECT id FROM users WHERE email='admin@eits.ee'); DELETE FROM users WHERE email='admin@eits.ee';" 2>/dev/null || true
+run_compose exec -T backend "$BACKEND_PYTHON" -m app.db.init_db
+info "Admin user reset complete."
+
+# ------------------------------------------------------------------
+# 8. Done
 # ------------------------------------------------------------------
 echo ""
 echo -e "${GREEN}============================================${NC}"
@@ -211,24 +219,15 @@ echo ""
 echo -e "  ${GREEN}https://${VPS_IP}:${HTTPS_PORT}${NC}"
 echo -e "  ${GREEN}http://${VPS_IP}:${HTTP_PORT}${NC}"
 echo ""
+echo "  Default login credentials:"
+echo "    Email:    admin@eits.ee"
+echo "    Password: admin123"
+echo ""
 echo "  To view logs:"
 echo "    docker compose -p $PROJECT_NAME --env-file .env -f deploy/docker-compose.yml logs -f"
 echo ""
 echo "  To stop:"
 echo "    docker compose -p $PROJECT_NAME --env-file .env -f deploy/docker-compose.yml down"
-echo ""
-echo "  ┌─────────────────────────────────────────────────┐"
-echo "  │  Useful Commands                               │"
-echo "  └─────────────────────────────────────────────────┘"
-echo ""
-echo "  Re-seed database:"
-echo "    docker compose -p $PROJECT_NAME --env-file .env -f deploy/docker-compose.yml exec backend $BACKEND_PYTHON -m app.db.init_db"
-echo ""
-echo "  Run migrations:"
-echo "    docker compose -p $PROJECT_NAME --env-file .env -f deploy/docker-compose.yml exec backend $BACKEND_PYTHON -m alembic upgrade head"
-echo ""
-echo "  Open shell:"
-echo "    docker compose -p $PROJECT_NAME --env-file .env -f deploy/docker-compose.yml exec backend $BACKEND_PYTHON"
 echo ""
 
 echo "  ┌─────────────────────────────────────────────────┐"
