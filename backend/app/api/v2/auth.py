@@ -81,7 +81,6 @@ def get_current_user_v2(
     effective_tenant_id = x_tenant_id if x_tenant_id else jwt_tenant_id
 
     if x_tenant_id and x_tenant_id != jwt_tenant_id:
-        from app.models.app_tenant import TenantUser
         membership = db.query(TenantUser).filter(
             TenantUser.user_id == global_user_id,
             TenantUser.tenant_id == x_tenant_id
