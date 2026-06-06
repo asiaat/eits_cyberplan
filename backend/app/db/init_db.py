@@ -125,7 +125,13 @@ def init_db(db: Session) -> None:
     existing_perms = db.query(Permission).first()
     if existing_perms is None:
         for perm_data in DEFAULT_PERMISSIONS:
-            perm = Permission(**perm_data)
+            perm = Permission(
+                id=perm_data["code"],
+                code=perm_data["code"],
+                name=perm_data["name"],
+                description=perm_data.get("description", ""),
+                category=perm_data.get("category", "")
+            )
             db.add(perm)
         db.commit()
         print("Default permissions created.")
