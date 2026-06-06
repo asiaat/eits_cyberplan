@@ -45,8 +45,10 @@ services:
 
   backend:
     build:
-      context: ..
+      context: /opt/eits
       dockerfile: infra/docker/backend.Dockerfile
+      args:
+        - APP_ROOT=/opt/eits
     container_name: eits_backend
     environment:
       APP_ENV: ${APP_ENV:-staging}
@@ -79,7 +81,7 @@ services:
 
   nginx:
     build:
-      context: ..
+      context: /opt/eits
       dockerfile: infra/docker/frontend.Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-/api/v2}
