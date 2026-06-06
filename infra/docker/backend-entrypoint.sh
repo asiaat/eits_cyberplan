@@ -33,4 +33,8 @@ echo "Seeding demo data..."
 .venv/bin/python -m app.db.init_db || echo "Seeding failed (may already have data)."
 echo "Seeding complete."
 
+echo "Loading E-ITS catalog..."
+.venv/bin/python scripts/etl_eits_catalog.py --year "${EITS_IMPORT_YEAR:-2024}" || echo "ETL failed (may already have data or network issue)."
+echo "E-ITS catalog loaded."
+
 exec "$@"
