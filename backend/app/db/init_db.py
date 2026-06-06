@@ -17,65 +17,6 @@ DEFAULT_ROLES = [
 ]
 
 DEFAULT_PERMISSIONS = [
-    # Users & Roles
-    {"id": "users.view", "code": "users.view", "name": "View Users", "description": "View user list and details", "category": "users"},
-    {"id": "users.create", "code": "users.create", "name": "Create Users", "description": "Create new users", "category": "users"},
-    {"id": "users.edit", "code": "users.edit", "name": "Edit Users", "description": "Edit user details", "category": "users"},
-    {"id": "users.delete", "code": "users.delete", "name": "Delete Users", "description": "Delete users", "category": "users"},
-    {"id": "roles.manage", "code": "roles.manage", "name": "Manage Roles", "description": "Create, edit, delete roles", "category": "users"},
-    {"id": "roles.assign", "code": "roles.assign", "name": "Assign Roles", "description": "Assign roles to users", "category": "users"},
-
-    # Business Processes
-    {"id": "processes.view", "code": "processes.view", "name": "View Processes", "description": "View business processes", "category": "processes"},
-    {"id": "processes.create", "code": "processes.create", "name": "Create Processes", "description": "Create business processes", "category": "processes"},
-    {"id": "processes.edit", "code": "processes.edit", "name": "Edit Processes", "description": "Edit business processes", "category": "processes"},
-    {"id": "processes.delete", "code": "processes.delete", "name": "Delete Processes", "description": "Delete business processes", "category": "processes"},
-
-    # Assets
-    {"id": "assets.view", "code": "assets.view", "name": "View Assets", "description": "View assets", "category": "assets"},
-    {"id": "assets.create", "code": "assets.create", "name": "Create Assets", "description": "Create assets", "category": "assets"},
-    {"id": "assets.edit", "code": "assets.edit", "name": "Edit Assets", "description": "Edit assets", "category": "assets"},
-    {"id": "assets.delete", "code": "assets.delete", "name": "Delete Assets", "description": "Delete assets", "category": "assets"},
-
-    # Risks
-    {"id": "risks.view", "code": "risks.view", "name": "View Risks", "description": "View risk register", "category": "risks"},
-    {"id": "risks.create", "code": "risks.create", "name": "Create Risks", "description": "Create risks", "category": "risks"},
-    {"id": "risks.edit", "code": "risks.edit", "name": "Edit Risks", "description": "Edit risks", "category": "risks"},
-    {"id": "risks.delete", "code": "risks.delete", "name": "Delete Risks", "description": "Delete risks", "category": "risks"},
-
-    # Evidence
-    {"id": "evidence.view", "code": "evidence.view", "name": "View Evidence", "description": "View evidence", "category": "evidence"},
-    {"id": "evidence.upload", "code": "evidence.upload", "name": "Upload Evidence", "description": "Upload evidence files", "category": "evidence"},
-    {"id": "evidence.delete", "code": "evidence.delete", "name": "Delete Evidence", "description": "Delete evidence", "category": "evidence"},
-
-    # Implementation Plan
-    {"id": "implementation.view", "code": "implementation.view", "name": "View Implementation Plan", "description": "View implementation plan", "category": "implementation"},
-    {"id": "implementation.manage", "code": "implementation.manage", "name": "Manage Implementation Plan", "description": "Manage implementation plan items", "category": "implementation"},
-
-    # Dashboard & Reports
-    {"id": "dashboard.view", "code": "dashboard.view", "name": "View Dashboard", "description": "View dashboard and statistics", "category": "dashboard"},
-    {"id": "dashboard.export", "code": "dashboard.export", "name": "Export Data", "description": "Export reports and data", "category": "dashboard"},
-
-    # Catalog & Mappings
-    {"id": "catalog.view", "code": "catalog.view", "name": "View Catalog", "description": "View E-ITS catalog", "category": "catalog"},
-    {"id": "mappings.view", "code": "mappings.view", "name": "View Mappings", "description": "View mappings", "category": "catalog"},
-    {"id": "mappings.manage", "code": "mappings.manage", "name": "Manage Mappings", "description": "Manage object-module mappings", "category": "catalog"},
-
-    # Audit
-    {"id": "audit.view", "code": "audit.view", "name": "View Audit Logs", "description": "View audit logs", "category": "audit"},
-    
-    # Organizations
-    {"id": "organizations.view", "code": "organizations.view", "name": "View Organizations", "description": "View all organizations", "category": "organizations"},
-    {"id": "organizations.create", "code": "organizations.create", "name": "Create Organizations", "description": "Create new organizations", "category": "organizations"},
-
-    # People
-    {"id": "people.view", "code": "people.view", "name": "View People", "description": "View people directory", "category": "people"},
-    {"id": "people.create", "code": "people.create", "name": "Create People", "description": "Create new people in directory", "category": "people"},
-    {"id": "people.edit", "code": "people.edit", "name": "Edit People", "description": "Edit people in directory", "category": "people"},
-    {"id": "people.delete", "code": "people.delete", "name": "Delete People", "description": "Delete people from directory", "category": "people"},
-]
-
-DEFAULT_PERMISSIONS = [
     {"code": "users.view", "name": "View Users", "description": "View user list and details", "category": "users"},
     {"code": "users.create", "name": "Create Users", "description": "Create new users", "category": "users"},
     {"code": "users.edit", "name": "Edit Users", "description": "Edit user details", "category": "users"},
@@ -171,7 +112,16 @@ DEFAULT_ADMIN_NAME = "System Administrator"
 def init_db(db: Session) -> None:
     """Initialize database with default data."""
 
-    # Create permissions
+    # 1. Get or create default tenant FIRST
+    default_tenant = db.query(AppTenant).filter(AppTenant.name == "Default").first()
+    if default_tenant is None:
+        default_tenant = AppTenant(name="Default", status="active", plan="enterprise")
+        db.add(default_tenant)
+        db.commit()
+        db.refresh(default_tenant)
+        print("Default tenant created.")
+
+    # 2. Create permissions
     existing_perms = db.query(Permission).first()
     if existing_perms is None:
         for perm_data in DEFAULT_PERMISSIONS:
@@ -180,7 +130,7 @@ def init_db(db: Session) -> None:
         db.commit()
         print("Default permissions created.")
 
-    # Create E-ITS roles for the default tenant
+    # 3. Create E-ITS roles for the default tenant
     existing_roles = db.query(EITSRole).filter(EITSRole.tenant_id == default_tenant.id).first()
     if existing_roles is None:
         for role_data in DEFAULT_ROLES:
@@ -204,16 +154,7 @@ def init_db(db: Session) -> None:
         db.commit()
         print("Default role-permission mappings created.")
 
-    # Get or create default tenant
-    default_tenant = db.query(AppTenant).filter(AppTenant.name == "Default").first()
-    if default_tenant is None:
-        default_tenant = AppTenant(name="Default", status="active", plan="enterprise")
-        db.add(default_tenant)
-        db.commit()
-        db.refresh(default_tenant)
-        print("Default tenant created.")
-
-    # Create admin global user
+    # 4. Create admin global user
     existing_global_user = db.query(GlobalUser).filter(GlobalUser.email == DEFAULT_ADMIN_EMAIL).first()
     if existing_global_user is None:
         global_user = GlobalUser(
@@ -246,7 +187,6 @@ def init_db(db: Session) -> None:
             EITSRole.tenant_id == default_tenant.id
         ).first()
         if admin_role:
-            from app.models.local_user import UserRole
             user_role = UserRole(user_id=local_user.id, role_id=admin_role.id)
             db.add(user_role)
             db.commit()
