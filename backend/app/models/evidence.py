@@ -19,7 +19,7 @@ class Evidence(SoftDeleteMixin, Base):
     external_url = Column(String(500))
     file_hash = Column(String(64), nullable=True, index=True)
     version = Column(String(20))
-    owner_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
+    owner_user_id = Column(UUID(as_uuid=True), ForeignKey("local_users.id"))
     valid_from = Column(DateTime)
     valid_until = Column(DateTime)
     review_due_date = Column(DateTime)
@@ -28,5 +28,5 @@ class Evidence(SoftDeleteMixin, Base):
     download_count = Column(Integer, default=0)
     created_at = Column(DateTime, server_default="now()")
 
-    owner_user = relationship("User", back_populates="owned_evidences")
+    owner_user = relationship("LocalUser", back_populates="owned_evidences")
     links = relationship("EvidenceLink", back_populates="evidence")

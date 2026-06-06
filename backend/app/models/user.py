@@ -25,6 +25,5 @@ class User(Base):
         "ImplementationPlanItem", back_populates="owner_user"
     )
     owned_risks = relationship("Risk", back_populates="owner_user")
-    owned_evidences = relationship("Evidence", back_populates="owner_user")
     mappings = relationship("ObjectModuleMapping", back_populates="selected_by_user")
     comments = relationship("Comment", back_populates="author_user")
