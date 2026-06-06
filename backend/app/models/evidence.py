@@ -12,7 +12,7 @@ class Evidence(SoftDeleteMixin, Base):
     __tablename__ = "evidences"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("app_tenants.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     evidence_type = Column(String(50), nullable=False)
     storage_uri = Column(String(500))
@@ -28,6 +28,5 @@ class Evidence(SoftDeleteMixin, Base):
     download_count = Column(Integer, default=0)
     created_at = Column(DateTime, server_default="now()")
 
-    tenant = relationship("Tenant", back_populates="evidences")
     owner_user = relationship("User", back_populates="owned_evidences")
     links = relationship("EvidenceLink", back_populates="evidence")

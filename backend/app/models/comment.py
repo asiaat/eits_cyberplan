@@ -12,7 +12,7 @@ class Comment(Base):
     __tablename__ = "comments"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("app_tenants.id"), nullable=False, index=True)
     entity_type = Column(String(50), nullable=False)
     entity_id = Column(UUID(as_uuid=True), nullable=False)
     author_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))

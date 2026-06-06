@@ -12,7 +12,7 @@ class ImplementationPlanItem(Base):
     __tablename__ = "implementation_plan_items"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("app_tenants.id"), nullable=False, index=True)
     measure_id = Column(UUID(as_uuid=True), ForeignKey("eits_measures.id"), nullable=False)
     target_type = Column(String(50), nullable=False)
     target_id = Column(UUID(as_uuid=True), nullable=False)

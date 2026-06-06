@@ -12,7 +12,7 @@ class Risk(SoftDeleteMixin, Base):
     __tablename__ = "risks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tenant_id = Column(UUID(as_uuid=True), ForeignKey("tenants.id"), nullable=False, index=True)
+    tenant_id = Column(UUID(as_uuid=True), ForeignKey("app_tenants.id"), nullable=False, index=True)
     title = Column(String(255), nullable=False)
     scenario = Column(Text)
     target_type = Column(String(50))
@@ -29,5 +29,4 @@ class Risk(SoftDeleteMixin, Base):
     created_at = Column(DateTime, server_default="now()")
     updated_at = Column(DateTime, server_default="now()", onupdate="now()")
 
-    tenant = relationship("Tenant", back_populates="risks")
     owner_user = relationship("User", back_populates="owned_risks")
