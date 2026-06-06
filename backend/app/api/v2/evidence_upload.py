@@ -114,7 +114,7 @@ async def upload_evidence(
             title=title,
             evidence_type=evidence_type,
             tenant_id=current_user.tenant_id,
-            owner_user_id=current_user.global_user_id,
+            owner_user_id=current_user.id,
         )
     except Exception as e:
         import traceback
