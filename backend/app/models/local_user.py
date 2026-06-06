@@ -26,6 +26,7 @@ class LocalUser(Base):
     tenant = relationship("AppTenant", back_populates="local_users")
     memberships = relationship("Membership", back_populates="local_user")
     owned_business_processes = relationship("BusinessProcess", back_populates="owner_user")
+    owned_evidences = relationship("Evidence", back_populates="owner_user")
 
 
 class EITSRole(Base):
