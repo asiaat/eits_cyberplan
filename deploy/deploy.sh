@@ -150,33 +150,37 @@ docker compose $COMPOSE_OPTS up -d --build
 # ------------------------------------------------------------------
 # 6. Wait for backend to become healthy (migrations + seed run in entrypoint)
 # ------------------------------------------------------------------
-health_check() {
-    docker compose $COMPOSE_OPTS exec -T backend curl -s --max-time 2 http://localhost:8000/health &>/dev/null
-}
-
 info "Waiting for backend to be ready..."
 for i in $(seq 1 60); do
-    if health_check; then
+    if docker compose $COMPOSE_OPTS exec -T backend curl -s --max-time 2 http://localhost:8000/health &>/dev/null; then
         info "Backend is healthy."
         break
     fi
     if [ "$i" -eq 60 ]; then
-        warn "Checking for stale postgres password..."
-        if docker logs eits_backend 2>&1 | grep -q "password authentication failed"; then
-            warn "Postgres volume has a stale password. Wiping it and retrying..."
-            docker volume rm -f eits_postgres_data 2>/dev/null || true
-            HTTP_PORT="$HTTP_PORT" HTTPS_PORT="$HTTPS_PORT" \
-            docker compose $COMPOSE_OPTS up -d
-            for j in $(seq 1 60); do
-                if health_check; then
-                    info "Backend is healthy after volume reset."
-                    break
-                fi
-                if [ "$j" -eq 60 ]; then
-                    warn "Backend still unhealthy after volume reset — check logs: docker compose -f $COMPOSE_FILE logs backend"
-                fi
-                sleep 2
-            done
+        warn "Backend did not become healthy. Checking for stale postgres password..."
+        if docker volume inspect eits_postgres_data &>/dev/null; then
+            POSTGRES_PASSWORD=$(grep -m1 "^POSTGRES_PASSWORD=" "$APP_DIR/.env" | cut -d= -f2)
+            if docker compose $COMPOSE_OPTS exec -T postgres \
+                psql -U eits -d eits -c "SELECT 1" &>/dev/null; then
+                warn "Postgres password is correct — backend has a different issue. Check logs:"
+                warn "  docker compose -f $COMPOSE_FILE logs backend"
+            else
+                warn "Postgres volume has a stale password. Wiping it and retrying..."
+                docker compose $COMPOSE_OPTS down 2>/dev/null || true
+                docker volume rm -f eits_postgres_data 2>/dev/null || true
+                HTTP_PORT="$HTTP_PORT" HTTPS_PORT="$HTTPS_PORT" \
+                docker compose $COMPOSE_OPTS up -d
+                for j in $(seq 1 60); do
+                    if docker compose $COMPOSE_OPTS exec -T backend curl -s --max-time 2 http://localhost:8000/health &>/dev/null; then
+                        info "Backend is healthy after volume reset."
+                        break
+                    fi
+                    if [ "$j" -eq 60 ]; then
+                        warn "Backend still unhealthy after volume reset — check logs: docker compose -f $COMPOSE_FILE logs backend"
+                    fi
+                    sleep 2
+                done
+            fi
         else
             warn "Backend health check timed out — check logs: docker compose -f $COMPOSE_FILE logs backend"
         fi
