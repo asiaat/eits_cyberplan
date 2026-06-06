@@ -26,6 +26,5 @@ class ImplementationPlanItem(Base):
     created_at = Column(DateTime, server_default="now()")
     updated_at = Column(DateTime, server_default="now()", onupdate="now()")
 
-    tenant = relationship("Tenant", back_populates="implementation_plan_items")
     measure = relationship("EitsMeasure", back_populates="implementation_items")
     owner_user = relationship("User", back_populates="owned_implementation_items")

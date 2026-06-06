@@ -21,6 +21,5 @@ class ObjectModuleMapping(Base):
     selected_by_user_id = Column(UUID(as_uuid=True), ForeignKey("users.id"))
     selected_at = Column(DateTime, server_default="now()")
 
-    tenant = relationship("Tenant", back_populates="mappings")
     module = relationship("EitsModule", back_populates="mappings")
     selected_by_user = relationship("User", back_populates="mappings")

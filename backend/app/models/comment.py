@@ -19,5 +19,4 @@ class Comment(Base):
     body = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default="now()")
 
-    tenant = relationship("Tenant", back_populates="comments")
     author_user = relationship("User", back_populates="comments")
