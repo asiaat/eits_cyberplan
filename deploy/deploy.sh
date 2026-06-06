@@ -148,12 +148,12 @@ docker compose $COMPOSE_OPTS up -d --build
 # 6. Wait for backend to become healthy (migrations + seed run in entrypoint)
 # ------------------------------------------------------------------
 info "Waiting for backend to be ready..."
-for i in $(seq 1 30); do
+for i in $(seq 1 60); do
     if docker compose $COMPOSE_OPTS exec -T backend curl -s --max-time 2 http://localhost:8000/health &>/dev/null; then
         info "Backend is healthy."
         break
     fi
-    if [ "$i" -eq 30 ]; then
+    if [ "$i" -eq 60 ]; then
         warn "Backend health check timed out — check logs: docker compose -f $COMPOSE_FILE logs backend"
     fi
     sleep 2
