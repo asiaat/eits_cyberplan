@@ -170,7 +170,7 @@ class ImrRegenerationService:
                 imr_item = ImrItem(
                     tenant_id=tenant_id,
                     measure_id=measure.id,
-                    pearo_status="U",
+                    pearo_status="E",
                     priority="P2",
                 )
                 db.add(imr_item)
