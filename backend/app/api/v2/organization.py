@@ -29,8 +29,12 @@ class PersonAssetResponse(BaseModel):
 
 
 class CreateWorkerRequest(BaseModel):
-    person_id: str
+    person_id: Optional[str] = None
     role: Optional[str] = None
+
+
+class CreateUserFromAssetRequest(BaseModel):
+    password: Optional[str] = None
 
 
 def get_tenant_id(current_user: LocalUser, x_tenant_id: Optional[str] = None) -> str:
@@ -201,11 +205,11 @@ def unlink_worker(asset_id: UUID, db: DB, current_user: LocalUser = CurrentUserV
 
 
 @router.post("/people/{asset_id}/create-user", status_code=status.HTTP_201_CREATED)
-def create_user_from_worker(asset_id: UUID, db: DB, request: CreateWorkerRequest, current_user: LocalUser = CurrentUserV2, x_tenant_id: Optional[str] = None):
+def create_user_from_worker(asset_id: UUID, db: DB, request: CreateUserFromAssetRequest = None, current_user: LocalUser = CurrentUserV2, x_tenant_id: Optional[str] = None):
     """Create user from person asset."""
     from app.models.person import Person
     from app.core.security import get_password_hash
-    
+
     tenant_id = get_tenant_id(current_user, x_tenant_id)
 
     asset = db.query(Asset).filter(
@@ -230,7 +234,7 @@ def create_user_from_worker(asset_id: UUID, db: DB, request: CreateWorkerRequest
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
 
-    password = request.role or "changeme123"
+    password = request.password if request and request.password else "changeme123"
     
     user = User(
         email=person.email,
