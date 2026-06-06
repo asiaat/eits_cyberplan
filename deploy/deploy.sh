@@ -157,14 +157,14 @@ done
 # 7. Run database migrations
 # ------------------------------------------------------------------
 info "Running Alembic migrations..."
-docker compose -f "$COMPOSE_FILE" exec -T backend alembic upgrade head
+docker compose -f "$COMPOSE_FILE" exec -T backend .venv/bin/alembic upgrade head
 info "Migrations complete."
 
 # ------------------------------------------------------------------
 # 8. Seed demo data
 # ------------------------------------------------------------------
 info "Seeding demo data..."
-docker compose -f "$COMPOSE_FILE" exec -T backend python -m app.db.init_db || \
+docker compose -f "$COMPOSE_FILE" exec -T backend .venv/bin/python -m app.db.init_db || \
     warn "Seeding failed (may already have data — safe to ignore)."
 info "Seeding complete."
 
