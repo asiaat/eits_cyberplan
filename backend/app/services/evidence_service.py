@@ -1,5 +1,6 @@
 """Evidence Service - File handling with MinIO storage and duplicate detection."""
 import hashlib
+import logging
 import uuid
 from datetime import datetime
 from typing import Optional, Tuple
@@ -14,6 +15,7 @@ from app.core.config import get_settings
 from app.models.evidence import Evidence
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 class EvidenceService:
