@@ -20,6 +20,8 @@ APP_DIR="${APP_DIR:-/opt/eits}"
 HTTP_PORT="${HTTP_PORT:-5071}"
 HTTPS_PORT="${HTTPS_PORT:-5471}"
 COMPOSE_FILE="deploy/docker-compose.yml"
+PROJECT_NAME="${PROJECT_NAME:-eits}"
+BACKEND_PYTHON="/app/backend/.venv/bin/python"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -29,6 +31,14 @@ NC='\033[0m'
 info()  { echo -e "${GREEN}[INFO]${NC}  $1"; }
 warn()  { echo -e "${YELLOW}[WARN]${NC}  $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
+
+run_compose() {
+    docker compose -p "$PROJECT_NAME" --env-file "$APP_DIR/.env" -f "$COMPOSE_FILE" --project-directory "$APP_DIR" "$@"
+}
+
+exec_backend() {
+    run_compose exec -T backend "$BACKEND_PYTHON" "$@"
+}
 
 # ------------------------------------------------------------------
 # 1. Prerequisites
@@ -198,13 +208,27 @@ echo -e "${GREEN}============================================${NC}"
 echo ""
 echo "  Access the application at:"
 echo ""
+echo -e "  ${GREEN}https://${VPS_IP}:${HTTPS_PORT}${NC}"
 echo -e "  ${GREEN}http://${VPS_IP}:${HTTP_PORT}${NC}"
 echo ""
 echo "  To view logs:"
-echo "    docker compose --env-file .env -f deploy/docker-compose.yml logs -f"
+echo "    docker compose -p $PROJECT_NAME --env-file .env -f deploy/docker-compose.yml logs -f"
 echo ""
 echo "  To stop:"
-echo "    docker compose --env-file .env -f deploy/docker-compose.yml down"
+echo "    docker compose -p $PROJECT_NAME --env-file .env -f deploy/docker-compose.yml down"
+echo ""
+echo "  ┌─────────────────────────────────────────────────┐"
+echo "  │  Useful Commands                               │"
+echo "  └─────────────────────────────────────────────────┘"
+echo ""
+echo "  Re-seed database:"
+echo "    docker compose -p $PROJECT_NAME --env-file .env -f deploy/docker-compose.yml exec backend $BACKEND_PYTHON -m app.db.init_db"
+echo ""
+echo "  Run migrations:"
+echo "    docker compose -p $PROJECT_NAME --env-file .env -f deploy/docker-compose.yml exec backend $BACKEND_PYTHON -m alembic upgrade head"
+echo ""
+echo "  Open shell:"
+echo "    docker compose -p $PROJECT_NAME --env-file .env -f deploy/docker-compose.yml exec backend $BACKEND_PYTHON"
 echo ""
 
 echo "  ┌─────────────────────────────────────────────────┐"
