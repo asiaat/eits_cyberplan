@@ -120,6 +120,60 @@ docker compose logs -f frontend
 docker compose stop backend frontend && docker compose start backend frontend
 ```
 
+## Pre-Live Deployment
+
+See [deploy/README.md](deploy/README.md) for the full deployment guide.
+
+### Quick Deploy (Ubuntu VPS)
+
+```bash
+# SSH into your VPS, then:
+bash <(curl -sL https://raw.githubusercontent.com/asiaat/eits_cyberplan/main/deploy/deploy.sh)
+```
+
+Or from a local clone:
+
+```bash
+make deploy
+```
+
+The script installs Docker, clones the repo, generates secrets, builds images, runs migrations, and seeds demo data.
+
+### Make Targets for Production
+
+```bash
+make prod-build   # Build production Docker images
+make prod-up      # Start production stack (nginx on :5071)
+make prod-logs    # Tail production logs
+make prod-down    # Stop production stack
+make deploy       # Run full deploy script (idempotent)
+```
+
+### Manual Production Commands
+
+```bash
+# Start with custom port
+HTTP_PORT=5071 docker compose -f deploy/docker-compose.yml up -d --build
+
+# Run migrations
+docker compose -f deploy/docker-compose.yml exec backend alembic upgrade head
+
+# Seed demo data
+docker compose -f deploy/docker-compose.yml exec backend python -m app.db.init_db
+
+# Stop
+docker compose -f deploy/docker-compose.yml down
+```
+
+### Architecture (Production)
+
+```
+Browser ──► nginx (:5071)
+               ├── / ───────────► static frontend files (built SPA)
+               ├── /api/v2/* ───► backend:8000
+               └── /docs       ─► backend:8000
+```
+
 ## Project Structure
 
 ```
