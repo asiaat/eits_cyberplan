@@ -8,7 +8,7 @@ This is a minimal env for a migrations-only setup.
 """
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, Column, String
+from sqlalchemy import engine_from_config, text as sa_text
 from sqlalchemy import pool
 
 from alembic import context
@@ -28,7 +28,6 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        version_table_column=Column('version_num', String(64))
     )
 
     with context.begin_transaction():
@@ -47,10 +46,20 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
+        # Widen alembic_version column for long revision IDs (>32 chars)
+        connection.execute(
+            sa_text(
+                "DO $$ BEGIN "
+                "ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR(128); "
+                "EXCEPTION WHEN undefined_table THEN NULL; "
+                "END $$;"
+            )
+        )
+        connection.commit()
+
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            version_table_column=Column('version_num', String(64))
         )
 
         with context.begin_transaction():
