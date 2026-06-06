@@ -46,6 +46,7 @@ def list_people(db: DB, current_user: LocalUser = CurrentUserV2, x_tenant_id: Op
 
     assets = db.query(Asset).options(
         selectinload(Asset.owner_user),
+        selectinload(Asset.person),
     ).filter(
         Asset.tenant_id == tenant_id,
         Asset.asset_type == "person"
@@ -55,16 +56,18 @@ def list_people(db: DB, current_user: LocalUser = CurrentUserV2, x_tenant_id: Op
     for asset in assets:
         has_user = bool(asset.owner_user_id)
         user_roles = []
-        
+
         if asset.owner_user_id:
             user = db.query(User).filter(User.id == asset.owner_user_id).first()
             if user and hasattr(user, 'roles') and user.roles:
                 user_roles = [{"id": str(r.id), "code": r.code, "name": r.name} for r in user.roles]
 
+        person_email = asset.person.email if asset.person else None
+
         results.append(PersonAssetResponse(
             id=str(asset.id),
             name=asset.name,
-            email=asset.email,
+            email=person_email,
             description=asset.description,
             owner_user_id=asset.owner_user_id,
             has_user_account=has_user,
