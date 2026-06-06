@@ -40,11 +40,16 @@ class EvidenceService:
         """Create bucket if it doesn't exist."""
         try:
             self.s3_client.head_bucket(Bucket=settings.MINIO_BUCKET)
-        except ClientError:
-            try:
-                self.s3_client.create_bucket(Bucket=settings.MINIO_BUCKET)
-            except Exception:
-                pass
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code in ("404", "NoSuchBucket"):
+                try:
+                    self.s3_client.create_bucket(Bucket=settings.MINIO_BUCKET)
+                    logger.info("Created MinIO bucket: %s", settings.MINIO_BUCKET)
+                except Exception as create_err:
+                    logger.warning("Could not create bucket %s: %s", settings.MINIO_BUCKET, create_err)
+            else:
+                logger.warning("Error checking bucket %s: %s", settings.MINIO_BUCKET, e)
 
     def compute_file_hash(self, file_content: bytes) -> str:
         """Compute SHA-256 hash of file content."""
