@@ -77,22 +77,22 @@ if [ -z "$VPS_IP" ]; then
 fi
 
 # ------------------------------------------------------------------
-# 4. Generate .env (if not already present with custom values)
+# 4. Generate .env at repo root (docker compose loads it from cwd)
 # ------------------------------------------------------------------
-if [ -f deploy/.env ] && grep -q "change-me" deploy/.env 2>/dev/null; then
-    warn "deploy/.env exists but contains placeholder values — regenerating."
-    rm -f deploy/.env
+if [ -f .env ] && grep -q "change-me" .env 2>/dev/null; then
+    warn ".env exists but contains placeholder values — regenerating."
+    rm -f .env
 fi
 
-if [ ! -f deploy/.env ]; then
-    info "Generating deploy/.env with random secrets..."
+if [ ! -f .env ]; then
+    info "Generating .env with random secrets..."
 
     POSTGRES_PASSWORD=$(openssl rand -hex 32)
     JWT_SECRET_KEY=$(openssl rand -hex 32)
     MINIO_ACCESS_KEY=$(openssl rand -hex 16)
     MINIO_SECRET_KEY=$(openssl rand -hex 32)
 
-    cat > deploy/.env <<EOF
+    cat > .env <<EOF
 APP_ENV=staging
 APP_NAME=eits-cyberplan
 
@@ -124,10 +124,13 @@ BACKEND_CORS_ORIGINS=http://${VPS_IP}:${HTTP_PORT}
 LOG_LEVEL=INFO
 EOF
 
-    info "deploy/.env generated."
+    info ".env generated."
 else
-    info "deploy/.env already exists with custom values — keeping it."
+    info ".env already exists with custom values — keeping it."
 fi
+
+# Common compose options: use project directory so .env is loaded from repo root
+COMPOSE_OPTS="-f $COMPOSE_FILE --project-directory $APP_DIR"
 
 # ------------------------------------------------------------------
 # 5. Build and start services
@@ -135,14 +138,14 @@ fi
 info "Building and starting services (HTTP :$HTTP_PORT, HTTPS :$HTTPS_PORT)..."
 
 HTTP_PORT="$HTTP_PORT" HTTPS_PORT="$HTTPS_PORT" \
-docker compose -f "$COMPOSE_FILE" up -d --build
+docker compose $COMPOSE_OPTS up -d --build
 
 # ------------------------------------------------------------------
 # 6. Wait for database
 # ------------------------------------------------------------------
 info "Waiting for PostgreSQL to become ready..."
 for i in $(seq 1 30); do
-    if docker compose -f "$COMPOSE_FILE" exec -T postgres \
+    if docker compose $COMPOSE_OPTS exec -T postgres \
         pg_isready -U "${POSTGRES_USER:-eits}" -d "${POSTGRES_DB:-eits}" &>/dev/null 2>&1; then
         info "PostgreSQL is ready."
         break
@@ -157,14 +160,14 @@ done
 # 7. Run database migrations
 # ------------------------------------------------------------------
 info "Running Alembic migrations..."
-docker compose -f "$COMPOSE_FILE" exec -T backend .venv/bin/alembic upgrade head
+docker compose $COMPOSE_OPTS exec -T backend .venv/bin/alembic upgrade head
 info "Migrations complete."
 
 # ------------------------------------------------------------------
 # 8. Seed demo data
 # ------------------------------------------------------------------
 info "Seeding demo data..."
-docker compose -f "$COMPOSE_FILE" exec -T backend .venv/bin/python -m app.db.init_db || \
+docker compose $COMPOSE_OPTS exec -T backend .venv/bin/python -m app.db.init_db || \
     warn "Seeding failed (may already have data — safe to ignore)."
 info "Seeding complete."
 
