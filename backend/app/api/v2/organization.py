@@ -210,6 +210,7 @@ def create_user_from_worker(asset_id: UUID, db: DB, request: CreateUserFromAsset
     """Create user from person asset."""
     import logging
     logger = logging.getLogger(__name__)
+    logger.warning(f"create_user_from_worker called: asset_id={asset_id}, request={request}")
 
     tenant_id = get_tenant_id(current_user, x_tenant_id)
 
@@ -219,26 +220,34 @@ def create_user_from_worker(asset_id: UUID, db: DB, request: CreateUserFromAsset
     ).first()
 
     if not asset:
+        logger.warning(f"Asset not found: {asset_id}")
         raise HTTPException(status_code=404, detail="Asset not found")
 
     if not asset.person_id:
+        logger.warning(f"Asset has no linked person: {asset_id}")
         raise HTTPException(status_code=400, detail="Asset has no linked person")
 
     person = db.query(Person).filter(Person.id == asset.person_id).first()
     if not person:
+        logger.warning(f"Person not found: {asset.person_id}")
         raise HTTPException(status_code=404, detail="Person not found")
 
-    if not person.email or not person.email.strip():
+    logger.warning(f"Person check: person.email='{person.email}', name='{person.name}'")
+    email_val = getattr(person, 'email', None) or ""
+    if not email_val or email_val.lower() in ("none", "null", ""):
+        logger.warning(f"Person has no valid email: {person.id}")
         raise HTTPException(status_code=400, detail="Person has no email address. Please add email first.")
 
-    existing_user = db.query(User).filter(User.email == person.email).first()
+    existing_user = db.query(User).filter(User.email == email_val.strip()).first()
     if existing_user:
+        logger.warning(f"User already exists: {email_val}")
         raise HTTPException(status_code=400, detail="User with this email already exists")
 
     password = request.password if request and request.password else "changeme123"
 
+    logger.warning(f"Creating user: email='{email_val.strip()}', name='{person.name}'")
     user = User(
-        email=person.email.strip(),
+        email=email_val.strip(),
         name=person.name,
         hashed_password=get_password_hash(password),
         is_active=True
@@ -246,8 +255,10 @@ def create_user_from_worker(asset_id: UUID, db: DB, request: CreateUserFromAsset
     db.add(user)
     try:
         db.commit()
+        logger.warning(f"User created successfully: {user.id}")
     except Exception as e:
         db.rollback()
+        logger.error(f"Failed to create user: {e}")
         raise HTTPException(status_code=400, detail=f"Failed to create user: {str(e)}")
     db.refresh(user)
 
@@ -338,13 +349,18 @@ def list_organization_users(db: DB, current_user: LocalUser = CurrentUserV2, x_t
 @router.post("/users", response_model=UserWithRolesResponse, status_code=status.HTTP_201_CREATED)
 def create_organization_user(db: DB, request: CreateUserRequest, current_user: LocalUser = CurrentUserV2, x_tenant_id: Optional[str] = None):
     """Create a new CyberPlan user (optionally linked to an asset)."""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning(f"create_organization_user: email={request.email}, name={request.name}")
+
     from app.core.security import get_password_hash
     from app.models.membership import Membership
-    
+
     tenant_id = get_tenant_id(current_user, x_tenant_id)
 
     existing = db.query(User).filter(User.email == request.email).first()
     if existing:
+        logger.warning(f"Email already in use: {request.email}")
         raise HTTPException(status_code=400, detail="Email already in use")
 
     user = User(
@@ -356,14 +372,31 @@ def create_organization_user(db: DB, request: CreateUserRequest, current_user: L
     db.add(user)
     db.commit()
     db.refresh(user)
+    logger.warning(f"User created: {user.id}")
 
     membership = Membership(
         user_id=user.id,
         tenant_id=tenant_id,
         role_id="infoturbejuht"
     )
+
+    # Look up the role record to get its UUID for the FK
+    role = db.query(Role).filter(Role.code == "infoturbejuht").first()
+    logger.warning(f"Role lookup: code=infoturbejuht, found={role}")
+    if role:
+        membership.role_id = str(role.id)
+        logger.warning(f"Setting membership.role_id to {role.id}")
+    else:
+        logger.warning("Role not found, using code as role_id")
+
     db.add(membership)
-    db.commit()
+    try:
+        db.commit()
+        logger.warning(f"Membership created successfully")
+    except Exception as e:
+        logger.error(f"Membership creation failed: {e}")
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to create membership: {str(e)}")
     db.refresh(user)
 
     return UserWithRolesResponse(
