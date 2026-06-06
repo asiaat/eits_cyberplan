@@ -243,13 +243,9 @@ def login_v2(db: DB, form_data: OAuth2PasswordRequestForm = Depends()):
             detail="Inactive user in this tenant",
         )
     
-    # Get organizations from memberships (tenant-based)
-    from app.models.membership import Membership
-    memberships = db.query(Membership).filter(
-        Membership.user_id == global_user.id,
-        Membership.tenant_id == tenant.id
-    ).all()
-    organization_ids = [str(m.tenant_id) for m in memberships if m.tenant_id]
+    # Get organizations from tenant_users (new tier model)
+    tenant_users = db.query(TenantUser).filter(TenantUser.user_id == global_user.id).all()
+    organization_ids = [str(tu.tenant_id) for tu in tenant_users]
     
     # Generate token with tenant context
     access_token = create_access_token(
@@ -275,10 +271,10 @@ def read_users_me_v2(db: DB, current_user: LocalUser = CurrentUserV2):
     """Get current user info with tenant context."""
     global_user = db.query(GlobalUser).filter(GlobalUser.id == current_user.global_user_id).first()
     
-    # Get organizations from memberships
-    from app.models.membership import Membership
-    memberships = db.query(Membership).filter(Membership.user_id == current_user.global_user_id).all()
-    organizations = [str(m.tenant_id) for m in memberships if m.tenant_id]
+    # Get organizations from tenant_users
+    from app.models.app_tenant import TenantUser
+    tenant_users = db.query(TenantUser).filter(TenantUser.user_id == current_user.global_user_id).all()
+    organizations = [str(tu.tenant_id) for tu in tenant_users]
     
     # Get user's E-ITS roles
     from app.models.local_user import EITSRole, UserRole
