@@ -133,7 +133,7 @@ def upgrade() -> None:
             
             UNION ALL
             
-            -- For each asset, calculate inherited needs from upstream (assets it depends on)
+            -- For each upstream asset, propagate inherited needs downstream
             SELECT 
                 a.id,
                 a.tenant_id,
@@ -144,22 +144,22 @@ def upgrade() -> None:
                 a.availability_need as baseline_a,
                 GREATEST(
                     a.confidentiality_need,
-                    COALESCE(ap.inherited_c, a.confidentiality_need)
+                    ap.inherited_c
                 ) as inherited_c,
                 GREATEST(
                     a.integrity_need,
-                    COALESCE(ap.inherited_i, a.integrity_need)
+                    ap.inherited_i
                 ) as inherited_i,
                 GREATEST(
                     a.availability_need,
-                    COALESCE(ap.inherited_a, a.availability_need)
+                    ap.inherited_a
                 ) as inherited_a,
                 ap.propagation_path || a.id,
                 ap.propagation_depth + 1,
-                CASE WHEN ap.propagation_depth >= 0 THEN true ELSE false END
-            FROM assets a
-            JOIN asset_relations ar ON ar.target_asset_id = a.id
-            LEFT JOIN asset_propagation ap ON ap.id = ar.source_asset_id
+                true as has_inherited_needs
+            FROM asset_propagation ap
+            JOIN asset_relations ar ON ar.source_asset_id = ap.id
+            JOIN assets a ON a.id = ar.target_asset_id
             WHERE NOT a.id = ANY(ap.propagation_path)
             AND ap.propagation_depth < 50
         )
