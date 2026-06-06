@@ -9,6 +9,7 @@ This directory contains everything needed to deploy the E-ITS Management System 
 | `docker-compose.yml` | Production service stack: nginx, backend, postgres, redis, minio |
 | `nginx.conf` | Nginx config — serves the built frontend (SPA), reverse-proxies `/api` to the backend |
 | `deploy.sh` | One-shot deployment script — installs Docker, clones repo, generates secrets, starts services |
+| `clear.sh` | Teardown script — removes all containers/networks; optionally wipes data volumes |
 | `.env.example` | Reference template for environment variables |
 | `../infra/docker/backend-entrypoint.sh` | Backend container entrypoint — waits for postgres, runs migrations, seeds data, then starts uvicorn |
 
@@ -216,7 +217,87 @@ The script is idempotent — existing data is preserved (database volumes, minio
 
 **Note:** `git pull` may fail if there are local changes (e.g., if you edited `.env` inside the repo). This is safe — the deploy script keeps your existing `.env` and only updates application code. To discard local changes: `cd /opt/eits && git stash && git pull`.
 
+## Clearing / Redeploying from Scratch
+
+If you need to start over (e.g., stale postgres password, corrupted data, or changing secrets):
+
+### Quick Redeploy (containers only, keep all data)
+
+```bash
+cd /opt/eits && git pull && bash deploy/deploy.sh
+```
+
+The script force-removes old containers, rebuilds images, and restarts. Data volumes survive.
+
+### Full Reset (delete everything and start fresh)
+
+```bash
+cd /opt/eits
+bash deploy/clear.sh --volumes    # removes all containers, networks, AND data volumes
+bash deploy/deploy.sh              # redeploys from scratch
+```
+
+### Selective Reset
+
+Use the teardown script with different flags:
+
+```bash
+# Just clean up containers (keep data):
+bash deploy/clear.sh
+
+# Clean up containers + delete only the database:
+bash deploy/clear.sh
+docker volume rm eits_postgres_data
+bash deploy/deploy.sh               # redeploy — fresh DB, old files/cache survive
+```
+
+### How Clearing Works
+
+The `deploy/clear.sh` script does two things:
+
+1. **Force-removes all eits containers by name** — catches orphaned containers even if they were created outside the compose project
+2. **Tears down compose resources** — removes networks created by `docker compose`
+
+With `--volumes` (or `-v`), it additionally removes:
+- `eits_postgres_data` — PostgreSQL database
+- `eits_redis_data` — Redis cache
+- `eits_minio_data` — MinIO evidence files
+
+This is also available via the Makefile:
+
+```bash
+make prod-clear        # remove containers + networks only
+make prod-clear ARGS=--volumes   # full reset
+```
+
+### Automatic Stale Password Recovery
+
+If the `.env` file was regenerated with a new `POSTGRES_PASSWORD` but the postgres data volume still has the old one, the deploy script detects this automatically:
+
+1. Backend container fails to start with `password authentication failed`
+2. After 120s timeout, the script checks the backend logs for this error
+3. If detected, it wipes the postgres volume and restarts the stack
+4. The backend then initializes with the new password
+
+This recovery is printed as:
+```
+[WARN]  Checking for stale postgres password...
+[WARN]  Postgres volume has a stale password. Wiping it and retrying...
+[INFO]  Backend is healthy after volume reset.
+```
+
 ## Manual Commands
+
+Quick reference:
+
+| Action | Command |
+|---|---|
+| Deploy | `bash deploy/deploy.sh` |
+| Clear containers (keep data) | `bash deploy/clear.sh` |
+| Full reset | `bash deploy/clear.sh --volumes` |
+| View logs | `docker compose --env-file .env -f deploy/docker-compose.yml logs -f` |
+| Stop (keep data) | `docker compose --env-file .env -f deploy/docker-compose.yml down` |
+| Stop & delete data | `docker compose --env-file .env -f deploy/docker-compose.yml down -v` |
 
 If you prefer to manage the services manually:
 

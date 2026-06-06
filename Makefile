@@ -1,4 +1,4 @@
-.PHONY: help setup dev backend-install frontend-install migrate migration seed test test-backend test-frontend lint format typecheck quality openapi down clean prod-build prod-up prod-down prod-logs deploy
+.PHONY: help setup dev backend-install frontend-install migrate migration seed test test-backend test-frontend lint format typecheck quality openapi down clean prod-build prod-up prod-down prod-clear prod-logs deploy
 
 help:
 	@echo "E-ITS Management System - Makefile"
@@ -93,6 +93,9 @@ prod-up:
 
 prod-down:
 	docker compose --env-file .env -f deploy/docker-compose.yml down
+
+prod-clear:
+	bash deploy/clear.sh
 
 prod-logs:
 	docker compose --env-file .env -f deploy/docker-compose.yml logs -f

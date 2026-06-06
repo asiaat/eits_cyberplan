@@ -138,6 +138,9 @@ COMPOSE_OPTS="--env-file $APP_DIR/.env -f $COMPOSE_FILE --project-directory $APP
 # 5. Remove old containers, build and start fresh
 # ------------------------------------------------------------------
 info "Removing old containers..."
+for c in eits_postgres eits_redis eits_minio eits_backend eits_nginx; do
+    docker rm -f "$c" 2>/dev/null || true
+done
 docker compose $COMPOSE_OPTS down --remove-orphans 2>/dev/null || true
 
 info "Building and starting services (HTTP :$HTTP_PORT)..."
@@ -158,9 +161,13 @@ for i in $(seq 1 60); do
         break
     fi
     if [ "$i" -eq 60 ]; then
-        if docker compose $COMPOSE_OPTS logs backend 2>&1 | grep -q "password authentication failed"; then
+        for c in eits_postgres eits_redis eits_minio eits_backend eits_nginx; do
+            docker rm -f "$c" 2>/dev/null || true
+        done
+        warn "Checking for stale postgres password..."
+        if docker volume inspect eits_postgres_data &>/dev/null && \
+           docker logs eits_backend 2>&1 | grep -q "password authentication failed"; then
             warn "Postgres volume has a stale password. Wiping it and retrying..."
-            docker compose $COMPOSE_OPTS down 2>/dev/null || true
             docker volume rm -f eits_postgres_data 2>/dev/null || true
             HTTP_PORT="$HTTP_PORT" HTTPS_PORT="$HTTPS_PORT" \
             docker compose $COMPOSE_OPTS up -d
