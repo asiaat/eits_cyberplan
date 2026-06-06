@@ -9,6 +9,18 @@ depends_on = None
 
 
 def upgrade():
+    # Drop old FK constraint to tenants table if it exists
+    op.execute("""
+        DO $$
+        BEGIN
+            IF EXISTS (
+                SELECT 1 FROM pg_constraint WHERE conname = 'audit_logs_tenant_id_fkey'
+                AND confrelid = (SELECT oid FROM pg_class WHERE relname = 'tenants')
+            ) THEN
+                ALTER TABLE audit_logs DROP CONSTRAINT audit_logs_tenant_id_fkey;
+            END IF;
+        END $$;
+    """)
     # Create FK constraints pointing to app_tenants and global_users (idempotent)
     op.execute("""
         DO $$
