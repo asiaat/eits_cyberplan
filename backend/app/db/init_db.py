@@ -2,8 +2,8 @@
 from sqlalchemy.orm import Session
 
 from app.models.app_tenant import GlobalUser, TenantUser, AppTenant
-from app.models.local_user import LocalUser
-from app.models.e_its_role import EITSRole, EITSRolePermission
+from app.models.local_user import LocalUser, EITSRole, UserRole
+from app.models.e_its_role_permission import EITSRolePermission
 from app.models.permission import Permission
 from app.core.security import get_password_hash
 
