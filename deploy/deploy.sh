@@ -155,6 +155,7 @@ docker compose $COMPOSE_OPTS down --remove-orphans 2>/dev/null || true
 
 info "Building and starting services (HTTP :$HTTP_PORT)..."
 HTTP_PORT="$HTTP_PORT" HTTPS_PORT="$HTTPS_PORT" \
+docker compose $COMPOSE_OPTS build --no-cache nginx
 docker compose $COMPOSE_OPTS up -d --build
 
 # ------------------------------------------------------------------
@@ -202,7 +203,7 @@ done
 # 7. Re-seed admin user (delete and recreate)
 # ------------------------------------------------------------------
 info "Resetting admin user..."
-run_compose exec -T postgres psql -h localhost -U eits -d eits -c "DELETE FROM memberships WHERE user_id IN (SELECT id FROM users WHERE email='admin@eits.ee'); DELETE FROM users WHERE email='admin@eits.ee';" 2>/dev/null || true
+run_compose exec -T postgres psql -h localhost -U eits -d eits -c "DELETE FROM tenant_users WHERE user_id IN (SELECT id FROM global_users WHERE email='admin@eits.ee'); DELETE FROM local_users WHERE global_user_id IN (SELECT id FROM global_users WHERE email='admin@eits.ee'); DELETE FROM global_users WHERE email='admin@eits.ee';" 2>/dev/null || true
 run_compose exec -T backend "$BACKEND_PYTHON" -m app.db.init_db
 info "Admin user reset complete."
 
