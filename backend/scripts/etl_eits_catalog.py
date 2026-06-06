@@ -177,7 +177,7 @@ def detect_columns(df: pd.DataFrame) -> dict:
         (lower_cols[k] for k in lower_cols if "meetme nimetus" in k or "measure title" in k or "measure name" in k or "meetme nimi" in k), None
     )
     col_map["measure_level"] = next(
-        (lower_cols[k] for k in lower_cols if "meetme tase" in k or "level" in k or "tase" in k), None
+        (lower_cols[k] for k in lower_cols if "meetme tase" in k or "meetmeaste" in k or "level" in k or ("tase" in k and "meetme" in k)), None
     )
     col_map["description"] = next(
         (lower_cols[k] for k in lower_cols if "meetme sisu" in k or "description" in k or "kirjeldus" in k), None
@@ -191,6 +191,12 @@ def detect_columns(df: pd.DataFrame) -> dict:
     logger.info("Detected columns: %s", found)
     if missing:
         logger.warning("Could not auto-detect columns: %s", missing)
+
+    logger.debug("All Excel columns (%d): %s", len(df.columns), list(df.columns))
+    for k in lower_cols:
+        if "tase" in k:
+            logger.debug("  'tase' in column name: key='%s', actual='%s'", k, lower_cols[k])
+
     return col_map
 
 
@@ -234,6 +240,7 @@ def transform(df: pd.DataFrame, col_map: dict, year: str) -> dict:
             }
 
         raw_level = str(row_dict.get(col_map["measure_level"], "")).strip() if col_map.get("measure_level") else ""
+        logger.debug("Row %d: measure_level col='%s', raw_level='%s'", idx, col_map.get("measure_level"), raw_level)
         level = get_level(raw_level)
         if not level:
             logger.warning("Row %d: unknown measure level '%s', skipping measure", idx, raw_level)
