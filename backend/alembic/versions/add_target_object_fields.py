@@ -17,9 +17,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column('assets', sa.Column('is_grouped', sa.Boolean(), server_default='false', nullable=False))
-    op.add_column('assets', sa.Column('quantity', sa.Integer(), server_default='1', nullable=False))
-    op.add_column('assets', sa.Column('group_name', sa.String(255), nullable=True))
+    op.execute("ALTER TABLE assets ADD COLUMN IF NOT EXISTS is_grouped BOOLEAN DEFAULT 'false' NOT NULL")
+    op.execute("ALTER TABLE assets ADD COLUMN IF NOT EXISTS quantity INTEGER DEFAULT 1 NOT NULL")
+    op.execute("ALTER TABLE assets ADD COLUMN IF NOT EXISTS group_name VARCHAR(255)")
 
 
 def downgrade() -> None:
