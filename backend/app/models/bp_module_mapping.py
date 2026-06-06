@@ -5,10 +5,10 @@ from sqlalchemy import Column, String, Text, DateTime, ForeignKey, UniqueConstra
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.db.base import Base
+from app.db.base import Base, SoftDeleteMixin
 
 
-class BusinessProcessModuleMapping(Base):
+class BusinessProcessModuleMapping(SoftDeleteMixin, Base):
     __tablename__ = "bp_module_mappings"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

@@ -105,10 +105,16 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!item) return
-    
+
     setSaveError(null)
-    
+
     if (formData.pearo_status === "R" && item.pearo_status !== "R") {
+      // Phase 1: save everything except the status (persists description to DB)
+      const { pearo_status, ...dataWithoutStatus } = formData
+      const savedItem = await updateImrItem(item.id, dataWithoutStatus as ImrItemUpdate)
+      if (!savedItem) return
+
+      // Phase 2: validate with fresh DB state
       const freshValidation = await getImrValidationStatus(item.id)
       if (freshValidation && !freshValidation.can_transition_to_implemented) {
         const errors = freshValidation.validation_errors.join("; ")
@@ -116,10 +122,17 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
         setValidationStatus(freshValidation)
         return
       }
+
+      // Phase 3: update status to R
+      const updatedItem = await updateImrItem(item.id, { pearo_status: "R" })
+      if (updatedItem) {
+        onSave(updatedItem)
+        onClose()
+      }
+      return
     }
-    
+
     const updatedItem = await updateImrItem(item.id, formData)
-    console.log("UPDATE RESPONSE:", updatedItem)
     if (updatedItem) {
       onSave(updatedItem)
       onClose()

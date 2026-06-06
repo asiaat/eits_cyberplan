@@ -594,8 +594,16 @@ export default function AssetsPage() {
       setDeleteError(null)
       fetchAssets()
     } catch (err: any) {
-      const msg = err.response?.data?.detail || "Failed to delete"
-      setDeleteError(msg)
+      const detail = err.response?.data?.detail || ""
+      if (detail.includes("linked to") && detail.includes("business process")) {
+        setDeleteError(t("assets.deleteLinkedError"))
+      } else if (detail.includes("active module mapping")) {
+        setDeleteError(t("assets.deleteMappingError"))
+      } else if (detail) {
+        setDeleteError(detail)
+      } else {
+        setDeleteError(t("assets.failedToDelete"))
+      }
     }
   }
 

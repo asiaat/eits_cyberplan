@@ -18,9 +18,10 @@ interface ImrTableProps {
     snapshot_id?: string
   }
   readOnly?: boolean
+  refreshKey?: number
 }
 
-export function ImrTable({ onEditItem, filters }: ImrTableProps) {
+export function ImrTable({ onEditItem, filters, refreshKey }: ImrTableProps) {
   const { t } = useTranslation()
   const { loading, error, fetchImrItems, fetchUsers } = useImrApi()
   const [items, setItems] = useState<ImrItem[]>([])
@@ -39,7 +40,7 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
 
   useEffect(() => {
     loadItems()
-  }, [filters, page])
+  }, [filters, page, refreshKey])
 
   const loadItems = async () => {
     const skip = (page - 1) * PAGE_SIZE

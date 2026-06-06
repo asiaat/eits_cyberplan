@@ -31,6 +31,7 @@ export default function ImplementationPlanPage() {
   const [statsFilter, setStatsFilter] = useState<StatsFilter>(null)
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null)
   const [hasActivePlan, setHasActivePlan] = useState<boolean | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     apiClient.get("/protection-mode/active")
@@ -50,8 +51,8 @@ export default function ImplementationPlanPage() {
 
   const { exportImrItems, loading: exporting, error: exportError } = useImrApi()
 
-  const handleSaveItem = (updatedItem: ImrItem) => {
-    console.log("Item saved:", updatedItem.id)
+  const handleSaveItem = (_updatedItem: ImrItem) => {
+    setRefreshKey(k => k + 1)
   }
 
   const handleExport = () => {
@@ -181,7 +182,7 @@ export default function ImplementationPlanPage() {
       {/* IMR content - hidden when no active plan unless viewing a snapshot */}
       {(hasActivePlan !== false || selectedSnapshotId) && (
         <>
-          {showStats && <ImrDashboardStats activeFilter={statsFilter} onFilterChange={handleStatsFilterChange} />}
+          {showStats && <ImrDashboardStats activeFilter={statsFilter} onFilterChange={handleStatsFilterChange} refreshKey={refreshKey} />}
 
           <div className="mb-3 bg-card rounded-lg border border-border p-3">
             <div className="flex flex-wrap gap-4 items-center">
@@ -262,6 +263,7 @@ export default function ImplementationPlanPage() {
               onEditItem={selectedSnapshotId ? undefined : handleEditItem}
               readOnly={!!selectedSnapshotId}
               filters={viewMode === "grouped" ? { ...filter, module_group: activeTab === "All" ? undefined : activeTab, snapshot_id: selectedSnapshotId || undefined } : { ...filter, snapshot_id: selectedSnapshotId || undefined }}
+              refreshKey={refreshKey}
             />
           </div>
         </>

@@ -7,6 +7,7 @@ import UserMenu from "@/components/UserMenu"
 import OrgSelector from "@/components/OrgSelector"
 import AlertBell from "@/components/AlertBell"
 import {
+  LayoutDashboard,
   FolderKanban,
   Boxes,
   BookMarked,
@@ -40,7 +41,7 @@ function getNavSections(t: (key: string) => string): NavSection[] {
     {
       key: "eits",
       items: [
-        // { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard }, // hidden
+        { path: "/", label: t("nav.dashboard"), icon: LayoutDashboard },
         { path: "/processes", label: t("nav.businessProcesses"), icon: FolderKanban },
         { path: "/assets", label: t("nav.assets"), icon: Boxes },
         // { path: "/targets", label: t("nav.targets"), icon: Target }, // hidden

@@ -10,6 +10,11 @@ from app.models import (
     ProtectionNeedSummary, EitsCatalogMeasure
 )
 from app.models.eits_catalog_measure import EitsCatalogMeasure
+from app.models.bp_module_mapping import BusinessProcessModuleMapping
+from app.models.business_process import BusinessProcess
+from app.models.process_asset import ProcessAsset
+from app.models.asset_module_mapping import AssetModuleMapping
+from app.models.asset import Asset
 
 
 class ImrService:
@@ -379,7 +384,7 @@ class ImrService:
         ws = wb.active
         ws.title = "IMR"
 
-        headers = ["Kood", "Meede", "Staatus", "Prioriteet", "Tähtaeg", "Vastutaja", "Profiil", "Tegevused (TODO)", "Maksumus (EUR)", "Kirjeldus", "Verifitseerimine", "Järgmine ülevaade"]
+        headers = ["Kood", "Meede", "Staatus", "Prioriteet", "Tähtaeg", "Vastutaja", "Profiil", "Tegevused (TODO)", "Maksumus (EUR)", "Kirjeldus", "Verifitseerimine", "Järgmine ülevaade", "Äriprotsessid", "Varad"]
         header_font = Font(bold=True, color="FFFFFF")
         header_fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")
         header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -407,6 +412,58 @@ class ImrService:
             if not profile and measure:
                 profile = "PÕHIMEEDE" if measure.measure_level == "BASE" else "PIIRATULT"
 
+            # Resolve business process names
+            bp_name_set: set[str] = set()
+            if item.bp_module_mapping_id:
+                bp_mapping = db.query(BusinessProcessModuleMapping).filter(
+                    BusinessProcessModuleMapping.id == item.bp_module_mapping_id
+                ).first()
+                if bp_mapping:
+                    bp = db.query(BusinessProcess).filter(BusinessProcess.id == bp_mapping.business_process_id).first()
+                    if bp and bp.name:
+                        bp_name_set.add(bp.name)
+
+            if item.asset_module_mapping_id:
+                am_mapping = db.query(AssetModuleMapping).filter(
+                    AssetModuleMapping.id == item.asset_module_mapping_id
+                ).first()
+                if am_mapping:
+                    process_assets = db.query(ProcessAsset).filter(
+                        ProcessAsset.asset_id == am_mapping.asset_id
+                    ).all()
+                    for pa in process_assets:
+                        bp = db.query(BusinessProcess).filter(BusinessProcess.id == pa.business_process_id).first()
+                        if bp and bp.name:
+                            bp_name_set.add(bp.name)
+
+            bp_names = ", ".join(sorted(bp_name_set))
+
+            # Resolve asset names
+            asset_name_set: set[str] = set()
+            if item.asset_module_mapping_id:
+                am_mapping = db.query(AssetModuleMapping).filter(
+                    AssetModuleMapping.id == item.asset_module_mapping_id
+                ).first()
+                if am_mapping:
+                    asset = db.query(Asset).filter(Asset.id == am_mapping.asset_id).first()
+                    if asset and asset.name:
+                        asset_name_set.add(asset.name)
+
+            if item.bp_module_mapping_id:
+                bp_mapping = db.query(BusinessProcessModuleMapping).filter(
+                    BusinessProcessModuleMapping.id == item.bp_module_mapping_id
+                ).first()
+                if bp_mapping:
+                    process_assets = db.query(ProcessAsset).filter(
+                        ProcessAsset.business_process_id == bp_mapping.business_process_id
+                    ).all()
+                    for pa in process_assets:
+                        asset = db.query(Asset).filter(Asset.id == pa.asset_id).first()
+                        if asset and asset.name:
+                            asset_name_set.add(asset.name)
+
+            asset_names = ", ".join(sorted(asset_name_set))
+
             row_data = [
                 measure.code if measure else "",
                 measure.name if measure else "",
@@ -420,6 +477,8 @@ class ImrService:
                 item.implementation_description or "",
                 item.verification_method or "",
                 str(item.next_review_date) if item.next_review_date else "",
+                bp_names,
+                asset_names,
             ]
 
             for col_idx, value in enumerate(row_data, 1):
@@ -439,6 +498,8 @@ class ImrService:
         ws.column_dimensions["J"].width = 50
         ws.column_dimensions["K"].width = 30
         ws.column_dimensions["L"].width = 16
+        ws.column_dimensions["M"].width = 40
+        ws.column_dimensions["N"].width = 40
 
         from io import BytesIO
         buffer = BytesIO()
