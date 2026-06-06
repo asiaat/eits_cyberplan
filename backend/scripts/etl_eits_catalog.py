@@ -23,7 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pandas as pd
-import requests
+import httpx
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -116,7 +116,7 @@ def parse_args() -> argparse.Namespace:
 
 def download_file(url: str) -> tuple[bytes, str]:
     logger.info("Downloading: %s", url)
-    response = requests.get(url, timeout=120)
+    response = httpx.get(url, timeout=120)
     response.raise_for_status()
     content = response.content
     file_hash = hashlib.sha256(content).hexdigest()
@@ -443,7 +443,7 @@ def main() -> int:
             file_hash = "local:" + args.local_file
         else:
             content, file_hash = download_file(source_url)
-    except requests.RequestException as e:
+    except httpx.RequestException as e:
         logger.error("Download failed: %s", e)
         return 1
     except Exception as e:
