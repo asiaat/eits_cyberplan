@@ -150,7 +150,6 @@ def create_worker(db: DB, request: CreateWorkerRequest, current_user: LocalUser 
     if not existing_asset:
         asset = Asset(
             name=person.name,
-            email=person.email,
             description=request.role,
             tenant_id=tenant_id,
             asset_type="person",
@@ -169,7 +168,7 @@ def create_worker(db: DB, request: CreateWorkerRequest, current_user: LocalUser 
     return {
         "id": str(asset.id),
         "name": asset.name,
-        "email": asset.email,
+        "email": person.email,
         "description": asset.description,
         "person_id": str(person.id),
         "linked": True
