@@ -11,9 +11,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY backend /app/backend/
 
 RUN rm -rf .venv && \
-    pip install --upgrade pip && \
-    pip install uv && \
+    pip install --upgrade pip --no-cache-dir && \
+    pip install uv --no-cache-dir && \
     uv sync --no-dev
+
+RUN addgroup --system --gid 1001 appgroup && \
+    adduser --system --uid 1001 --ingroup appgroup appuser && \
+    chown -R appuser:appgroup /app
+
+USER appuser
 
 EXPOSE 8000
 

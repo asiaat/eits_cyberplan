@@ -1,4 +1,4 @@
-.PHONY: help setup dev backend-install frontend-install migrate migration seed test test-backend test-frontend lint format typecheck quality openapi down clean
+.PHONY: help setup dev backend-install frontend-install migrate migration seed test test-backend test-frontend lint format typecheck quality openapi down clean prod-build prod-up prod-down prod-logs deploy
 
 help:
 	@echo "E-ITS Management System - Makefile"
@@ -21,6 +21,11 @@ help:
 	@echo "  openapi            - Export OpenAPI JSON"
 	@echo "  down               - Stop all services"
 	@echo "  clean              - Remove generated files"
+	@echo "  prod-build         - Build production images"
+	@echo "  prod-up            - Start production stack"
+	@echo "  prod-down          - Stop production stack"
+	@echo "  prod-logs          - View production logs"
+	@echo "  deploy             - Run full deploy script on current machine"
 
 setup: backend-install frontend-install
 	@cp -n .env.example .env 2>/dev/null || true
@@ -79,6 +84,21 @@ openapi:
 
 down:
 	docker compose down
+
+prod-build:
+	docker compose -f deploy/docker-compose.yml build
+
+prod-up:
+	docker compose -f deploy/docker-compose.yml up -d
+
+prod-down:
+	docker compose -f deploy/docker-compose.yml down
+
+prod-logs:
+	docker compose -f deploy/docker-compose.yml logs -f
+
+deploy:
+	bash deploy/deploy.sh
 
 clean:
 	rm -rf .venv __pycache__ backend/__pycache__ backend/app/__pycache__
