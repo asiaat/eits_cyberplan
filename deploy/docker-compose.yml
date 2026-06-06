@@ -86,8 +86,7 @@ services:
     container_name: eits_nginx
     ports:
       - "${HTTP_PORT:-5071}:80"
-      # Uncomment when TLS is configured (domain + certificates):
-      # - "${HTTPS_PORT:-5471}:443"
+      - "${HTTPS_PORT:-5471}:443"
     depends_on:
       - backend
     restart: unless-stopped

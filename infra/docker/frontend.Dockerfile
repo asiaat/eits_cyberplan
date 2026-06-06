@@ -11,6 +11,10 @@ RUN pnpm build
 
 # Stage 2: Serve with nginx
 FROM nginx:stable-alpine
+RUN apk add --no-cache openssl
 COPY --from=builder /build/dist /usr/share/nginx/html
 COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+COPY infra/docker/nginx-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
 EXPOSE 80 443
+ENTRYPOINT ["/docker-entrypoint.sh"]
