@@ -238,9 +238,8 @@ def create_user_from_worker(asset_id: UUID, db: DB, request: CreateUserFromAsset
     
     user = User(
         email=person.email,
-        full_name=person.name,
-        password_hash=get_password_hash(password),
-        tenant_id=tenant_id,
+        name=person.name,
+        hashed_password=get_password_hash(password),
         is_active=True
     )
     db.add(user)
@@ -355,7 +354,8 @@ def create_organization_user(db: DB, request: CreateUserRequest, current_user: L
 
     membership = Membership(
         user_id=user.id,
-        tenant_id=tenant_id
+        tenant_id=tenant_id,
+        role_id="infoturbejuht"
     )
     db.add(membership)
     db.commit()
