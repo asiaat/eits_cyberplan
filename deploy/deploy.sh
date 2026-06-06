@@ -161,7 +161,7 @@ for i in $(seq 1 60); do
         if docker volume inspect eits_postgres_data &>/dev/null; then
             POSTGRES_PASSWORD=$(grep -m1 "^POSTGRES_PASSWORD=" "$APP_DIR/.env" | cut -d= -f2)
             if docker compose $COMPOSE_OPTS exec -T postgres \
-                psql -U eits -d eits -c "SELECT 1" &>/dev/null; then
+                sh -c "PGPASSWORD='$POSTGRES_PASSWORD' psql -h localhost -U eits -d eits -c 'SELECT 1'" &>/dev/null; then
                 warn "Postgres password is correct — backend has a different issue. Check logs:"
                 warn "  docker compose -f $COMPOSE_FILE logs backend"
             else
