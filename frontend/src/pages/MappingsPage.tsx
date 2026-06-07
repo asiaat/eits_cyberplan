@@ -961,9 +961,15 @@ childEntries.forEach(({ rel, childId, childName, childType }) => {
                         )}
                       </div>
                       {asset.linked_processes && asset.linked_processes.length > 0 && (
-                        <Badge variant="outline" className="text-xs shrink-0">
-                          {asset.linked_processes.length} BP
-                        </Badge>
+                        asset.linked_processes.length === 1 ? (
+                          <span className="text-xs text-muted-foreground shrink-0 max-w-[180px] truncate" title={asset.linked_processes[0].name}>
+                            {asset.linked_processes[0].name}
+                          </span>
+                        ) : (
+                          <Badge variant="outline" className="text-xs shrink-0">
+                            {asset.linked_processes.length} BP
+                          </Badge>
+                        )
                       )}
                     </label>
                   ))
