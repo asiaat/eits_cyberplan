@@ -29,6 +29,8 @@ from app.schemas.asset import (
     AssetUpdate,
     AssetResponse,
     AssetListItem,
+    AssetBulkUpdate,
+    AssetBulkUpdateResponse,
     LinkedProcessInfo,
 )
 from app.core.audit import log_audit as audit_log
@@ -467,6 +469,89 @@ def import_assets_csv(
         entity_id=str(uuid.uuid4()),
         after_json=result.model_dump(),
     )
+
+    return result
+
+
+@router.patch("/bulk", response_model=AssetBulkUpdateResponse)
+def bulk_update_assets_v2(
+    db: DB,
+    current_user: LocalUser = CurrentUserV2,
+    data: AssetBulkUpdate = None,
+):
+    """Bulk update multiple assets. Updates common fields and process links."""
+    if data is None:
+        raise HTTPException(status_code=400, detail="Request body required")
+
+    if not data.asset_ids:
+        raise HTTPException(status_code=400, detail="asset_ids is required")
+
+    result = AssetBulkUpdateResponse()
+
+    for asset_id in data.asset_ids:
+        try:
+            asset = db.query(Asset).filter(
+                Asset.id == asset_id,
+                Asset.tenant_id == current_user.tenant_id,
+            ).first()
+
+            if not asset:
+                result.failed += 1
+                result.errors.append({"asset_id": str(asset_id), "message": "Asset not found"})
+                continue
+
+            # Apply field updates
+            update_data = data.updates.model_dump(exclude_unset=True, exclude_none=True)
+            enum_fields = ("asset_type", "criticality", "confidentiality_need", "integrity_need", "availability_need", "lifecycle_status")
+
+            for field, value in update_data.items():
+                if field in enum_fields and hasattr(value, 'value'):
+                    value = value.value
+                if hasattr(asset, field):
+                    setattr(asset, field, value)
+
+            # Add process links
+            if data.add_process_ids:
+                for pid in data.add_process_ids:
+                    existing = db.query(ProcessAsset).filter(
+                        ProcessAsset.business_process_id == pid,
+                        ProcessAsset.asset_id == asset_id,
+                    ).first()
+                    if not existing:
+                        link = ProcessAsset(
+                            tenant_id=current_user.tenant_id,
+                            business_process_id=pid,
+                            asset_id=asset_id,
+                        )
+                        db.add(link)
+
+            # Remove process links
+            if data.remove_process_ids:
+                for pid in data.remove_process_ids:
+                    link = db.query(ProcessAsset).filter(
+                        ProcessAsset.business_process_id == pid,
+                        ProcessAsset.asset_id == asset_id,
+                    ).first()
+                    if link:
+                        db.delete(link)
+
+            db.commit()
+
+            audit_log(
+                db=db,
+                tenant_id=str(current_user.tenant_id),
+                actor_user_id=str(current_user.global_user_id),
+                action="bulk_update",
+                entity_type="asset",
+                entity_id=str(asset_id),
+                after_json={"asset": asset.name, "field_count": len(update_data)},
+            )
+
+            result.updated += 1
+        except Exception as e:
+            db.rollback()
+            result.failed += 1
+            result.errors.append({"asset_id": str(asset_id), "message": str(e)})
 
     return result
 

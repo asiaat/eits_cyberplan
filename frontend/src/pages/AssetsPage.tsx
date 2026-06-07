@@ -125,7 +125,7 @@ export default function AssetsPage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<string>("")
   const [statusFilter, setStatusFilter] = useState<string>("")
-  const [viewMode, setViewMode] = useState<"cards" | "list">("cards")
+  const [viewMode, setViewMode] = useState<"cards" | "list" | "bulk">("cards")
   const [sorting, setSorting] = useState<SortingState>([])
   const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -182,6 +182,17 @@ export default function AssetsPage() {
   } | null>(null)
   const [showImportResult, setShowImportResult] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Multi-select bulk edit state
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<string>>(new Set())
+  const [showBulkEdit, setShowBulkEdit] = useState(false)
+  const [bulkUpdating, setBulkUpdating] = useState(false)
+  const [bulkEditFormData, setBulkEditFormData] = useState({
+    asset_type: "",
+    criticality: "",
+    owner_user_id: "",
+  })
+  const [bulkEditProcessIds, setBulkEditProcessIds] = useState<string[]>([])
 
   const table = useReactTable({
     data: assets,
@@ -831,9 +842,228 @@ export default function AssetsPage() {
     return assets.find(a => a.id === editingId) || null
   }
 
-  const filteredAssets = assets.filter((a) =>
-    a.name.toLowerCase().includes(search.toLowerCase())
+  // Multi-select handlers
+  const handleToggleSelect = (id: string) => {
+    setSelectedAssetIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleSelectAll = () => {
+    if (selectedAssetIds.size === filteredAssets.length && filteredAssets.length > 0) {
+      setSelectedAssetIds(new Set())
+    } else {
+      setSelectedAssetIds(new Set(filteredAssets.map(a => a.id)))
+    }
+  }
+
+  const handleClearSelection = () => {
+    setSelectedAssetIds(new Set())
+  }
+
+  const bulkUpdateAssets = async () => {
+    if (!selectedOrgIdRef.current || selectedAssetIds.size === 0) return
+    setBulkUpdating(true)
+    try {
+      const updates: Record<string, string> = {}
+      if (bulkEditFormData.asset_type) updates.asset_type = bulkEditFormData.asset_type
+      if (bulkEditFormData.criticality) updates.criticality = bulkEditFormData.criticality
+      if (bulkEditFormData.owner_user_id) updates.owner_user_id = bulkEditFormData.owner_user_id
+
+      const payload: Record<string, any> = {
+        asset_ids: Array.from(selectedAssetIds),
+        updates,
+      }
+      if (bulkEditProcessIds.length > 0) {
+        payload.add_process_ids = bulkEditProcessIds
+      }
+
+      await apiClient.patch("/assets/bulk", payload)
+      setShowBulkEdit(false)
+      handleClearSelection()
+      setBulkEditFormData({ asset_type: "", criticality: "", owner_user_id: "" })
+      setBulkEditProcessIds([])
+      fetchAssets()
+    } catch (err: any) {
+      setErrorDialog({ open: true, message: err.response?.data?.detail || "Bulk update failed" })
+    } finally {
+      setBulkUpdating(false)
+    }
+  }
+
+  const filteredAssets = useMemo(() =>
+    assets.filter((a) => a.name.toLowerCase().includes(search.toLowerCase())),
+    [assets, search]
   )
+
+  const selectedAssets = useMemo(
+    () => filteredAssets.filter(a => selectedAssetIds.has(a.id)),
+    [filteredAssets, selectedAssetIds]
+  )
+
+  const bulkColumns = useMemo(() => [
+    {
+      id: "select",
+      header: () => (
+        <input
+          type="checkbox"
+          checked={selectedAssetIds.size > 0 && selectedAssetIds.size === filteredAssets.length}
+          onChange={() => handleSelectAll()}
+          className="rounded border-input"
+        />
+      ),
+      cell: ({ row }: any) => (
+        <input
+          type="checkbox"
+          checked={selectedAssetIds.has(row.original.id)}
+          onChange={() => handleToggleSelect(row.original.id)}
+          className="rounded border-input"
+        />
+      ),
+    },
+    {
+      accessorKey: "name",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("common.name")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => <span className="font-medium">{row.getValue("name")}</span>,
+    },
+    {
+      accessorKey: "asset_type",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("assets.type")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => (
+        <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900 dark:text-purple-200">
+          {t(`assets.types.${row.getValue("asset_type")}`) || row.getValue("asset_type")}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "criticality",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("assets.criticality")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const crit = row.getValue("criticality") as string
+        return (
+          <Badge variant="outline" className={criticalityColors[crit] || criticalityColors.normal}>
+            {t(`assets.criticalityLevels.${crit}`) || crit}
+          </Badge>
+        )
+      },
+    },
+    {
+      id: "owner",
+      accessorFn: (row: any) => row.owner?.name || "",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("assets.owner")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const owner = row.original.owner as OwnerInfo | null
+        return owner?.name || "-"
+      },
+    },
+    {
+      accessorKey: "linked_process_count",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("assets.linkedProcesses")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const count = row.getValue("linked_process_count") as number
+        const processes = row.original.linked_processes as LinkedProcess[] | undefined
+        if (count === 1 && processes?.[0]) {
+          return (
+            <span className="text-sm max-w-[200px] truncate block" title={processes[0].name}>
+              {processes[0].name}
+            </span>
+          )
+        }
+        return (
+          <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900 dark:text-blue-200">
+            {count}
+          </Badge>
+        )
+      },
+    },
+  ], [t, selectedAssetIds, filteredAssets])
+
+  const bulkTable = useReactTable({
+    data: filteredAssets,
+    columns: bulkColumns,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    state: { sorting },
+    onSortingChange: setSorting,
+  })
 
   const assetTypes = [
     { value: "information_asset", label: t("assets.types.information_asset") },
@@ -976,7 +1206,7 @@ export default function AssetsPage() {
           <Button
             variant={viewMode === "cards" ? "default" : "ghost"}
             size="sm"
-            onClick={() => setViewMode("cards")}
+            onClick={() => { setViewMode("cards"); handleClearSelection(); }}
             className="rounded-r-none"
           >
             <LayoutGrid className="h-4 w-4" />
@@ -984,13 +1214,56 @@ export default function AssetsPage() {
           <Button
             variant={viewMode === "list" ? "default" : "ghost"}
             size="sm"
-            onClick={() => setViewMode("list")}
+            onClick={() => { setViewMode("list"); handleClearSelection(); }}
+            className="rounded-none border-x"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === "bulk" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("bulk")}
             className="rounded-l-none"
           >
             <List className="h-4 w-4" />
           </Button>
         </div>
       </div>
+
+      {selectedAssetIds.size > 0 && viewMode === "bulk" && (
+        <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
+          <span className="text-sm font-medium">
+            {t("assets.selectedCount", { count: selectedAssetIds.size })}
+          </span>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => setShowBulkEdit(true)}>
+              {t("assets.bulkEdit")}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={handleClearSelection}>
+              {t("common.selectNone")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {selectedAssetIds.size > 0 && viewMode === "bulk" && (
+        <div className="flex flex-wrap gap-2">
+          {selectedAssets.map(asset => (
+            <span
+              key={asset.id}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1.5 text-sm font-medium"
+            >
+              {asset.name}
+              <button
+                onClick={() => handleToggleSelect(asset.id)}
+                className="rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {filteredAssets.length === 0 && !error && (
         <Card>
@@ -1003,10 +1276,14 @@ export default function AssetsPage() {
       {filteredAssets.length > 0 && viewMode === "cards" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredAssets.map((asset) => (
-            <Card key={asset.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleEdit(asset)}>
+            <Card
+              key={asset.id}
+              className="hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => handleEdit(asset)}
+            >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1">
+                  <div className="space-y-1">
                     <CardTitle className="text-xl">{asset.name}</CardTitle>
                     <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900 dark:text-purple-200 text-base">
                       {t(`assets.types.${asset.asset_type}`) || asset.asset_type}
@@ -1171,6 +1448,40 @@ export default function AssetsPage() {
                   key={row.id} 
                   className="border-t hover:bg-muted/50 cursor-pointer"
                   onClick={() => handleEdit(row.original)}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td key={cell.id} className="px-4 py-3 text-sm">
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {filteredAssets.length > 0 && viewMode === "bulk" && (
+        <div className="border rounded-md overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-muted">
+              {bulkTable.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th key={header.id} className="px-4 py-3 text-left text-sm font-medium">
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {bulkTable.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  className={`border-t hover:bg-muted/50 ${selectedAssetIds.has(row.original.id) ? "bg-primary/5" : ""}`}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3 text-sm">
@@ -1770,6 +2081,104 @@ export default function AssetsPage() {
           <DialogFooter>
             <Button onClick={() => setShowImportResult(false)}>
               OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Edit Dialog */}
+      <Dialog open={showBulkEdit} onOpenChange={setShowBulkEdit}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{t("assets.bulkEditTitle")}</DialogTitle>
+            <DialogDescription>
+              {t("assets.bulkEditDesc", { count: selectedAssetIds.size })}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">{t("assets.type")}</label>
+              <select
+                value={bulkEditFormData.asset_type}
+                onChange={(e) => setBulkEditFormData(prev => ({ ...prev, asset_type: e.target.value }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+              >
+                <option value="">— {t("common.noChange") || "No change"} —</option>
+                {assetTypes.map((type) => (
+                  <option key={type.value} value={type.value}>{type.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">{t("assets.criticality")}</label>
+              <select
+                value={bulkEditFormData.criticality}
+                onChange={(e) => setBulkEditFormData(prev => ({ ...prev, criticality: e.target.value }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+              >
+                <option value="">— {t("common.noChange") || "No change"} —</option>
+                {criticalityLevels.map((level) => (
+                  <option key={level.value} value={level.value}>{level.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">{t("assets.owner")}</label>
+              <select
+                value={bulkEditFormData.owner_user_id}
+                onChange={(e) => setBulkEditFormData(prev => ({ ...prev, owner_user_id: e.target.value }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+              >
+                <option value="">— {t("common.noChange") || "No change"} —</option>
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="border rounded-md p-3">
+              <label className="text-sm font-medium block mb-2">{t("assets.linkedProcessesSection")}</label>
+              <Input
+                placeholder={t("assets.searchProcesses") || "Search processes..."}
+                value={processSearch}
+                onChange={(e) => setProcessSearch(e.target.value)}
+                className="h-9 mb-2"
+              />
+              <div className="max-h-40 overflow-y-auto space-y-1">
+                {filteredProcesses.length > 0 ? (
+                  filteredProcesses.map((proc) => (
+                    <label key={proc.id} className="flex items-center gap-2 cursor-pointer text-sm py-1">
+                      <input
+                        type="checkbox"
+                        checked={bulkEditProcessIds.includes(proc.id)}
+                        onChange={() => {
+                          setBulkEditProcessIds(prev =>
+                            prev.includes(proc.id)
+                              ? prev.filter(id => id !== proc.id)
+                              : [...prev, proc.id]
+                          )
+                        }}
+                        className="rounded border-input"
+                      />
+                      <span>{proc.name}</span>
+                      <Badge variant="outline" className={`${statusColors[proc.status]} text-xs ml-auto`}>
+                        {t(`common.${proc.status}`) || proc.status}
+                      </Badge>
+                    </label>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-2">{t("common.noData")}</p>
+                )}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkEdit(false)} disabled={bulkUpdating}>
+              {t("common.cancel")}
+            </Button>
+            <Button onClick={bulkUpdateAssets} disabled={bulkUpdating}>
+              {bulkUpdating ? t("common.saving") : t("assets.applyBulkEdit", { count: selectedAssetIds.size })}
             </Button>
           </DialogFooter>
         </DialogContent>
