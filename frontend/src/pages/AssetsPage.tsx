@@ -969,6 +969,33 @@ export default function AssetsPage() {
       ),
     },
     {
+      accessorKey: "lifecycle_status",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("common.status")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const status = row.getValue("lifecycle_status") as string
+        return (
+          <Badge variant="outline" className={statusColors[status] || statusColors.inactive}>
+            {t(`assets.statusLevels.${status}`) || status}
+          </Badge>
+        )
+      },
+    },
+    {
       accessorKey: "criticality",
       header: ({ column }: any) => (
         <Button
@@ -992,6 +1019,42 @@ export default function AssetsPage() {
           <Badge variant="outline" className={criticalityColors[crit] || criticalityColors.normal}>
             {t(`assets.criticalityLevels.${crit}`) || crit}
           </Badge>
+        )
+      },
+    },
+    {
+      id: "protection",
+      accessorFn: (row: any) => `${row.confidentiality_need}${row.integrity_need}${row.availability_need}`,
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("assets.protection")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const asset = row.original
+        return (
+          <div className="flex gap-1">
+            <Badge variant="outline" className={`${protectionNeedColors[asset.confidentiality_need]} text-xs`}>
+              C:{t(`protectionNeed.${asset.confidentiality_need}`)?.charAt(0) || asset.confidentiality_need?.charAt(0)}
+            </Badge>
+            <Badge variant="outline" className={`${protectionNeedColors[asset.integrity_need]} text-xs`}>
+              I:{t(`protectionNeed.${asset.integrity_need}`)?.charAt(0) || asset.integrity_need?.charAt(0)}
+            </Badge>
+            <Badge variant="outline" className={`${protectionNeedColors[asset.availability_need]} text-xs`}>
+              A:{t(`protectionNeed.${asset.availability_need}`)?.charAt(0) || asset.availability_need?.charAt(0)}
+            </Badge>
+          </div>
         )
       },
     },
@@ -1051,6 +1114,35 @@ export default function AssetsPage() {
           <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900 dark:text-blue-200">
             {count}
           </Badge>
+        )
+      },
+    },
+    {
+      accessorKey: "module_mapping_count",
+      header: ({ column }: any) => (
+        <Button
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          className="-ml-4 h-8"
+        >
+          {t("assets.modules")}
+          {column.getIsSorted() === "asc" ? (
+            <ArrowUp className="ml-2 h-4 w-4" />
+          ) : column.getIsSorted() === "desc" ? (
+            <ArrowDown className="ml-2 h-4 w-4" />
+          ) : (
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          )}
+        </Button>
+      ),
+      cell: ({ row }: any) => {
+        const count = row.original.module_mapping_count as number
+        return count > 0 ? (
+          <Badge variant="outline" className="bg-purple-50 dark:bg-purple-900 dark:text-purple-200">
+            {count}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-sm">-</span>
         )
       },
     },
