@@ -364,6 +364,14 @@ export default function AssetsPage() {
         ),
         cell: ({ row }: any) => {
           const count = row.getValue("linked_process_count") as number
+          const processes = row.original.linked_processes as LinkedProcess[] | undefined
+          if (count === 1 && processes?.[0]) {
+            return (
+              <span className="text-sm max-w-[200px] truncate block" title={processes[0].name}>
+                {processes[0].name}
+              </span>
+            )
+          }
           return (
             <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900 dark:text-blue-200">
               {count}
@@ -833,6 +841,7 @@ export default function AssetsPage() {
     { value: "hardware", label: t("assets.types.hardware") },
     { value: "service", label: t("assets.types.service") },
     { value: "data", label: t("assets.types.data") },
+    { value: "competence", label: t("assets.types.competence") },
     { value: "other", label: t("assets.types.other") },
   ]
 
@@ -1057,20 +1066,42 @@ export default function AssetsPage() {
                   )}
 
                   {asset.linked_process_count > 0 ? (
-                    <div className="border-t pt-2 mt-2">
-                      <button
-                        onClick={() => toggleExpanded(asset.id)}
-                        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        {expandedCards[asset.id] ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                        <span>{asset.linked_process_count} {t("assets.linkedProcesses")}</span>
-                      </button>
-                      {expandedCards[asset.id] && (
-                        <div className="mt-2 space-y-1 pl-5">
+                    asset.linked_process_count === 1 && asset.linked_processes?.[0] ? (
+                      <div className="border-t pt-2 mt-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1">
+                            {asset.linked_processes[0].name}
+                            <Badge variant="outline" className={`${statusColors[asset.linked_processes[0].status]} text-xs`}>
+                              {t(`common.${asset.linked_processes[0].status}`) || asset.linked_processes[0].status}
+                            </Badge>
+                          </span>
+                          {asset.can_manage_links && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleUnlinkProcess(asset.id, asset.linked_processes[0].id)}
+                              className="text-destructive hover:text-destructive h-6 px-1"
+                            >
+                              <Unlink className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border-t pt-2 mt-2">
+                        <button
+                          onClick={() => toggleExpanded(asset.id)}
+                          className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          {expandedCards[asset.id] ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                          <span>{asset.linked_process_count} {t("assets.linkedProcesses")}</span>
+                        </button>
+                        {expandedCards[asset.id] && (
+                          <div className="mt-2 space-y-1 pl-5">
 {asset.linked_processes.map((proc) => (
                              <div key={proc.id} className="flex items-center justify-between text-sm">
                                <span className="flex items-center gap-1">
@@ -1091,11 +1122,10 @@ export default function AssetsPage() {
                                )}
                              </div>
                            ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
+                          </div>
+                        )}
+                      </div>
+                    )) : (<p className="text-sm text-muted-foreground">
                       {t("assets.noLinkedProcesses")}
                     </p>
                   )}

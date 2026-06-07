@@ -13,6 +13,7 @@ class AssetType(str, Enum):
     HARDWARE = "hardware"
     SERVICE = "service"
     DATA = "data"
+    COMPETENCE = "competence"
     OTHER = "other"
 
 
@@ -151,12 +152,12 @@ class AssetListItem(BaseModel):
     id: UUID
     tenant_id: UUID
     name: str
-    asset_type: AssetType
-    criticality: Criticality
-    confidentiality_need: ProtectionNeedLevel
-    integrity_need: ProtectionNeedLevel
-    availability_need: ProtectionNeedLevel
-    lifecycle_status: LifecycleStatus
+    asset_type: str
+    criticality: str
+    confidentiality_need: str
+    integrity_need: str
+    availability_need: str
+    lifecycle_status: str
     owner_user_id: Optional[UUID] = None
     person_id: Optional[UUID] = None
     owner: Optional[OwnerInfo] = None
@@ -164,6 +165,8 @@ class AssetListItem(BaseModel):
     linked_processes: list[LinkedProcessInfo] = []
     can_manage_links: bool = False
     created_at: datetime
+    updated_at: Optional[datetime] = None
+    remarks: Optional[str] = None
     is_grouped: bool = False
     quantity: int = 1
     group_name: Optional[str] = None

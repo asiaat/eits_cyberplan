@@ -228,6 +228,11 @@ def list_assets_v2(
             linked_processes=linked_processes,
             can_manage_links=can_manage,
             created_at=asset.created_at,
+            updated_at=asset.updated_at,
+            remarks=asset.remarks,
+            is_grouped=asset.is_grouped,
+            quantity=asset.quantity,
+            group_name=asset.group_name,
             module_mapping_count=mapping_count,
         )
         result.append(item)
@@ -360,7 +365,7 @@ def import_assets_csv(
             result.errors.append({"row": row_idx, "message": "Missing required fields 'name' and 'asset_type'"})
             continue
 
-        valid_asset_types = {"information_asset", "software", "hardware", "service", "data", "other", "APP", "SYS", "NET", "INF", "IND"}
+        valid_asset_types = {"information_asset", "software", "hardware", "service", "data", "competence", "other", "APP", "SYS", "NET", "INF", "IND"}
         valid_criticality = {"low", "normal", "high", "critical"}
         valid_protection = {"normal", "high", "very_high", "unknown"}
         valid_lifecycle = {"active", "inactive", "deprecated", "retired"}

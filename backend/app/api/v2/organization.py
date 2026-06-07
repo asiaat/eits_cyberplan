@@ -12,6 +12,7 @@ from app.models.local_user import LocalUser
 from app.models.asset import Asset
 from app.models.user import User
 from app.models.role import Role
+from app.models.person import Person
 
 router = APIRouter()
 
@@ -29,8 +30,12 @@ class PersonAssetResponse(BaseModel):
 
 
 class CreateWorkerRequest(BaseModel):
-    person_id: str
+    person_id: Optional[str] = None
     role: Optional[str] = None
+
+
+class CreateUserFromAssetRequest(BaseModel):
+    password: Optional[str] = None
 
 
 def get_tenant_id(current_user: LocalUser, x_tenant_id: Optional[str] = None) -> str:
@@ -46,25 +51,28 @@ def list_people(db: DB, current_user: LocalUser = CurrentUserV2, x_tenant_id: Op
 
     assets = db.query(Asset).options(
         selectinload(Asset.owner_user),
+        selectinload(Asset.person),
     ).filter(
         Asset.tenant_id == tenant_id,
-        Asset.asset_type == "person"
+        Asset.asset_type == "competence"
     ).all()
 
     results = []
     for asset in assets:
         has_user = bool(asset.owner_user_id)
         user_roles = []
-        
+
         if asset.owner_user_id:
             user = db.query(User).filter(User.id == asset.owner_user_id).first()
             if user and hasattr(user, 'roles') and user.roles:
                 user_roles = [{"id": str(r.id), "code": r.code, "name": r.name} for r in user.roles]
 
+        person_email = asset.person.email if asset.person else None
+
         results.append(PersonAssetResponse(
             id=str(asset.id),
             name=asset.name,
-            email=asset.email,
+            email=person_email,
             description=asset.description,
             owner_user_id=asset.owner_user_id,
             has_user_account=has_user,
@@ -90,7 +98,7 @@ def list_available_people(db: DB, current_user: LocalUser = CurrentUserV2, x_ten
 
     asset_person_ids = db.query(Asset.person_id).filter(
         Asset.tenant_id == tenant_id,
-        Asset.asset_type == "person",
+        Asset.asset_type == "competence",
         Asset.person_id.isnot(None)
     ).all()
     asset_person_ids = [a.person_id for a in asset_person_ids if a.person_id]
@@ -144,18 +152,16 @@ def create_worker(db: DB, request: CreateWorkerRequest, current_user: LocalUser 
     existing_asset = db.query(Asset).filter(
         Asset.person_id == person.id,
         Asset.tenant_id == tenant_id,
-        Asset.asset_type == "person"
+        Asset.asset_type == "competence"
     ).first()
 
     if not existing_asset:
         asset = Asset(
             name=person.name,
-            email=person.email,
             description=request.role,
             tenant_id=tenant_id,
-            asset_type="person",
+            asset_type="competence",
             person_id=person.id,
-            status="active"
         )
         db.add(asset)
         db.commit()
@@ -169,7 +175,7 @@ def create_worker(db: DB, request: CreateWorkerRequest, current_user: LocalUser 
     return {
         "id": str(asset.id),
         "name": asset.name,
-        "email": asset.email,
+        "email": person.email,
         "description": asset.description,
         "person_id": str(person.id),
         "linked": True
@@ -200,11 +206,12 @@ def unlink_worker(asset_id: UUID, db: DB, current_user: LocalUser = CurrentUserV
 
 
 @router.post("/people/{asset_id}/create-user", status_code=status.HTTP_201_CREATED)
-def create_user_from_worker(asset_id: UUID, db: DB, request: CreateWorkerRequest, current_user: LocalUser = CurrentUserV2, x_tenant_id: Optional[str] = None):
+def create_user_from_worker(asset_id: UUID, db: DB, request: CreateUserFromAssetRequest = None, current_user: LocalUser = CurrentUserV2, x_tenant_id: Optional[str] = None):
     """Create user from person asset."""
-    from app.models.person import Person
-    from app.core.security import get_password_hash
-    
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning(f"create_user_from_worker called: asset_id={asset_id}, request={request}")
+
     tenant_id = get_tenant_id(current_user, x_tenant_id)
 
     asset = db.query(Asset).filter(
@@ -213,42 +220,55 @@ def create_user_from_worker(asset_id: UUID, db: DB, request: CreateWorkerRequest
     ).first()
 
     if not asset:
+        logger.warning(f"Asset not found: {asset_id}")
         raise HTTPException(status_code=404, detail="Asset not found")
 
     if not asset.person_id:
+        logger.warning(f"Asset has no linked person: {asset_id}")
         raise HTTPException(status_code=400, detail="Asset has no linked person")
 
     person = db.query(Person).filter(Person.id == asset.person_id).first()
     if not person:
+        logger.warning(f"Person not found: {asset.person_id}")
         raise HTTPException(status_code=404, detail="Person not found")
 
-    if not person.email:
-        raise HTTPException(status_code=400, detail="Person has no email")
+    logger.warning(f"Person check: person.email='{person.email}', name='{person.name}'")
+    email_val = getattr(person, 'email', None) or ""
+    if not email_val or email_val.lower() in ("none", "null", ""):
+        logger.warning(f"Person has no valid email: {person.id}")
+        raise HTTPException(status_code=400, detail="Person has no email address. Please add email first.")
 
-    existing_user = db.query(User).filter(User.email == person.email).first()
+    existing_user = db.query(User).filter(User.email == email_val.strip()).first()
     if existing_user:
+        logger.warning(f"User already exists: {email_val}")
         raise HTTPException(status_code=400, detail="User with this email already exists")
 
-    password = request.role or "changeme123"
-    
+    password = request.password if request and request.password else "changeme123"
+
+    logger.warning(f"Creating user: email='{email_val.strip()}', name='{person.name}'")
     user = User(
-        email=person.email,
-        full_name=person.name,
-        password_hash=get_password_hash(password),
-        tenant_id=tenant_id,
+        email=email_val.strip(),
+        name=person.name,
+        hashed_password=get_password_hash(password),
         is_active=True
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+        logger.warning(f"User created successfully: {user.id}")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to create user: {e}")
+        raise HTTPException(status_code=400, detail=f"Failed to create user: {str(e)}")
     db.refresh(user)
 
-    asset.owner_user_id = str(user.id)
+    asset.owner_user_id = user.id
     db.commit()
 
     return {
         "id": str(user.id),
         "email": user.email,
-        "full_name": user.full_name
+        "name": user.name
     }
 
 
@@ -298,7 +318,7 @@ def list_organization_users(db: DB, current_user: LocalUser = CurrentUserV2, x_t
 
     owned_assets = db.query(Asset).filter(
         Asset.owner_user_id.in_([u.id for u in users]),
-        Asset.asset_type == "person"
+        Asset.asset_type == "competence"
     ).all()
     assets_by_owner = {a.owner_user_id: str(a.id) for a in owned_assets}
 
@@ -329,13 +349,18 @@ def list_organization_users(db: DB, current_user: LocalUser = CurrentUserV2, x_t
 @router.post("/users", response_model=UserWithRolesResponse, status_code=status.HTTP_201_CREATED)
 def create_organization_user(db: DB, request: CreateUserRequest, current_user: LocalUser = CurrentUserV2, x_tenant_id: Optional[str] = None):
     """Create a new CyberPlan user (optionally linked to an asset)."""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.warning(f"create_organization_user: email={request.email}, name={request.name}")
+
     from app.core.security import get_password_hash
     from app.models.membership import Membership
-    
+
     tenant_id = get_tenant_id(current_user, x_tenant_id)
 
     existing = db.query(User).filter(User.email == request.email).first()
     if existing:
+        logger.warning(f"Email already in use: {request.email}")
         raise HTTPException(status_code=400, detail="Email already in use")
 
     user = User(
@@ -347,13 +372,31 @@ def create_organization_user(db: DB, request: CreateUserRequest, current_user: L
     db.add(user)
     db.commit()
     db.refresh(user)
+    logger.warning(f"User created: {user.id}")
 
     membership = Membership(
         user_id=user.id,
-        tenant_id=tenant_id
+        tenant_id=tenant_id,
+        role_id="infoturbejuht"
     )
+
+    # Look up the role record to get its UUID for the FK
+    role = db.query(Role).filter(Role.code == "infoturbejuht").first()
+    logger.warning(f"Role lookup: code=infoturbejuht, found={role}")
+    if role:
+        membership.role_id = str(role.id)
+        logger.warning(f"Setting membership.role_id to {role.id}")
+    else:
+        logger.warning("Role not found, using code as role_id")
+
     db.add(membership)
-    db.commit()
+    try:
+        db.commit()
+        logger.warning(f"Membership created successfully")
+    except Exception as e:
+        logger.error(f"Membership creation failed: {e}")
+        db.rollback()
+        raise HTTPException(status_code=400, detail=f"Failed to create membership: {str(e)}")
     db.refresh(user)
 
     return UserWithRolesResponse(
