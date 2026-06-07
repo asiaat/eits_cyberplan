@@ -175,6 +175,21 @@ class AssetListItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AssetBulkUpdate(BaseModel):
+    """Schema for bulk updating multiple assets."""
+    asset_ids: list[UUID]
+    updates: AssetUpdate
+    add_process_ids: Optional[list[UUID]] = None
+    remove_process_ids: Optional[list[UUID]] = None
+
+
+class AssetBulkUpdateResponse(BaseModel):
+    """Schema for bulk update response."""
+    updated: int = 0
+    failed: int = 0
+    errors: list[dict] = Field(default_factory=list)
+
+
 class AssetLinkProcessRequest(BaseModel):
     """Schema for linking an asset to a business process."""
     pass

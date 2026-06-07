@@ -38,6 +38,7 @@ export const translations = {
       allDivisions: "All divisions",
       allTypes: "All types",
       unknownOrg: "Unknown Org",
+      noChange: "No change",
     },
     nav: {
       section: {
@@ -406,6 +407,11 @@ organization: {
       upstream: "Up",
       downstream: "Down",
       noRelations: "No relations defined yet. Click 'Add Relation' to create a dependency between this asset and another.",
+      selectedCount: "{{count}} selected",
+      bulkEdit: "Bulk Edit",
+      bulkEditTitle: "Bulk Edit Assets",
+      bulkEditDesc: "Edit {{count}} selected assets. Only filled fields will be updated.",
+      applyBulkEdit: "Apply to {{count}} assets",
     },
     targets: {
       title: "Targets",
@@ -886,6 +892,7 @@ organization: {
       allDivisions: "Kõik jaotised",
       allTypes: "Kõik tüübid",
       unknownOrg: "Tundmatu organisatsioon",
+      noChange: "Muutmata",
     },
     nav: {
       section: {
@@ -1251,6 +1258,11 @@ inactive: "Mitteaktiivne",
       upstream: "Üles",
       downstream: "Alla",
       noRelations: "Seoseid veel pole. Klõpsa 'Lisa seos' et luua sõltuvus selle vara ja teise vara vahel.",
+      selectedCount: "{{count}} valitud",
+      bulkEdit: "Hulgimuuda",
+      bulkEditTitle: "Muuda varasid",
+      bulkEditDesc: "Muuda {{count}} valitud vara. Täidetakse ainult täidetud väljad.",
+      applyBulkEdit: "Rakenda {{count}} varale",
     },
     targets: {
       title: "Sihtobjektid",
