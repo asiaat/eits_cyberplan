@@ -833,6 +833,7 @@ export default function AssetsPage() {
     { value: "hardware", label: t("assets.types.hardware") },
     { value: "service", label: t("assets.types.service") },
     { value: "data", label: t("assets.types.data") },
+    { value: "competence", label: t("assets.types.competence") },
     { value: "other", label: t("assets.types.other") },
   ]
 

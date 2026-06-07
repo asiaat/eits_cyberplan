@@ -48,6 +48,7 @@ class TestAssetsAPI:
             "hardware",
             "service",
             "data",
+            "competence",
             "other",
         ]
 
@@ -80,7 +81,7 @@ class TestAssetSchemaValidation:
         """Test that AssetType enum accepts valid values."""
         from app.schemas.asset import AssetType
 
-        valid_types = ["information_asset", "software", "hardware", "service", "data", "other"]
+        valid_types = ["information_asset", "software", "hardware", "service", "data", "competence", "other"]
         for asset_type in valid_types:
             assert AssetType(asset_type) is not None
             assert AssetType(asset_type).value == asset_type
@@ -323,10 +324,7 @@ class TestAssetListItemSchema:
 
     def test_asset_list_item_fields(self):
         """Test AssetListItem has correct fields for list display."""
-        from app.schemas.asset import (
-            AssetListItem, AssetType, Criticality,
-            LifecycleStatus, ProtectionNeedLevel, OwnerInfo
-        )
+        from app.schemas.asset import AssetListItem, OwnerInfo
         from datetime import datetime
         from uuid import uuid4
 
@@ -338,12 +336,12 @@ class TestAssetListItemSchema:
             id=uuid4(),
             tenant_id=uuid4(),
             name="List Item Asset",
-            asset_type=AssetType.SERVICE,
-            criticality=Criticality.HIGH,
-            confidentiality_need=ProtectionNeedLevel.NORMAL,
-            integrity_need=ProtectionNeedLevel.NORMAL,
-            availability_need=ProtectionNeedLevel.NORMAL,
-            lifecycle_status=LifecycleStatus.ACTIVE,
+            asset_type="service",
+            criticality="high",
+            confidentiality_need="normal",
+            integrity_need="normal",
+            availability_need="normal",
+            lifecycle_status="active",
             owner_user_id=owner_id,
             person_id=None,
             owner=owner,
@@ -352,7 +350,7 @@ class TestAssetListItemSchema:
         )
 
         assert item.name == "List Item Asset"
-        assert item.asset_type == AssetType.SERVICE
+        assert item.asset_type == "service"
         assert item.owner.name == "Test Owner"
         assert item.linked_process_count == 3
 
@@ -365,7 +363,7 @@ def test_assets_schema_summary():
     This test suite verifies:
 
     Schema Enums:
-    ✓ AssetType - 6 valid values (information_asset, software, hardware, service, data, other)
+    ✓ AssetType - 7 valid values (information_asset, software, hardware, service, data, competence, other)
     ✓ Criticality - 4 valid values (low, normal, high, critical)
     ✓ LifecycleStatus - 4 valid values (active, inactive, deprecated, retired)
     ✓ ProtectionNeedLevel - 4 valid values (normal, high, very_high, unknown)

@@ -54,7 +54,7 @@ def list_people(db: DB, current_user: LocalUser = CurrentUserV2, x_tenant_id: Op
         selectinload(Asset.person),
     ).filter(
         Asset.tenant_id == tenant_id,
-        Asset.asset_type == "person"
+        Asset.asset_type == "competence"
     ).all()
 
     results = []
@@ -98,7 +98,7 @@ def list_available_people(db: DB, current_user: LocalUser = CurrentUserV2, x_ten
 
     asset_person_ids = db.query(Asset.person_id).filter(
         Asset.tenant_id == tenant_id,
-        Asset.asset_type == "person",
+        Asset.asset_type == "competence",
         Asset.person_id.isnot(None)
     ).all()
     asset_person_ids = [a.person_id for a in asset_person_ids if a.person_id]
@@ -152,7 +152,7 @@ def create_worker(db: DB, request: CreateWorkerRequest, current_user: LocalUser 
     existing_asset = db.query(Asset).filter(
         Asset.person_id == person.id,
         Asset.tenant_id == tenant_id,
-        Asset.asset_type == "person"
+        Asset.asset_type == "competence"
     ).first()
 
     if not existing_asset:
@@ -160,7 +160,7 @@ def create_worker(db: DB, request: CreateWorkerRequest, current_user: LocalUser 
             name=person.name,
             description=request.role,
             tenant_id=tenant_id,
-            asset_type="person",
+            asset_type="competence",
             person_id=person.id,
         )
         db.add(asset)
@@ -318,7 +318,7 @@ def list_organization_users(db: DB, current_user: LocalUser = CurrentUserV2, x_t
 
     owned_assets = db.query(Asset).filter(
         Asset.owner_user_id.in_([u.id for u in users]),
-        Asset.asset_type == "person"
+        Asset.asset_type == "competence"
     ).all()
     assets_by_owner = {a.owner_user_id: str(a.id) for a in owned_assets}
 

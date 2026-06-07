@@ -29,10 +29,16 @@ interface LinkedProcess {
   status: string
 }
 
+interface Person {
+  id: string
+  name: string
+}
+
 interface AssetItem {
   id: string
   name: string
   asset_type: string
+  person_id?: string | null
   linked_processes?: LinkedProcess[]
 }
 
@@ -83,7 +89,7 @@ interface ProtectionNeedItem {
   approved_by: string | null
 }
 
-const ASSET_TYPES = ["all", "information_asset", "software", "hardware", "service", "data", "other"] as const
+const ASSET_TYPES = ["all", "information_asset", "software", "hardware", "service", "data", "competence", "other"] as const
 
 const MODULE_GROUPS = ["ISMS", "ORP", "CON", "OPS", "DER", "INF", "NET", "SYS", "APP", "IND"] as const
 
@@ -112,6 +118,7 @@ export default function MappingsPage() {
   const [bpMappings, setBpMappings] = useState<BpMappingItem[]>([])
   const [protectionMode, setProtectionMode] = useState<ProtectionModeItem | null>(null)
   const [protectionNeeds, setProtectionNeeds] = useState<ProtectionNeedItem[]>([])
+  const [persons, setPersons] = useState<Person[]>([])
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -155,7 +162,7 @@ export default function MappingsPage() {
     if (!selectedOrgId) return
     setLoading(true)
     try {
-      const [assetsRes, bpsRes, modulesRes, assetMapRes, bpMapRes, modeRes, pnRes] = await Promise.all([
+      const [assetsRes, bpsRes, modulesRes, assetMapRes, bpMapRes, modeRes, pnRes, personsRes] = await Promise.all([
         apiClient.get("/assets/"),
         apiClient.get("/business-processes/"),
         apiClient.get("/catalog/modules"),
@@ -163,6 +170,7 @@ export default function MappingsPage() {
         apiClient.get("/modeling/bp-mappings"),
         apiClient.get("/protection-mode/"),
         apiClient.get("/eits/protection-needs"),
+        apiClient.get("/persons/"),
       ])
       setAssets(assetsRes.data || [])
       setBps(bpsRes.data || [])
@@ -170,6 +178,7 @@ export default function MappingsPage() {
       setAssetMappings(assetMapRes.data || [])
       setBpMappings(bpMapRes.data || [])
       setProtectionNeeds(pnRes.data || [])
+      setPersons(personsRes.data || [])
       const active = (modeRes.data || []).find((m: ProtectionModeItem) => m.is_active)
       setProtectionMode(active || null)
     } catch {
@@ -284,7 +293,13 @@ export default function MappingsPage() {
     return counts
   }, [modules, selectedAssetIds, selectedAssetMappings])
 
-  const approvedBpIds = new Set([
+  const personMap = useMemo(() => {
+  const map: Record<string, string> = {}
+  for (const p of persons) map[p.id] = p.name
+  return map
+}, [persons])
+
+const approvedBpIds = new Set([
     ...protectionNeeds.filter((pn) => pn.approved_by).map((pn) => pn.business_process_id),
     ...bps.filter((bp: any) =>
       bp.confidentiality_need !== null && bp.confidentiality_need !== "" && bp.confidentiality_need !== "unknown" ||
@@ -939,6 +954,11 @@ childEntries.forEach(({ rel, childId, childName, childType }) => {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{asset.name}</p>
                         <p className="text-xs text-muted-foreground">{asset.asset_type?.replace(/_/g, " ")}</p>
+                        {asset.person_id && personMap[asset.person_id] && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {personMap[asset.person_id]}
+                          </p>
+                        )}
                       </div>
                       {asset.linked_processes && asset.linked_processes.length > 0 && (
                         <Badge variant="outline" className="text-xs shrink-0">
@@ -1150,6 +1170,11 @@ childEntries.forEach(({ rel, childId, childName, childType }) => {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{asset.name}</p>
                         <p className="text-xs text-muted-foreground">{asset.asset_type?.replace(/_/g, " ")}</p>
+                        {asset.person_id && personMap[asset.person_id] && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {personMap[asset.person_id]}
+                          </p>
+                        )}
                       </div>
                     </label>
                   ))
@@ -1203,6 +1228,11 @@ childEntries.forEach(({ rel, childId, childName, childType }) => {
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium truncate">{asset.name}</p>
                         <p className="text-xs text-muted-foreground">{asset.asset_type?.replace(/_/g, " ")}</p>
+                        {asset.person_id && personMap[asset.person_id] && (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {personMap[asset.person_id]}
+                          </p>
+                        )}
                       </div>
                     </label>
                   ))
