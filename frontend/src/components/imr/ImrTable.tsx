@@ -18,9 +18,13 @@ interface ImrTableProps {
     snapshot_id?: string
   }
   readOnly?: boolean
+  selectionMode?: boolean
+  selectedIds?: Set<string>
+  onToggleSelect?: (id: string) => void
+  onSelectAll?: (itemIds: string[]) => void
 }
 
-export function ImrTable({ onEditItem, filters }: ImrTableProps) {
+export function ImrTable({ onEditItem, filters, selectionMode, selectedIds, onToggleSelect, onSelectAll }: ImrTableProps) {
   const { t } = useTranslation()
   const { loading, error, fetchImrItems, fetchUsers } = useImrApi()
   const [items, setItems] = useState<ImrItem[]>([])
@@ -154,6 +158,16 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
       <table className="w-full text-left border-collapse text-xs">
         <thead>
           <tr className="bg-slate-100 dark:bg-slate-800 border-b border-border font-semibold text-muted-foreground uppercase tracking-wider">
+            {selectionMode && (
+              <th className="py-2 px-2 w-10">
+                <input
+                  type="checkbox"
+                  checked={selectedIds && selectedIds.size > 0 && selectedIds.size === sortedItems.length}
+                  onChange={() => onSelectAll?.(sortedItems.map(i => i.id))}
+                  className="rounded border-input"
+                />
+              </th>
+            )}
             <th 
               className="py-2 px-2 cursor-pointer hover:bg-slate-200 dark:hover:bg-slate-700 select-none w-20"
               onClick={() => handleSort("code")}
@@ -226,9 +240,19 @@ export function ImrTable({ onEditItem, filters }: ImrTableProps) {
             return (
               <tr 
                 key={item.id} 
-                onClick={() => onEditItem?.(item)}
-                className="hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border-b border-slate-200 dark:border-slate-700"
+                onClick={() => { if (!selectionMode) onEditItem?.(item) }}
+                className={`hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors border-b border-slate-200 dark:border-slate-700 ${!selectionMode ? 'cursor-pointer' : ''}`}
               >
+                {selectionMode && (
+                  <td className="py-2 px-2" onClick={(e) => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      checked={selectedIds?.has(item.id) ?? false}
+                      onChange={() => onToggleSelect?.(item.id)}
+                      className="rounded border-input"
+                    />
+                  </td>
+                )}
                 <td className="py-2 px-2">
                   <span className="font-bold text-blue-600 dark:text-blue-300">
                     {item.measure?.code || "N/A"}

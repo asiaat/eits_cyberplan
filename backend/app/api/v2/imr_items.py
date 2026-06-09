@@ -26,6 +26,8 @@ from app.schemas.eits_catalog import (
     ImrItemCreate,
     ImrItemUpdate,
     ImrItemResponse,
+    ImrBulkUpdate,
+    ImrBulkUpdateResponse,
     ImrSummaryResponse,
     AssetProtectionOverview,
 )
@@ -294,6 +296,105 @@ def get_imr_item(
     return _build_imr_response(db, item)
 
 
+@router.patch("/bulk-status")
+def bulk_update_imr_status(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+    item_ids: list[UUID] = None,
+    pearo_status: str = None,
+):
+    """Bulk update PEARO status for multiple IMR items."""
+    if not item_ids or not pearo_status:
+        raise HTTPException(status_code=400, detail="item_ids and pearo_status required")
+
+    items = db.query(ImrItem).filter(
+        ImrItem.id.in_(item_ids),
+        ImrItem.tenant_id == current_user.tenant_id,
+    ).all()
+
+    for item in items:
+        item.pearo_status = pearo_status
+
+    db.commit()
+
+    audit_log(
+        db=db,
+        tenant_id=str(current_user.tenant_id),
+        actor_user_id=str(current_user.global_user_id),
+        action="bulk_update",
+        entity_type="imr_item",
+        entity_id="bulk",
+        after_json={"item_count": len(items), "pearo_status": pearo_status},
+    )
+
+    return {"message": f"Updated {len(items)} items"}
+
+
+@router.patch("/bulk", response_model=ImrBulkUpdateResponse)
+def bulk_update_imr_items(
+    db: DB,
+    current_user: LocalUser = Depends(get_current_user_v2),
+    data: ImrBulkUpdate = None,
+):
+    """Bulk update multiple IMR items. Updates common fields across items."""
+    if data is None:
+        raise HTTPException(status_code=400, detail="Request body required")
+
+    if not data.item_ids:
+        raise HTTPException(status_code=400, detail="item_ids is required")
+
+    result = ImrBulkUpdateResponse()
+
+    for item_id in data.item_ids:
+        try:
+            item = db.query(ImrItem).filter(
+                ImrItem.id == item_id,
+                ImrItem.tenant_id == current_user.tenant_id,
+            ).first()
+
+            if not item:
+                result.failed += 1
+                result.errors.append({"item_id": str(item_id), "message": "IMR item not found"})
+                continue
+
+            before = {
+                "pearo_status": item.pearo_status,
+                "priority": item.priority,
+                "responsible_user_id": str(item.responsible_user_id) if item.responsible_user_id else None,
+                "due_date": str(item.due_date) if item.due_date else None,
+            }
+
+            update_data = data.updates.model_dump(exclude_unset=True, exclude_none=True)
+
+            for field, value in update_data.items():
+                if hasattr(item, field):
+                    setattr(item, field, value)
+
+            item.updated_by = current_user.id
+            item.updated_at = datetime.utcnow()
+
+            db.commit()
+
+            audit_log(
+                db=db,
+                tenant_id=str(current_user.tenant_id),
+                actor_user_id=str(current_user.global_user_id),
+                action="bulk_update",
+                entity_type="imr_item",
+                entity_id=str(item_id),
+                before_json=before,
+                after_json=update_data,
+            )
+
+            result.updated += 1
+        except Exception as e:
+            db.rollback()
+            result.failed += 1
+            result.errors.append({"item_id": str(item_id), "message": str(e)})
+
+    return result
+
+
 @router.patch("/{item_id}", response_model=ImrItemResponse)
 def update_imr_item(
     item_id: UUID,
@@ -344,40 +445,6 @@ def update_imr_item(
     )
 
     return _build_imr_response(db, item)
-
-
-@router.patch("/bulk-status")
-def bulk_update_imr_status(
-    db: DB,
-    current_user: LocalUser = Depends(get_current_user_v2),
-    item_ids: list[UUID] = None,
-    pearo_status: str = None,
-):
-    """Bulk update PEARO status for multiple IMR items."""
-    if not item_ids or not pearo_status:
-        raise HTTPException(status_code=400, detail="item_ids and pearo_status required")
-
-    items = db.query(ImrItem).filter(
-        ImrItem.id.in_(item_ids),
-        ImrItem.tenant_id == current_user.tenant_id,
-    ).all()
-
-    for item in items:
-        item.pearo_status = pearo_status
-
-    db.commit()
-
-    audit_log(
-        db=db,
-        tenant_id=str(current_user.tenant_id),
-        actor_user_id=str(current_user.global_user_id),
-        action="bulk_update",
-        entity_type="imr_item",
-        entity_id="bulk",
-        after_json={"item_count": len(items), "pearo_status": pearo_status},
-    )
-
-    return {"message": f"Updated {len(items)} items"}
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)

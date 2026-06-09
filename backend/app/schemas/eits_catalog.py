@@ -376,6 +376,19 @@ class ImrItemResponse(ImrItemBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ImrBulkUpdate(BaseModel):
+    """Schema for bulk updating multiple IMR items."""
+    item_ids: list[UUID]
+    updates: ImrItemUpdate
+
+
+class ImrBulkUpdateResponse(BaseModel):
+    """Schema for bulk update response."""
+    updated: int = 0
+    failed: int = 0
+    errors: list[dict] = Field(default_factory=list)
+
+
 class ImrSummaryResponse(BaseModel):
     tenant_id: UUID
     pearo_status: str
