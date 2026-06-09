@@ -9,6 +9,12 @@ interface UserOption {
   department: string | null
 }
 
+function parseError(err: any): string {
+  const detail = err?.response?.data?.detail
+  if (typeof detail === "string") return detail
+  try { return JSON.stringify(detail) } catch { return "An error occurred" }
+}
+
 export function useImrApi() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +57,7 @@ export function useImrApi() {
       const response = await apiClient.get(`/imr/?${params.toString()}`)
       return response.data
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to fetch IMR items")
+      setError(parseError(err) || "Failed to fetch IMR items")
       return []
     } finally {
       setLoading(false)
@@ -65,7 +71,7 @@ export function useImrApi() {
       const response = await apiClient.get(`/imr/${itemId}`)
       return response.data
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to fetch IMR item")
+      setError(parseError(err) || "Failed to fetch IMR item")
       return null
     } finally {
       setLoading(false)
@@ -79,7 +85,7 @@ export function useImrApi() {
       const response = await apiClient.patch(`/imr/${itemId}`, data)
       return response.data
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to update IMR item")
+      setError(parseError(err) || "Failed to update IMR item")
       return null
     } finally {
       setLoading(false)
@@ -93,7 +99,7 @@ export function useImrApi() {
       const response = await apiClient.get(`/imr/items/${itemId}/validation`)
       return response.data
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to get validation status")
+      setError(parseError(err) || "Failed to get validation status")
       return null
     } finally {
       setLoading(false)
@@ -107,7 +113,21 @@ export function useImrApi() {
       await apiClient.post(`/imr/items/${itemId}/evidence?evidence_id=${evidenceId}`)
       return true
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to link evidence")
+      setError(parseError(err) || "Failed to link evidence")
+      return false
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  const bulkUpdateItems = useCallback(async (itemIds: string[], updates: Record<string, any>): Promise<boolean> => {
+    setLoading(true)
+    setError(null)
+    try {
+      await apiClient.patch("/imr/bulk", { item_ids: itemIds, updates })
+      return true
+    } catch (err: any) {
+      setError(parseError(err) || "Failed to bulk update items")
       return false
     } finally {
       setLoading(false)
@@ -121,7 +141,7 @@ export function useImrApi() {
       await apiClient.patch("/imr/bulk-status", { item_ids: itemIds, pearo_status: status })
       return true
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to bulk update status")
+      setError(parseError(err) || "Failed to bulk update status")
       return false
     } finally {
       setLoading(false)
@@ -135,7 +155,7 @@ export function useImrApi() {
       const response = await apiClient.get("/imr/reports/imr-summary-v2")
       return response.data
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to fetch IMR summary")
+      setError(parseError(err) || "Failed to fetch IMR summary")
       return null
     } finally {
       setLoading(false)
@@ -171,7 +191,7 @@ export function useImrApi() {
       document.body.removeChild(link)
       window.URL.revokeObjectURL(url)
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to export IMR items")
+      setError(parseError(err) || "Failed to export IMR items")
     } finally {
       setLoading(false)
     }
@@ -185,6 +205,7 @@ export function useImrApi() {
     updateImrItem,
     getImrValidationStatus,
     linkEvidenceToImr,
+    bulkUpdateItems,
     bulkUpdateStatus,
     getImrSummary,
     exportImrItems,

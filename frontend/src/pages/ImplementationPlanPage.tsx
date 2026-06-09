@@ -1,17 +1,25 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { ImrTable } from "@/components/imr/ImrTable"
 import { ImrItemModal } from "@/components/imr/ImrItemModal"
 import { ImrDashboardStats, StatsFilter } from "@/components/imr/ImrDashboardStats"
 import { SnapshotSelector } from "@/components/imr/SnapshotSelector"
-import { ImrItem, IMR_STATUS_OPTIONS } from "@/lib/imr-types"
+import { ImrItem, IMR_STATUS_OPTIONS, IMR_PRIORITY_OPTIONS } from "@/lib/imr-types"
 import { useTranslation } from "@/lib/i18n"
 import { useImrApi } from "@/lib/use-imr-api"
 import { apiClient } from "@/lib/api-client"
-import { List, LayoutGrid, BarChart3, ShieldAlert } from "lucide-react"
+import { List, LayoutGrid, BarChart3, ShieldAlert, CheckSquare, X } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog"
 
 const MODULE_GROUPS = ["All", "ISMS", "ORP", "CON", "OPS", "DER", "INF", "NET", "SYS", "APP", "IND"]
 
-type ViewMode = "list" | "grouped"
+type ViewMode = "list" | "grouped" | "bulk"
 
 export default function ImplementationPlanPage() {
   const { t } = useTranslation()
@@ -32,11 +40,35 @@ export default function ImplementationPlanPage() {
   const [selectedSnapshotId, setSelectedSnapshotId] = useState<string | null>(null)
   const [hasActivePlan, setHasActivePlan] = useState<boolean | null>(null)
 
+  // Multi-select bulk edit state
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
+  const [selectedItems, setSelectedItems] = useState<ImrItem[]>([])
+  const [showBulkEdit, setShowBulkEdit] = useState(false)
+  const [bulkUpdating, setBulkUpdating] = useState(false)
+  const [bulkEditFormData, setBulkEditFormData] = useState<Record<string, any>>({})
+  const [availableUsers, setAvailableUsers] = useState<{ id: string; full_name: string }[]>([])
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
+
   useEffect(() => {
     apiClient.get("/protection-mode/active")
       .then(() => setHasActivePlan(true))
       .catch(() => setHasActivePlan(false))
   }, [])
+
+  useEffect(() => {
+    if (showBulkEdit) {
+      loadUsers()
+    }
+  }, [showBulkEdit])
+
+  const loadUsers = async () => {
+    try {
+      const res = await apiClient.get("/users/")
+      setAvailableUsers(res.data || [])
+    } catch {
+      // silent
+    }
+  }
 
   const handleEditItem = (item: ImrItem) => {
     setSelectedItem(item)
@@ -48,7 +80,7 @@ export default function ImplementationPlanPage() {
     setSelectedItem(null)
   }
 
-  const { exportImrItems, loading: exporting, error: exportError } = useImrApi()
+  const { exportImrItems, bulkUpdateItems, loading: exporting, error: exportError } = useImrApi()
 
   const handleSaveItem = (updatedItem: ImrItem) => {
     console.log("Item saved:", updatedItem.id)
@@ -82,6 +114,68 @@ export default function ImplementationPlanPage() {
       return next
     })
   }
+
+  // Multi-select handlers
+  const handleToggleSelect = (id: string) => {
+    setSelectedItemIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleSelectAll = (itemIds: string[]) => {
+    setSelectedItemIds(prev => {
+      if (prev.size > 0 && prev.size === itemIds.length) return new Set()
+      return new Set(itemIds)
+    })
+  }
+
+  const handleClearSelection = () => {
+    setSelectedItemIds(new Set())
+  }
+
+  const handleBulkUpdate = async () => {
+    if (selectedItemIds.size === 0) return
+    setBulkUpdating(true)
+    try {
+      const updates: Record<string, any> = {}
+      for (const [key, value] of Object.entries(bulkEditFormData)) {
+        if (value !== "" && value !== undefined && value !== null) {
+          updates[key] = value
+        }
+      }
+      if (Object.keys(updates).length === 0) {
+        setErrorDialog({ open: true, message: "No fields selected for update" })
+        setBulkUpdating(false)
+        return
+      }
+      const success = await bulkUpdateItems(Array.from(selectedItemIds), updates)
+      if (success) {
+        setShowBulkEdit(false)
+        handleClearSelection()
+        setBulkEditFormData({})
+        window.location.reload()
+      } else {
+        const msg = typeof exportError === "string" ? exportError : JSON.stringify(exportError)
+        setErrorDialog({ open: true, message: msg || "Bulk update failed" })
+      }
+    } catch (err: any) {
+      const detail = err.response?.data?.detail
+      const msg = typeof detail === "string" ? detail : JSON.stringify(detail)
+      setErrorDialog({ open: true, message: msg || "Bulk update failed" })
+    } finally {
+      setBulkUpdating(false)
+    }
+  }
+
+  const imrFilters = useMemo(() => {
+    if (viewMode === "grouped") {
+      return { ...filter, module_group: activeTab === "All" ? undefined : activeTab, snapshot_id: selectedSnapshotId || undefined }
+    }
+    return { ...filter, snapshot_id: selectedSnapshotId || undefined }
+  }, [filter, activeTab, selectedSnapshotId, viewMode])
 
   return (
     <div>
@@ -157,6 +251,17 @@ export default function ImplementationPlanPage() {
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
+            <button
+              onClick={() => setViewMode("bulk")}
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === "bulk"
+                  ? "bg-background shadow-sm text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              title="Bulk edit"
+            >
+              <CheckSquare className="w-4 h-4" />
+            </button>
           </div>
           <button
             onClick={handleExport}
@@ -174,7 +279,7 @@ export default function ImplementationPlanPage() {
       {/* Error display */}
       {exportError && (
         <div className="mb-3 p-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300">
-          {exportError}
+          {typeof exportError === "string" ? exportError : JSON.stringify(exportError)}
         </div>
       )}
 
@@ -235,6 +340,47 @@ export default function ImplementationPlanPage() {
             </div>
           </div>
 
+          {/* Selection bar */}
+          {viewMode === "bulk" && selectedItemIds.size > 0 && (
+            <div className="mb-3 space-y-2">
+              <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
+                <span className="text-sm font-medium">
+                  {selectedItemIds.size} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowBulkEdit(true)}
+                    className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition-colors"
+                  >
+                    Bulk Edit
+                  </button>
+                  <button
+                    onClick={handleClearSelection}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedItems.map(item => (
+                  <span
+                    key={item.id}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1.5 text-sm font-medium"
+                  >
+                    {item.measure?.code || item.id}
+                    <button
+                      onClick={() => handleToggleSelect(item.id)}
+                      className="rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {viewMode === "grouped" && (
             <div className="mb-4 overflow-x-auto">
               <div className="flex gap-1 min-w-max border-b">
@@ -261,7 +407,12 @@ export default function ImplementationPlanPage() {
             <ImrTable
               onEditItem={selectedSnapshotId ? undefined : handleEditItem}
               readOnly={!!selectedSnapshotId}
-              filters={viewMode === "grouped" ? { ...filter, module_group: activeTab === "All" ? undefined : activeTab, snapshot_id: selectedSnapshotId || undefined } : { ...filter, snapshot_id: selectedSnapshotId || undefined }}
+              filters={imrFilters}
+              selectionMode={viewMode === "bulk"}
+              selectedIds={selectedItemIds}
+              onToggleSelect={handleToggleSelect}
+              onSelectAll={handleSelectAll}
+              onSelectionChanged={setSelectedItems}
             />
           </div>
         </>
@@ -274,6 +425,132 @@ export default function ImplementationPlanPage() {
         onClose={handleCloseModal}
         onSave={handleSaveItem}
       />
+
+      {/* Bulk Edit Dialog */}
+      <Dialog open={showBulkEdit} onOpenChange={setShowBulkEdit}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bulk Edit IMR Items</DialogTitle>
+            <DialogDescription>
+              Update {selectedItemIds.size} IMR item(s). Only filled fields will be applied.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">PEARO Status</label>
+              <select
+                value={bulkEditFormData.pearo_status || ""}
+                onChange={(e) => setBulkEditFormData(prev => ({ ...prev, pearo_status: e.target.value || undefined }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+              >
+                <option value="">— No change —</option>
+                {IMR_STATUS_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Priority</label>
+              <select
+                value={bulkEditFormData.priority || ""}
+                onChange={(e) => setBulkEditFormData(prev => ({ ...prev, priority: e.target.value || undefined }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+              >
+                <option value="">— No change —</option>
+                {IMR_PRIORITY_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Responsible Person</label>
+              <select
+                value={bulkEditFormData.responsible_user_id || ""}
+                onChange={(e) => setBulkEditFormData(prev => ({ ...prev, responsible_user_id: e.target.value || undefined }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+              >
+                <option value="">— No change —</option>
+                {availableUsers.map((user) => (
+                  <option key={user.id} value={user.id}>{user.full_name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Due Date</label>
+              <input
+                type="date"
+                value={bulkEditFormData.due_date || ""}
+                onChange={(e) => setBulkEditFormData(prev => ({ ...prev, due_date: e.target.value || undefined }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Verification Method</label>
+              <input
+                type="text"
+                value={bulkEditFormData.verification_method || ""}
+                onChange={(e) => setBulkEditFormData(prev => ({ ...prev, verification_method: e.target.value || undefined }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+                placeholder="e.g. Document review, Interview, Technical test"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Requirement Profile</label>
+              <input
+                type="text"
+                value={bulkEditFormData.requirement_profile || ""}
+                onChange={(e) => setBulkEditFormData(prev => ({ ...prev, requirement_profile: e.target.value || undefined }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+                placeholder="e.g. PÕHIMEEDE, TÄIENDAV MEEDE"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Cost (EUR)</label>
+              <input
+                type="number"
+                value={bulkEditFormData.cost_eur ?? ""}
+                onChange={(e) => setBulkEditFormData(prev => ({ ...prev, cost_eur: e.target.value ? Number(e.target.value) : undefined }))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
+                placeholder="0"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => setShowBulkEdit(false)}
+              disabled={bulkUpdating}
+              className="px-4 py-2 rounded-md border border-input text-sm font-medium hover:bg-muted transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleBulkUpdate}
+              disabled={bulkUpdating}
+              className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            >
+              {bulkUpdating ? "Updating..." : `Update ${selectedItemIds.size} item(s)`}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error dialog */}
+      <Dialog open={errorDialog.open} onOpenChange={(open) => setErrorDialog(prev => ({ ...prev, open }))}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+            <DialogDescription>{errorDialog.message}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              onClick={() => setErrorDialog({ open: false, message: "" })}
+              className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors"
+            >
+              OK
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
