@@ -131,6 +131,10 @@ export default function BusinessProcessesPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: "" })
+  const parseError = (err: any, fallback: string): string => {
+    const detail = err?.response?.data?.detail
+    return typeof detail === "string" ? detail : JSON.stringify(detail) || fallback
+  }
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("")
   const [divisionFilter, setDivisionFilter] = useState<string>("")
@@ -211,7 +215,7 @@ export default function BusinessProcessesPage() {
       setProcesses(response.data)
     } catch (err: any) {
       console.error("fetchProcesses error:", err)
-      setError(err.response?.data?.detail || "Failed to load business processes")
+      setError(parseError(err, "Failed to load business processes"))
     } finally {
       setLoading(false)
     }
@@ -329,7 +333,7 @@ export default function BusinessProcessesPage() {
       fetchProcesses()
     } catch (err: any) {
       console.error("DEBUG handleSubmit error:", err.response?.data || err)
-      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to save" })
+      setErrorDialog({ open: true, message: parseError(err, "Failed to save") })
     } finally {
       setSaving(false)
     }
@@ -341,7 +345,7 @@ export default function BusinessProcessesPage() {
       setDeletingId(null)
       fetchProcesses()
     } catch (err: any) {
-      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to delete" })
+      setErrorDialog({ open: true, message: parseError(err, "Failed to delete") })
     }
   }
 
@@ -363,7 +367,7 @@ export default function BusinessProcessesPage() {
       setNewDepDescription("")
       fetchDependencies(selectedBP.id)
     } catch (err: any) {
-      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to add dependency" })
+      setErrorDialog({ open: true, message: parseError(err, "Failed to add dependency") })
     }
   }
 
@@ -373,7 +377,7 @@ export default function BusinessProcessesPage() {
       await apiClient.delete(`/business-processes/${selectedBP.id}/dependencies/${depId}`)
       fetchDependencies(selectedBP.id)
     } catch (err: any) {
-      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to delete dependency" })
+      setErrorDialog({ open: true, message: parseError(err, "Failed to delete dependency") })
     }
   }
 
@@ -388,7 +392,7 @@ export default function BusinessProcessesPage() {
       setSearchEvidence("")
       fetchBPEvidences(selectedBP.id)
     } catch (err: any) {
-      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to link evidence" })
+      setErrorDialog({ open: true, message: parseError(err, "Failed to link evidence") })
     }
   }
 
@@ -398,7 +402,7 @@ export default function BusinessProcessesPage() {
       await apiClient.delete(`/business-processes/${selectedBP.id}/evidence-links/${linkId}`)
       fetchBPEvidences(selectedBP.id)
     } catch (err: any) {
-      setErrorDialog({ open: true, message: err.response?.data?.detail || "Failed to unlink evidence" })
+      setErrorDialog({ open: true, message: parseError(err, "Failed to unlink evidence") })
     }
   }
 

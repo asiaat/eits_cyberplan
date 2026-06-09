@@ -6,6 +6,8 @@ from app.models.local_user import LocalUser, EITSRole, UserRole
 from app.models.e_its_role_permission import EITSRolePermission
 from app.models.permission import Permission
 from app.core.security import get_password_hash
+from app.models.tenant import Tenant
+from app.models.user import User
 
 
 DEFAULT_ROLES = [
@@ -121,6 +123,19 @@ def init_db(db: Session) -> None:
         db.refresh(default_tenant)
         print("Default tenant created.")
 
+        # Sync to legacy tenants table
+        legacy = db.query(Tenant).filter(Tenant.id == default_tenant.id).first()
+        if not legacy:
+            legacy = Tenant(
+                id=default_tenant.id,
+                name=default_tenant.name,
+                registry_code=default_tenant.registry_code,
+                status=default_tenant.status,
+            )
+            db.add(legacy)
+            db.commit()
+            print("Legacy tenant synced.")
+
     # 2. Create permissions
     existing_perms = db.query(Permission).first()
     if existing_perms is None:
@@ -186,6 +201,20 @@ def init_db(db: Session) -> None:
         db.commit()
         db.refresh(local_user)
         print("Admin local user created with tenant membership.")
+
+        # Sync to legacy users table
+        legacy_user = db.query(User).filter(User.id == local_user.id).first()
+        if not legacy_user:
+            legacy_user = User(
+                id=local_user.id,
+                email=DEFAULT_ADMIN_EMAIL,
+                name=local_user.full_name,
+                auth_provider="local",
+                is_active=True,
+            )
+            db.add(legacy_user)
+            db.commit()
+            print("Legacy user synced.")
 
         # Assign admin role to the local user
         admin_role = db.query(EITSRole).filter(
