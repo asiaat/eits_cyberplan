@@ -44,10 +44,13 @@ class EvidenceService:
             self.s3_client.head_bucket(Bucket=settings.MINIO_BUCKET)
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code", "")
-            if error_code in ("404", "NoSuchBucket"):
+            # MinIO often returns 403/Forbidden (not 404) for non-existent buckets
+            if error_code in ("404", "NoSuchBucket", "403", "Forbidden"):
                 try:
                     self.s3_client.create_bucket(Bucket=settings.MINIO_BUCKET)
                     logger.info("Created MinIO bucket: %s", settings.MINIO_BUCKET)
+                except self.s3_client.exceptions.BucketAlreadyOwnedByYou:
+                    pass
                 except Exception as create_err:
                     logger.warning("Could not create bucket %s: %s", settings.MINIO_BUCKET, create_err)
             else:
