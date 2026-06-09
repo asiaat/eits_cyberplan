@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { ImrItem, ImrValidationStatus } from "@/lib/imr-types"
 import { useImrApi } from "@/lib/use-imr-api"
 import { useTranslation } from "@/lib/i18n"
@@ -22,9 +22,10 @@ interface ImrTableProps {
   selectedIds?: Set<string>
   onToggleSelect?: (id: string) => void
   onSelectAll?: (itemIds: string[]) => void
+  onSelectionChanged?: (items: ImrItem[]) => void
 }
 
-export function ImrTable({ onEditItem, filters, selectionMode, selectedIds, onToggleSelect, onSelectAll }: ImrTableProps) {
+export function ImrTable({ onEditItem, filters, selectionMode, selectedIds, onToggleSelect, onSelectAll, onSelectionChanged }: ImrTableProps) {
   const { t } = useTranslation()
   const { loading, error, fetchImrItems, fetchUsers } = useImrApi()
   const [items, setItems] = useState<ImrItem[]>([])
@@ -32,7 +33,7 @@ export function ImrTable({ onEditItem, filters, selectionMode, selectedIds, onTo
   const [users, setUsers] = useState<Record<string, string>>({})
   const [sortField, setSortField] = useState<SortField>("dueDate")
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
-  
+
   const PAGE_SIZE = 20
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
@@ -118,6 +119,17 @@ export function ImrTable({ onEditItem, filters, selectionMode, selectedIds, onTo
     })
     return sorted
   }, [items, sortField, sortOrder, users])
+
+  const prevSelectedIds = useRef<string[] | null>(null)
+  useEffect(() => {
+    if (!onSelectionChanged || !selectedIds) return
+    const ids = Array.from(selectedIds).sort()
+    const prev = prevSelectedIds.current
+    if (prev && prev.length === ids.length && prev.every((id, i) => id === ids[i])) return
+    prevSelectedIds.current = ids
+    const selected = sortedItems.filter(i => selectedIds.has(i.id))
+    onSelectionChanged(selected)
+  }, [selectedIds, sortedItems, onSelectionChanged])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {

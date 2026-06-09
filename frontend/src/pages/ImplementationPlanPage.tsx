@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { ImrTable } from "@/components/imr/ImrTable"
 import { ImrItemModal } from "@/components/imr/ImrItemModal"
 import { ImrDashboardStats, StatsFilter } from "@/components/imr/ImrDashboardStats"
@@ -7,7 +7,7 @@ import { ImrItem, IMR_STATUS_OPTIONS, IMR_PRIORITY_OPTIONS } from "@/lib/imr-typ
 import { useTranslation } from "@/lib/i18n"
 import { useImrApi } from "@/lib/use-imr-api"
 import { apiClient } from "@/lib/api-client"
-import { List, LayoutGrid, BarChart3, ShieldAlert, CheckSquare } from "lucide-react"
+import { List, LayoutGrid, BarChart3, ShieldAlert, CheckSquare, X } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -42,6 +42,7 @@ export default function ImplementationPlanPage() {
 
   // Multi-select bulk edit state
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
+  const [selectedItems, setSelectedItems] = useState<ImrItem[]>([])
   const [showBulkEdit, setShowBulkEdit] = useState(false)
   const [bulkUpdating, setBulkUpdating] = useState(false)
   const [bulkEditFormData, setBulkEditFormData] = useState<Record<string, any>>({})
@@ -168,6 +169,13 @@ export default function ImplementationPlanPage() {
       setBulkUpdating(false)
     }
   }
+
+  const imrFilters = useMemo(() => {
+    if (viewMode === "grouped") {
+      return { ...filter, module_group: activeTab === "All" ? undefined : activeTab, snapshot_id: selectedSnapshotId || undefined }
+    }
+    return { ...filter, snapshot_id: selectedSnapshotId || undefined }
+  }, [filter, activeTab, selectedSnapshotId, viewMode])
 
   return (
     <div>
@@ -334,22 +342,42 @@ export default function ImplementationPlanPage() {
 
           {/* Selection bar */}
           {viewMode === "bulk" && selectedItemIds.size > 0 && (
-            <div className="mb-3 flex items-center gap-3 px-4 py-2 rounded-lg bg-indigo-50 dark:bg-indigo-950 border border-indigo-200 dark:border-indigo-800">
-              <span className="text-sm font-medium text-indigo-700 dark:text-indigo-300">
-                {selectedItemIds.size} item(s) selected
-              </span>
-              <button
-                onClick={() => setShowBulkEdit(true)}
-                className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition-colors"
-              >
-                Bulk Edit
-              </button>
-              <button
-                onClick={handleClearSelection}
-                className="px-3 py-1.5 rounded-md text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
-              >
-                Clear Selection
-              </button>
+            <div className="mb-3 space-y-2">
+              <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
+                <span className="text-sm font-medium">
+                  {selectedItemIds.size} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowBulkEdit(true)}
+                    className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition-colors"
+                  >
+                    Bulk Edit
+                  </button>
+                  <button
+                    onClick={handleClearSelection}
+                    className="px-3 py-1.5 rounded-md text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
+                  >
+                    Clear Selection
+                  </button>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {selectedItems.map(item => (
+                  <span
+                    key={item.id}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-3 py-1.5 text-sm font-medium"
+                  >
+                    {item.measure?.code || item.id}
+                    <button
+                      onClick={() => handleToggleSelect(item.id)}
+                      className="rounded-full p-0.5 hover:bg-primary/20 transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
             </div>
           )}
 
@@ -379,11 +407,12 @@ export default function ImplementationPlanPage() {
             <ImrTable
               onEditItem={selectedSnapshotId ? undefined : handleEditItem}
               readOnly={!!selectedSnapshotId}
-              filters={viewMode === "grouped" ? { ...filter, module_group: activeTab === "All" ? undefined : activeTab, snapshot_id: selectedSnapshotId || undefined } : { ...filter, snapshot_id: selectedSnapshotId || undefined }}
+              filters={imrFilters}
               selectionMode={viewMode === "bulk"}
               selectedIds={selectedItemIds}
               onToggleSelect={handleToggleSelect}
               onSelectAll={handleSelectAll}
+              onSelectionChanged={setSelectedItems}
             />
           </div>
         </>
