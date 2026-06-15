@@ -52,3 +52,28 @@ export const assetRelationsApi = {
   listRelationTypes: () =>
     apiClient.get(`/assets/relation-types`),
 }
+
+// Dashboard API
+export const dashboardApi = {
+  getStats: () =>
+    apiClient.get<DashboardStatsResponse>("/dashboard/stats"),
+}
+
+export interface DashboardStatsResponse {
+  business_processes: {
+    total: number
+    by_status: Record<string, number>
+    by_protection_need: Record<string, number>
+  }
+  assets: {
+    total: number
+    by_type: Record<string, number>
+    by_criticality: Record<string, number>
+    by_lifecycle_status: Record<string, number>
+  }
+  scope: {
+    active_approach: string | null
+    modules_count: number
+    measures_count: number
+  }
+}

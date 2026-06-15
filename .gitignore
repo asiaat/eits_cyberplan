@@ -49,3 +49,9 @@ temp/
 *.7z
 *.out
 
+# pnpm store cache
+frontend/.pnpm-store/
+
+# Security scan reports
+backend/scripts/zap/zap-reports/
+

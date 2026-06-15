@@ -39,6 +39,7 @@ export const translations = {
       allTypes: "All types",
       unknownOrg: "Unknown Org",
       noChange: "No change",
+      total: "Total",
     },
     nav: {
       section: {
@@ -298,6 +299,19 @@ organization: {
       highRisks: "High Risks",
       noOverdueTasks: "No overdue tasks",
       noHighRisks: "No high risks",
+      section: {
+        scopeModelling: "Scope Modelling",
+        imr: "IMR",
+      },
+      imr: {
+        pearoDistribution: "Status Distribution",
+        priorityDistribution: "Priority Distribution",
+        overdue: "Overdue",
+        readyForCompletion: "Ready for Completion",
+      },
+      bp: {
+        assessed: "Protection needs assessed",
+      },
     },
     businessProcesses: {
       title: "Business Processes",
@@ -382,6 +396,7 @@ organization: {
       statusLevels: {
         active: "Active",
         inactive: "Inactive",
+        archived: "Archived",
         deprecated: "Deprecated",
         retired: "Retired",
       },
@@ -714,6 +729,7 @@ organization: {
       selectMode: "Select Protection Mode",
       activeMode: "Active Mode",
       whenToUse: "When to use:",
+      level: "Protection level",
       approaches: {
         basic: {
           name: "Põhiturve",
@@ -911,6 +927,7 @@ organization: {
       allTypes: "Kõik tüübid",
       unknownOrg: "Tundmatu organisatsioon",
       noChange: "Muutmata",
+      total: "Kokku",
     },
     nav: {
       section: {
@@ -1167,6 +1184,19 @@ inactive: "Mitteaktiivne",
       highRisks: "Kõrged riskid",
       noOverdueTasks: "Viivitunud ülesandeid ei ole",
       noHighRisks: "Kõrgeid riske ei ole",
+      section: {
+        scopeModelling: "Kaitseala modelleerimine",
+        imr: "Rakenduskava",
+      },
+      imr: {
+        pearoDistribution: "Olekute jaotus",
+        priorityDistribution: "Prioriteedi jaotus",
+        overdue: "Viivitatud",
+        readyForCompletion: "Valmis lõpetamiseks",
+      },
+      bp: {
+        assessed: "Kaitsetarbe hinnatud",
+      },
     },
     businessProcesses: {
       title: "Äriprotsessid",
@@ -1251,6 +1281,7 @@ inactive: "Mitteaktiivne",
       statusLevels: {
         active: "Aktiivne",
         inactive: "Mitteaktiivne",
+        archived: "Arhiveeritud",
         deprecated: "P Deprecated",
         retired: "Retireeritud",
       },
@@ -1583,6 +1614,7 @@ inactive: "Mitteaktiivne",
       selectMode: "Vali kaitserežiim",
       activeMode: "Aktiivne režiim",
       whenToUse: "Millal kasutada:",
+      level: "Kaitsetase",
       approaches: {
         basic: {
           name: "Põhiturve",
