@@ -61,7 +61,7 @@ export default function ScopeStats() {
 
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Protection level</span>
+                <span>{t("protectionmode.level")}</span>
                 <span>{currentLevel} / 3</span>
               </div>
               <div className="flex gap-1 h-2">

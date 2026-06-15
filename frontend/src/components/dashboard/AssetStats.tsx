@@ -6,16 +6,6 @@ import { ProgressBar } from "@/components/ui/progress"
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 import { Boxes } from "lucide-react"
 
-const TYPE_LABELS: Record<string, string> = {
-  information_asset: "Info Asset",
-  software: "Software",
-  hardware: "Hardware",
-  service: "Service",
-  data: "Data",
-  competence: "Competence",
-  other: "Other",
-}
-
 const TYPE_COLORS: Record<string, string> = {
   information_asset: "#6366f1",
   software: "#0ea5e9",
@@ -27,10 +17,10 @@ const TYPE_COLORS: Record<string, string> = {
 }
 
 const CRITICALITY_ITEMS = [
-  { key: "low", label: "Low", color: "#6b7280" },
-  { key: "normal", label: "Normal", color: "#3b82f6" },
-  { key: "high", label: "High", color: "#f59e0b" },
-  { key: "critical", label: "Critical", color: "#ef4444" },
+  { key: "low", color: "#6b7280" },
+  { key: "normal", color: "#3b82f6" },
+  { key: "high", color: "#f59e0b" },
+  { key: "critical", color: "#ef4444" },
 ]
 
 export default function AssetStats() {
@@ -61,10 +51,11 @@ export default function AssetStats() {
   const total = stats.total
   const typeData = Object.entries(stats.by_type)
     .filter(([, count]) => count > 0)
-    .map(([key, count]) => ({ name: TYPE_LABELS[key] || key, value: count, color: TYPE_COLORS[key] || "#9ca3af" }))
+    .map(([key, count]) => ({ name: t(`assets.types.${key}` as any), value: count, color: TYPE_COLORS[key] || "#9ca3af" }))
 
   const criticalityItems = CRITICALITY_ITEMS.map((item) => ({
     ...item,
+    label: t(`assets.criticalityLevels.${item.key}` as any),
     value: stats.by_criticality[item.key] || 0,
   }))
 

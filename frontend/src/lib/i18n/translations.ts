@@ -303,6 +303,9 @@ organization: {
         scopeModelling: "Scope Modelling",
         imr: "IMR",
       },
+      bp: {
+        assessed: "Protection needs assessed",
+      },
     },
     businessProcesses: {
       title: "Business Processes",
@@ -387,6 +390,7 @@ organization: {
       statusLevels: {
         active: "Active",
         inactive: "Inactive",
+        archived: "Archived",
         deprecated: "Deprecated",
         retired: "Retired",
       },
@@ -719,6 +723,7 @@ organization: {
       selectMode: "Select Protection Mode",
       activeMode: "Active Mode",
       whenToUse: "When to use:",
+      level: "Protection level",
       approaches: {
         basic: {
           name: "Põhiturve",
@@ -1177,6 +1182,9 @@ inactive: "Mitteaktiivne",
         scopeModelling: "Kaitseala modelleerimine",
         imr: "Rakenduskava",
       },
+      bp: {
+        assessed: "Kaitsetarbe hinnatud",
+      },
     },
     businessProcesses: {
       title: "Äriprotsessid",
@@ -1261,6 +1269,7 @@ inactive: "Mitteaktiivne",
       statusLevels: {
         active: "Aktiivne",
         inactive: "Mitteaktiivne",
+        archived: "Arhiveeritud",
         deprecated: "P Deprecated",
         retired: "Retireeritud",
       },
@@ -1593,6 +1602,7 @@ inactive: "Mitteaktiivne",
       selectMode: "Vali kaitserežiim",
       activeMode: "Aktiivne režiim",
       whenToUse: "Millal kasutada:",
+      level: "Kaitsetase",
       approaches: {
         basic: {
           name: "Põhiturve",

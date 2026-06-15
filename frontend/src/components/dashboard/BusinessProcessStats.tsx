@@ -7,9 +7,9 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts"
 import { FolderKanban } from "lucide-react"
 
 const STATUS_ITEMS = [
-  { key: "active", label: "Active", color: "#22c55e" },
-  { key: "inactive", label: "Inactive", color: "#6b7280" },
-  { key: "archived", label: "Archived", color: "#f97316" },
+  { key: "active", color: "#22c55e" },
+  { key: "inactive", color: "#6b7280" },
+  { key: "archived", color: "#f97316" },
 ]
 
 const PROTECTION_COLORS: Record<string, string> = {
@@ -17,13 +17,6 @@ const PROTECTION_COLORS: Record<string, string> = {
   high: "#f59e0b",
   very_high: "#ef4444",
   unknown: "#9ca3af",
-}
-
-const PROTECTION_LABELS: Record<string, string> = {
-  normal: "Normal",
-  high: "High",
-  very_high: "Very High",
-  unknown: "Unknown",
 }
 
 export default function BusinessProcessStats() {
@@ -54,13 +47,14 @@ export default function BusinessProcessStats() {
   const total = stats.total
   const protectionData = Object.entries(stats.by_protection_need)
     .filter(([, count]) => count > 0)
-    .map(([key, count]) => ({ name: PROTECTION_LABELS[key] || key, value: count, color: PROTECTION_COLORS[key] || "#9ca3af" }))
+    .map(([key, count]) => ({ name: t(`protectionNeed.${key}` as any), value: count, color: PROTECTION_COLORS[key] || "#9ca3af" }))
 
   const assessed = total - (stats.by_protection_need.unknown || 0)
   const assessedPct = total > 0 ? Math.round((assessed / total) * 100) : 0
 
   const statusItems = STATUS_ITEMS.map((item) => ({
     ...item,
+    label: t(`assets.statusLevels.${item.key}` as any),
     value: stats.by_status[item.key] || 0,
   }))
 
@@ -113,7 +107,7 @@ export default function BusinessProcessStats() {
 
         <div>
           <div className="flex justify-between text-xs text-muted-foreground mb-1">
-            <span>Protection needs assessed</span>
+            <span>{t("dashboard.bp.assessed")}</span>
             <span>{assessedPct}%</span>
           </div>
           <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
