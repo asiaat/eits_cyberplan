@@ -13,6 +13,7 @@ from app.models.asset import Asset
 from app.models.user import User
 from app.models.role import Role
 from app.models.person import Person
+from app.models.app_tenant import GlobalUser, TenantUser
 
 router = APIRouter()
 
@@ -57,9 +58,21 @@ def list_people(db: DB, current_user: LocalUser = CurrentUserV2, x_tenant_id: Op
         Asset.asset_type == "competence"
     ).all()
 
+    # Build set of user emails to detect accounts not linked via owner_user_id
+    person_emails = [asset.person.email for asset in assets if asset.person and asset.person.email]
+    user_emails_by_lower = set()
+    if person_emails:
+        matching_users = db.query(User.email).filter(User.email.in_(person_emails)).all()
+        user_emails_by_lower = {u.email.lower() for u in matching_users if u.email}
+
     results = []
     for asset in assets:
         has_user = bool(asset.owner_user_id)
+        person_email = (asset.person.email or "").lower() if asset.person and asset.person.email else ""
+
+        if not has_user and person_email and person_email in user_emails_by_lower:
+            has_user = True
+
         user_roles = []
 
         if asset.owner_user_id:
@@ -67,12 +80,10 @@ def list_people(db: DB, current_user: LocalUser = CurrentUserV2, x_tenant_id: Op
             if user and hasattr(user, 'roles') and user.roles:
                 user_roles = [{"id": str(r.id), "code": r.code, "name": r.name} for r in user.roles]
 
-        person_email = asset.person.email if asset.person else None
-
         results.append(PersonAssetResponse(
             id=str(asset.id),
             name=asset.name,
-            email=person_email,
+            email=asset.person.email if asset.person else None,
             description=asset.description,
             owner_user_id=asset.owner_user_id,
             has_user_account=has_user,
@@ -245,6 +256,21 @@ def create_user_from_worker(asset_id: UUID, db: DB, request: CreateUserFromAsset
 
     password = request.password if request and request.password else "changeme123"
 
+    from app.core.security import get_password_hash
+    from app.models.app_tenant import GlobalUser, TenantUser
+
+    # Create or get GlobalUser (for v2 login)
+    existing_global = db.query(GlobalUser).filter(GlobalUser.email == email_val.strip()).first()
+    if existing_global:
+        global_user = existing_global
+    else:
+        global_user = GlobalUser(
+            email=email_val.strip(),
+            password_hash=get_password_hash(password)
+        )
+        db.add(global_user)
+
+    # Create legacy User (preserved for existing FK relationships)
     logger.warning(f"Creating user: email='{email_val.strip()}', name='{person.name}'")
     user = User(
         email=email_val.strip(),
@@ -253,6 +279,30 @@ def create_user_from_worker(asset_id: UUID, db: DB, request: CreateUserFromAsset
         is_active=True
     )
     db.add(user)
+
+    # Check existing per-tenant mappings
+    existing_tu = None
+    existing_lu = None
+    if existing_global:
+        existing_tu = db.query(TenantUser).filter(
+            TenantUser.user_id == global_user.id,
+            TenantUser.tenant_id == tenant_id
+        ).first()
+        existing_lu = db.query(LocalUser).filter(
+            LocalUser.global_user_id == global_user.id,
+            LocalUser.tenant_id == tenant_id
+        ).first()
+
+    if not existing_tu:
+        db.add(TenantUser(tenant_id=tenant_id, user_id=global_user.id))
+    if not existing_lu:
+        db.add(LocalUser(
+            global_user_id=global_user.id,
+            tenant_id=tenant_id,
+            full_name=person.name,
+            is_active=True
+        ))
+
     try:
         db.commit()
         logger.warning(f"User created successfully: {user.id}")
@@ -355,6 +405,7 @@ def create_organization_user(db: DB, request: CreateUserRequest, current_user: L
 
     from app.core.security import get_password_hash
     from app.models.membership import Membership
+    from app.models.app_tenant import GlobalUser, TenantUser
 
     tenant_id = get_tenant_id(current_user, x_tenant_id)
 
@@ -363,6 +414,18 @@ def create_organization_user(db: DB, request: CreateUserRequest, current_user: L
         logger.warning(f"Email already in use: {request.email}")
         raise HTTPException(status_code=400, detail="Email already in use")
 
+    # Create or get GlobalUser (for v2 login)
+    existing_global = db.query(GlobalUser).filter(GlobalUser.email == request.email).first()
+    if existing_global:
+        global_user = existing_global
+    else:
+        global_user = GlobalUser(
+            email=request.email,
+            password_hash=get_password_hash(request.password)
+        )
+        db.add(global_user)
+
+    # Create legacy User (preserved for existing FK relationships)
     user = User(
         email=request.email,
         name=request.name,
@@ -370,33 +433,63 @@ def create_organization_user(db: DB, request: CreateUserRequest, current_user: L
         is_active=True
     )
     db.add(user)
-    db.commit()
-    db.refresh(user)
-    logger.warning(f"User created: {user.id}")
 
+    # Check existing per-tenant mappings
+    existing_tu = None
+    existing_lu = None
+    if existing_global:
+        existing_tu = db.query(TenantUser).filter(
+            TenantUser.user_id == global_user.id,
+            TenantUser.tenant_id == tenant_id
+        ).first()
+        existing_lu = db.query(LocalUser).filter(
+            LocalUser.global_user_id == global_user.id,
+            LocalUser.tenant_id == tenant_id
+        ).first()
+
+    if not existing_tu:
+        db.add(TenantUser(tenant_id=tenant_id, user_id=global_user.id))
+    if not existing_lu:
+        db.add(LocalUser(
+            global_user_id=global_user.id,
+            tenant_id=tenant_id,
+            full_name=request.name,
+            is_active=True
+        ))
+
+    # Membership for role assignment
     membership = Membership(
         user_id=user.id,
         tenant_id=tenant_id,
         role_id="infoturbejuht"
     )
 
-    # Look up the role record to get its UUID for the FK
     role = db.query(Role).filter(Role.code == "infoturbejuht").first()
     logger.warning(f"Role lookup: code=infoturbejuht, found={role}")
     if role:
         membership.role_id = str(role.id)
-        logger.warning(f"Setting membership.role_id to {role.id}")
     else:
         logger.warning("Role not found, using code as role_id")
 
     db.add(membership)
+
+    # Link to person asset if requested
+    if request.linked_asset_id:
+        asset = db.query(Asset).filter(
+            Asset.id == request.linked_asset_id,
+            Asset.tenant_id == tenant_id
+        ).first()
+        if asset:
+            asset.owner_user_id = user.id
+            logger.warning(f"Linked user {user.id} to asset {asset.id}")
+
     try:
         db.commit()
-        logger.warning(f"Membership created successfully")
+        logger.warning(f"User + GlobalUser + LocalUser created successfully")
     except Exception as e:
-        logger.error(f"Membership creation failed: {e}")
+        logger.error(f"User creation failed: {e}")
         db.rollback()
-        raise HTTPException(status_code=400, detail=f"Failed to create membership: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to create user: {str(e)}")
     db.refresh(user)
 
     return UserWithRolesResponse(

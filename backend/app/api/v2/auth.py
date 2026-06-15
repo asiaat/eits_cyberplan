@@ -207,11 +207,46 @@ def login_v2(db: DB, form_data: OAuth2PasswordRequestForm = Depends()):
     # Find global user
     global_user = db.query(GlobalUser).filter(GlobalUser.email == form_data.username).first()
     if not global_user or not verify_password(form_data.password, global_user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        # Fallback: check legacy User table and auto-migrate
+        from app.models.user import User
+        from app.models.membership import Membership
+        legacy_user = db.query(User).filter(User.email == form_data.username).first()
+        if legacy_user and legacy_user.hashed_password and verify_password(form_data.password, legacy_user.hashed_password):
+            global_user = GlobalUser(
+                email=form_data.username,
+                password_hash=legacy_user.hashed_password
+            )
+            db.add(global_user)
+            db.flush()
+            # Find tenant from legacy membership
+            legacy_membership = db.query(Membership).filter(Membership.user_id == legacy_user.id).first()
+            if legacy_membership:
+                existing_tu = db.query(TenantUser).filter(
+                    TenantUser.user_id == global_user.id,
+                    TenantUser.tenant_id == legacy_membership.tenant_id
+                ).first()
+                if not existing_tu:
+                    db.add(TenantUser(tenant_id=legacy_membership.tenant_id, user_id=global_user.id))
+                existing_lu = db.query(LocalUser).filter(
+                    LocalUser.global_user_id == global_user.id,
+                    LocalUser.tenant_id == legacy_membership.tenant_id
+                ).first()
+                if not existing_lu:
+                    db.add(LocalUser(
+                        global_user_id=global_user.id,
+                        tenant_id=legacy_membership.tenant_id,
+                        full_name=legacy_user.name or legacy_user.email,
+                        is_active=True
+                    ))
+            db.commit()
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Auto-migrated legacy user to GlobalUser: {form_data.username}")
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect email or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
     
     # Get user's tenants
     tenant_users = db.query(TenantUser).filter(TenantUser.user_id == global_user.id).all()
@@ -230,13 +265,24 @@ def login_v2(db: DB, form_data: OAuth2PasswordRequestForm = Depends()):
         # For now, just check if it's enabled
         pass
     
-    # Get local user for this tenant
+    # Get local user for this tenant (auto-create if missing)
     local_user = db.query(LocalUser).filter(
         LocalUser.global_user_id == global_user.id,
         LocalUser.tenant_id == tenant.id
     ).first()
     
-    if not local_user or not local_user.is_active:
+    if not local_user:
+        local_user = LocalUser(
+            global_user_id=global_user.id,
+            tenant_id=tenant.id,
+            full_name=global_user.email,
+            is_active=True
+        )
+        db.add(local_user)
+        db.commit()
+        db.refresh(local_user)
+    
+    if not local_user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user in this tenant",

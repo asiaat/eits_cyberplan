@@ -258,7 +258,7 @@ export default function ImplementationPlanPage() {
                   ? "bg-background shadow-sm text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              title="Bulk edit"
+              title={t("implementationPlan.bulkEdit")}
             >
               <CheckSquare className="w-4 h-4" />
             </button>
@@ -345,20 +345,20 @@ export default function ImplementationPlanPage() {
             <div className="mb-3 space-y-2">
               <div className="flex items-center justify-between bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
                 <span className="text-sm font-medium">
-                  {selectedItemIds.size} selected
+                  {t("implementationPlan.selectedCount", { count: selectedItemIds.size })}
                 </span>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowBulkEdit(true)}
                     className="px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 transition-colors"
                   >
-                    Bulk Edit
+                    {t("implementationPlan.bulkEdit")}
                   </button>
                   <button
                     onClick={handleClearSelection}
                     className="px-3 py-1.5 rounded-md text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900 transition-colors"
                   >
-                    Clear Selection
+                    {t("implementationPlan.clearSelection")}
                   </button>
                 </div>
               </div>
@@ -427,56 +427,56 @@ export default function ImplementationPlanPage() {
       />
 
       {/* Bulk Edit Dialog */}
-      <Dialog open={showBulkEdit} onOpenChange={setShowBulkEdit}>
+      <Dialog open={showBulkEdit} onOpenChange={setShowBulkEdit} modal={false}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Bulk Edit IMR Items</DialogTitle>
+            <DialogTitle>{t("implementationPlan.bulkEditTitle")}</DialogTitle>
             <DialogDescription>
-              Update {selectedItemIds.size} IMR item(s). Only filled fields will be applied.
+              {t("implementationPlan.bulkEditDesc", { count: selectedItemIds.size })}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium">PEARO Status</label>
+               <label className="text-sm font-medium">{t("implementationPlan.pearoStatus")}</label>
               <select
                 value={bulkEditFormData.pearo_status || ""}
                 onChange={(e) => setBulkEditFormData(prev => ({ ...prev, pearo_status: e.target.value || undefined }))}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
               >
-                <option value="">— No change —</option>
+                <option value="">{t("implementationPlan.noChange")}</option>
                 {IMR_STATUS_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium">Priority</label>
+               <label className="text-sm font-medium">{t("implementationPlan.bulkPriority")}</label>
               <select
                 value={bulkEditFormData.priority || ""}
                 onChange={(e) => setBulkEditFormData(prev => ({ ...prev, priority: e.target.value || undefined }))}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
               >
-                <option value="">— No change —</option>
+                <option value="">{t("implementationPlan.noChange")}</option>
                 {IMR_PRIORITY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{t(opt.labelKey)}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium">Responsible Person</label>
+               <label className="text-sm font-medium">{t("implementationPlan.responsiblePerson")}</label>
               <select
                 value={bulkEditFormData.responsible_user_id || ""}
                 onChange={(e) => setBulkEditFormData(prev => ({ ...prev, responsible_user_id: e.target.value || undefined }))}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
               >
-                <option value="">— No change —</option>
+                <option value="">{t("implementationPlan.noChange")}</option>
                 {availableUsers.map((user) => (
                   <option key={user.id} value={user.id}>{user.full_name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-sm font-medium">Due Date</label>
+               <label className="text-sm font-medium">{t("implementationPlan.dueDate")}</label>
               <input
                 type="date"
                 value={bulkEditFormData.due_date || ""}
@@ -485,33 +485,33 @@ export default function ImplementationPlanPage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Verification Method</label>
+               <label className="text-sm font-medium">{t("implementationPlan.verificationMethod")}</label>
               <input
                 type="text"
                 value={bulkEditFormData.verification_method || ""}
                 onChange={(e) => setBulkEditFormData(prev => ({ ...prev, verification_method: e.target.value || undefined }))}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
-                placeholder="e.g. Document review, Interview, Technical test"
+                placeholder={t("implementationPlan.verifMethodPlaceholder")}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Requirement Profile</label>
+               <label className="text-sm font-medium">{t("implementationPlan.requirementProfile")}</label>
               <input
                 type="text"
                 value={bulkEditFormData.requirement_profile || ""}
                 onChange={(e) => setBulkEditFormData(prev => ({ ...prev, requirement_profile: e.target.value || undefined }))}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
-                placeholder="e.g. PÕHIMEEDE, TÄIENDAV MEEDE"
+                placeholder={t("implementationPlan.reqProfilePlaceholder")}
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Cost (EUR)</label>
+               <label className="text-sm font-medium">{t("implementationPlan.cost")}</label>
               <input
                 type="number"
                 value={bulkEditFormData.cost_eur ?? ""}
                 onChange={(e) => setBulkEditFormData(prev => ({ ...prev, cost_eur: e.target.value ? Number(e.target.value) : undefined }))}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
-                placeholder="0"
+                placeholder={t("implementationPlan.costPlaceholder")}
               />
             </div>
           </div>
@@ -521,14 +521,14 @@ export default function ImplementationPlanPage() {
               disabled={bulkUpdating}
               className="px-4 py-2 rounded-md border border-input text-sm font-medium hover:bg-muted transition-colors"
             >
-              Cancel
+              {t("common.cancel")}
             </button>
             <button
               onClick={handleBulkUpdate}
               disabled={bulkUpdating}
               className="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50 transition-colors"
             >
-              {bulkUpdating ? "Updating..." : `Update ${selectedItemIds.size} item(s)`}
+              {bulkUpdating ? t("implementationPlan.updating") : t("implementationPlan.updateItems", { count: selectedItemIds.size })}
             </button>
           </DialogFooter>
         </DialogContent>
