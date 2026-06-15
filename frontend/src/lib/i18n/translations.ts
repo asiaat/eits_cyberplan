@@ -39,6 +39,7 @@ export const translations = {
       allTypes: "All types",
       unknownOrg: "Unknown Org",
       noChange: "No change",
+      total: "Total",
     },
     nav: {
       section: {
@@ -298,6 +299,10 @@ organization: {
       highRisks: "High Risks",
       noOverdueTasks: "No overdue tasks",
       noHighRisks: "No high risks",
+      section: {
+        scopeModelling: "Scope Modelling",
+        imr: "IMR",
+      },
     },
     businessProcesses: {
       title: "Business Processes",
@@ -911,6 +916,7 @@ organization: {
       allTypes: "Kõik tüübid",
       unknownOrg: "Tundmatu organisatsioon",
       noChange: "Muutmata",
+      total: "Kokku",
     },
     nav: {
       section: {
@@ -1167,6 +1173,10 @@ inactive: "Mitteaktiivne",
       highRisks: "Kõrged riskid",
       noOverdueTasks: "Viivitunud ülesandeid ei ole",
       noHighRisks: "Kõrgeid riske ei ole",
+      section: {
+        scopeModelling: "Kaitseala modelleerimine",
+        imr: "Rakenduskava",
+      },
     },
     businessProcesses: {
       title: "Äriprotsessid",
