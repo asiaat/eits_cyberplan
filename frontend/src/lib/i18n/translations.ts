@@ -303,6 +303,12 @@ organization: {
         scopeModelling: "Scope Modelling",
         imr: "IMR",
       },
+      imr: {
+        pearoDistribution: "Status Distribution",
+        priorityDistribution: "Priority Distribution",
+        overdue: "Overdue",
+        readyForCompletion: "Ready for Completion",
+      },
       bp: {
         assessed: "Protection needs assessed",
       },
@@ -1181,6 +1187,12 @@ inactive: "Mitteaktiivne",
       section: {
         scopeModelling: "Kaitseala modelleerimine",
         imr: "Rakenduskava",
+      },
+      imr: {
+        pearoDistribution: "Olekute jaotus",
+        priorityDistribution: "Prioriteedi jaotus",
+        overdue: "Viivitatud",
+        readyForCompletion: "Valmis lõpetamiseks",
       },
       bp: {
         assessed: "Kaitsetarbe hinnatud",

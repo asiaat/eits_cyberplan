@@ -1,5 +1,5 @@
 import { useTranslation } from "@/lib/i18n"
-import { ImrDashboardStats } from "@/components/imr/ImrDashboardStats"
+import { ImrChartStats } from "@/components/imr/ImrChartStats"
 import BusinessProcessStats from "@/components/dashboard/BusinessProcessStats"
 import AssetStats from "@/components/dashboard/AssetStats"
 import ScopeStats from "@/components/dashboard/ScopeStats"
@@ -26,7 +26,7 @@ export default function DashboardPage() {
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
           {t("dashboard.section.imr")}
         </h2>
-        <ImrDashboardStats />
+        <ImrChartStats />
       </section>
     </div>
   )
