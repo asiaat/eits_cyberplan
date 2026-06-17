@@ -1,0 +1,52 @@
+erDiagram
+    app_tenants {
+        uuid id PK
+        varchar name
+    }
+    global_users {
+        uuid id PK
+        varchar email
+        varchar password_hash
+    }
+    local_users {
+        uuid id PK
+        uuid global_user_id FK
+        uuid tenant_id FK
+        varchar full_name
+        varchar department
+        boolean is_active
+        timestamp created_at
+    }
+    e_its_roles {
+        uuid id PK
+        uuid tenant_id FK
+        varchar role_name
+        text description
+    }
+    user_roles {
+        uuid id PK
+        uuid user_id FK
+        uuid role_id FK
+        uuid granted_by FK
+        timestamp granted_at
+    }
+    e_its_role_permissions {
+        uuid role_id PK,FK
+        text permission_id PK,FK
+    }
+    permissions {
+        text id PK
+        varchar code
+        varchar name
+        text description
+        varchar category
+    }
+
+    app_tenants ||--o{ local_users : "has"
+    app_tenants ||--o{ e_its_roles : "has"
+    global_users ||--o{ local_users : "has_profile"
+    local_users ||--o{ user_roles : "assigned"
+    e_its_roles ||--o{ user_roles : "assigned"
+    local_users ||--o{ user_roles : "granted_by"
+    e_its_roles ||--o{ e_its_role_permissions : "has"
+    permissions ||--o{ e_its_role_permissions : "included_in"

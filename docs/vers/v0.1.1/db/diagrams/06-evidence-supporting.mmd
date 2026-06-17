@@ -1,0 +1,174 @@
+erDiagram
+    app_tenants {
+        uuid id PK
+    }
+    global_users {
+        uuid id PK
+    }
+    local_users {
+        uuid id PK
+    }
+    business_processes {
+        uuid id PK
+    }
+    damage_scenarios {
+        uuid id PK
+        varchar code
+    }
+    evidences {
+        uuid id PK
+        uuid tenant_id FK
+        varchar title
+        varchar evidence_type
+        varchar storage_uri
+        varchar external_url
+        varchar file_hash
+        varchar version
+        uuid owner_user_id FK
+        timestamp valid_from
+        timestamp valid_until
+        timestamp review_due_date
+        bigint file_size
+        varchar mime_type
+        int download_count
+        timestamp deleted_at
+    }
+    evidence_links {
+        uuid id PK
+        uuid tenant_id FK
+        uuid evidence_id FK
+        varchar target_type
+        uuid target_id
+        varchar link_type
+    }
+    audit_logs {
+        uuid id PK
+        uuid tenant_id FK
+        uuid actor_user_id FK
+        varchar action
+        varchar entity_type
+        uuid entity_id
+        text before_json
+        text after_json
+        timestamp created_at
+    }
+    comments {
+        uuid id PK
+        uuid tenant_id FK
+        varchar entity_type
+        uuid entity_id
+        uuid author_user_id FK
+        text body
+        timestamp created_at
+    }
+    persons {
+        uuid id PK
+        varchar national_id
+        varchar first_name
+        varchar last_name
+        date date_of_birth
+        varchar email
+        varchar phone
+        text additional_info
+        timestamp deleted_at
+    }
+    person_organizations {
+        uuid id PK
+        uuid person_id FK
+        uuid tenant_id FK
+        varchar role
+        timestamp created_at
+    }
+    organization_people {
+        uuid id PK
+        uuid tenant_id
+        uuid person_asset_id
+        timestamp created_at
+    }
+    alerts {
+        uuid id PK
+        varchar title
+        text message
+        varchar level
+        varchar target_role
+        varchar is_read
+        timestamp read_at
+        timestamp created_at
+        varchar link
+        varchar is_active
+        uuid tenant_id
+    }
+    protection_need_summaries {
+        uuid id PK
+        uuid tenant_id FK
+        uuid business_process_id FK
+        varchar protection_need
+        varchar confidentiality_need
+        varchar integrity_need
+        varchar availability_need
+        text justification
+        uuid approved_by FK
+        timestamp approved_at
+        timestamp created_at
+        timestamp updated_at
+    }
+    damage_assessments {
+        uuid id PK
+        uuid tenant_id FK
+        uuid business_process_id FK
+        uuid damage_scenario_id FK
+        int availability_impact
+        int confidentiality_impact
+        int integrity_impact
+        int damage_category
+        text justification
+        uuid assessed_by FK
+        timestamp assessed_at
+        timestamp deleted_at
+    }
+    damage_category_thresholds {
+        uuid id PK
+        uuid tenant_id FK
+        uuid damage_scenario_id FK
+        text negligible_description
+        text limited_description
+        text serious_description
+        text catastrophic_description
+        uuid approved_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+    security_profiles {
+        uuid id PK
+        uuid tenant_id FK
+        uuid catalog_version_id FK
+        varchar security_approach
+        uuid approved_by FK
+        timestamp approved_at
+        text notes
+        timestamp deleted_at
+    }
+    asset_type_categories {
+        uuid id PK
+        varchar code
+        varchar name
+        text description
+    }
+    app_tenants ||--o{ evidences : has
+    app_tenants ||--o{ evidence_links : has
+    app_tenants ||--o{ audit_logs : has
+    app_tenants ||--o{ comments : has
+    app_tenants ||--o{ person_organizations : has
+    app_tenants ||--o{ organization_people : has
+    app_tenants ||--o{ protection_need_summaries : has
+    app_tenants ||--o{ damage_assessments : has
+    app_tenants ||--o{ damage_category_thresholds : has
+    app_tenants ||--o{ security_profiles : has
+    local_users ||--o{ evidences : owns
+    global_users ||--o{ audit_logs : acted_by
+    evidences ||--o{ evidence_links : linked
+    persons ||--o{ person_organizations : belongs_to
+    business_processes ||--o{ protection_need_summaries : evaluated
+    business_processes ||--o{ damage_assessments : assessed
+    damage_scenarios ||--o{ damage_assessments : evaluated_by
+    damage_scenarios ||--o{ damage_category_thresholds : threshold

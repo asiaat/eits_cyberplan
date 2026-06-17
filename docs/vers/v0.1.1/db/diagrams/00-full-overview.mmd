@@ -1,0 +1,40 @@
+erDiagram
+    app_tenants ||--o{ tenant_users : "subscription"
+    global_users ||--o{ tenant_users : "access"
+
+    app_tenants ||--o{ local_users : "profiles"
+    global_users ||--o{ local_users : "identities"
+    local_users ||--o{ user_roles : "roles"
+    e_its_roles ||--o{ user_roles : "role_assignments"
+    permissions ||--o{ e_its_role_permissions : "role_permissions"
+    e_its_roles ||--o{ e_its_role_permissions : "has_permissions"
+
+    app_tenants ||--o{ business_processes : "processes"
+    business_processes ||--o{ process_assets : "linked"
+    assets ||--o{ process_assets : "linked"
+
+    app_tenants ||--o{ assets : "assets"
+    assets ||--o{ asset_relations : "relations"
+
+    eits_catalog_versions ||--o{ eits_modules : "catalog"
+    eits_modules ||--o{ eits_catalog_measures : "measures"
+    eits_modules ||--o{ module_threats : "threats"
+    eits_threats ||--o{ module_threats : "threats"
+
+    assets ||--o{ asset_module_mappings : "mapped"
+    eits_modules ||--o{ asset_module_mappings : "assigned"
+    business_processes ||--o{ bp_module_mappings : "mapped"
+
+    asset_module_mappings ||--o{ imr_items : "generates"
+    bp_module_mappings ||--o{ imr_items : "generates"
+    eits_catalog_measures ||--o{ imr_items : "target_measure"
+
+    app_tenants ||--o{ risks : "risks"
+    risks ||--o{ risk_measure_links : "linked_measures"
+    imr_items ||--o{ risk_measure_links : "linked_imr"
+
+    app_tenants ||--o{ evidences : "evidence"
+    evidences ||--o{ evidence_links : "links"
+
+    app_tenants ||--o{ audit_logs : "audit_trail"
+    app_tenants ||--o{ comments : "comments"

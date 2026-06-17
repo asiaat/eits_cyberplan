@@ -1,0 +1,30 @@
+erDiagram
+    app_tenants {
+        uuid id PK
+        varchar name
+        varchar status
+        varchar plan
+        varchar registry_code
+        varchar legal_form
+        varchar registered_address
+        varchar phone
+        varchar email
+        varchar divisions
+        timestamp created_at
+    }
+    global_users {
+        uuid id PK
+        varchar email
+        varchar password_hash
+        boolean mfa_enabled
+        varchar mfa_secret
+        timestamp created_at
+    }
+    tenant_users {
+        uuid tenant_id PK,FK
+        uuid user_id PK,FK
+        timestamp assigned_at
+    }
+
+    app_tenants ||--o{ tenant_users : "has"
+    global_users ||--o{ tenant_users : "assigned_to"

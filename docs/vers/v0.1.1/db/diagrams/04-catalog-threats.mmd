@@ -1,0 +1,77 @@
+erDiagram
+    eits_catalog_versions {
+        uuid id PK
+        varchar version
+        varchar year
+        varchar name
+        varchar source_name
+        varchar source_file_hash
+        timestamp imported_at
+        boolean active
+        boolean is_active
+        date released_at
+    }
+    eits_modules {
+        uuid id PK
+        uuid catalog_version_id FK
+        varchar code
+        varchar name
+        varchar module_group
+        varchar category
+        text description
+        varchar module_type
+        varchar source_url
+    }
+    eits_catalog_measures {
+        uuid id PK
+        uuid module_id FK
+        varchar code
+        varchar name
+        varchar measure_level
+        text description
+        varchar responsible_role
+    }
+    eits_measures {
+        uuid id PK
+        uuid catalog_version_id FK
+        varchar code
+        varchar title
+        text description
+        varchar measure_level
+        varchar responsible_role
+        text implementation_guidance
+    }
+    eits_module_measures {
+        uuid id PK
+        uuid module_id FK
+        uuid measure_id FK
+    }
+    eits_threats {
+        uuid id PK
+        uuid version_id FK
+        varchar code
+        varchar category
+        varchar impact_area
+        varchar name
+        text description
+    }
+    module_threats {
+        uuid id PK
+        uuid module_id FK
+        uuid threat_id FK
+        text relevance_note
+    }
+    damage_scenarios {
+        uuid id PK
+        varchar code
+        varchar name
+        text description
+    }
+    eits_catalog_versions ||--o{ eits_modules : contains
+    eits_catalog_versions ||--o{ eits_measures : contains
+    eits_catalog_versions ||--o{ eits_threats : contains
+    eits_modules ||--o{ eits_catalog_measures : has
+    eits_modules ||--o{ eits_module_measures : has
+    eits_measures ||--o{ eits_module_measures : included_in
+    eits_modules ||--o{ module_threats : has
+    eits_threats ||--o{ module_threats : associated_with
