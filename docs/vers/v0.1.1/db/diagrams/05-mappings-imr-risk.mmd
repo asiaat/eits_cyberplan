@@ -1,0 +1,173 @@
+erDiagram
+    app_tenants {
+        uuid id PK
+    }
+    assets {
+        uuid id PK
+    }
+    business_processes {
+        uuid id PK
+    }
+    eits_modules {
+        uuid id PK
+    }
+    eits_catalog_measures {
+        uuid id PK
+    }
+    local_users {
+        uuid id PK
+    }
+    asset_module_mappings {
+        uuid id PK
+        uuid tenant_id FK
+        uuid asset_id FK
+        uuid module_id FK
+        text justification
+        uuid modeled_by FK
+        timestamp modeled_at
+    }
+    bp_module_mappings {
+        uuid id PK
+        uuid tenant_id FK
+        uuid business_process_id FK
+        uuid module_id FK
+        text justification
+        uuid modeled_by FK
+        timestamp modeled_at
+    }
+    object_module_mappings {
+        uuid id PK
+        uuid tenant_id FK
+        varchar target_type
+        uuid target_id
+        uuid module_id FK
+        varchar applicability
+        text rationale
+        uuid selected_by_user_id FK
+        timestamp selected_at
+    }
+    process_module_assignments {
+        uuid id PK
+        uuid tenant_id FK
+        uuid module_id FK
+        varchar is_applicable
+        text non_applicability_justification
+        uuid assigned_by FK
+        timestamp assigned_at
+    }
+    protectionmode_selections {
+        uuid id PK
+        uuid tenant_id FK
+        uuid catalog_version_id FK
+        varchar security_approach
+        uuid evidence_id FK
+        uuid approved_by FK
+        timestamp approved_at
+        text notes
+        boolean is_active
+        timestamp deleted_at
+    }
+    imr_items {
+        uuid id PK
+        uuid tenant_id FK
+        uuid asset_module_mapping_id FK
+        uuid bp_module_mapping_id FK
+        uuid measure_id FK
+        boolean is_process_module_measure
+        varchar pearo_status
+        text implementation_description
+        text non_implementation_justification
+        text partial_scope_description
+        uuid responsible_user_id FK
+        date due_date
+        date next_review_date
+        varchar priority
+        uuid risk_acceptance_approved_by FK
+        timestamp risk_acceptance_date
+        text verification_method
+        timestamp last_verified_at
+        uuid imr_snapshot_id FK
+        uuid created_by FK
+        uuid updated_by FK
+        timestamp status_changed_at
+        varchar requirement_profile
+        text todo_description
+        numeric cost_eur
+        timestamp deleted_at
+    }
+    imr_snapshots {
+        uuid id PK
+        uuid tenant_id FK
+        uuid protection_mode_selection_id FK
+        varchar label
+        text description
+        boolean is_current
+        int item_count
+        uuid created_by FK
+        timestamp created_at
+        uuid restored_from
+    }
+    risks {
+        uuid id PK
+        uuid tenant_id FK
+        varchar title
+        text scenario
+        varchar target_type
+        uuid target_id
+        text threat
+        text vulnerability
+        varchar likelihood
+        varchar impact
+        varchar risk_level
+        varchar treatment
+        uuid owner_user_id FK
+        varchar status
+        timestamp review_date
+        uuid threat_id
+        uuid asset_id
+        uuid business_process_id
+        int likelihood_score
+        int impact_score
+        int risk_score
+        varchar risk_rating
+        varchar treatment_type
+        varchar residual_risk_level
+        uuid accepted_by
+        timestamp accepted_at
+        timestamp deleted_at
+    }
+    risk_measure_links {
+        uuid id PK
+        uuid tenant_id FK
+        uuid risk_id FK
+        uuid imr_item_id FK
+        uuid measure_id FK
+        varchar custom_measure_name
+        text custom_measure_description
+        timestamp created_at
+    }
+    app_tenants ||--o{ asset_module_mappings : has
+    app_tenants ||--o{ bp_module_mappings : has
+    app_tenants ||--o{ object_module_mappings : has
+    app_tenants ||--o{ process_module_assignments : has
+    app_tenants ||--o{ protectionmode_selections : has
+    app_tenants ||--o{ imr_items : has
+    app_tenants ||--o{ imr_snapshots : has
+    app_tenants ||--o{ risks : has
+    app_tenants ||--o{ risk_measure_links : has
+    assets ||--o{ asset_module_mappings : mapped
+    business_processes ||--o{ bp_module_mappings : mapped
+    eits_modules ||--o{ asset_module_mappings : assigned
+    eits_modules ||--o{ bp_module_mappings : assigned
+    eits_modules ||--o{ object_module_mappings : referenced
+    eits_modules ||--o{ process_module_assignments : applicable
+    eits_catalog_measures ||--o{ imr_items : target
+    local_users ||--o{ imr_items : responsible
+    local_users ||--o{ imr_items : created_by
+    asset_module_mappings ||--o{ imr_items : generates
+    bp_module_mappings ||--o{ imr_items : generates
+    imr_snapshots ||--o{ imr_items : contains
+    protectionmode_selections ||--o{ imr_snapshots : captures
+    risks ||--o{ risk_measure_links : links_to
+    imr_items ||--o{ risk_measure_links : referenced_by
+    eits_catalog_measures ||--o{ risk_measure_links : referenced_by

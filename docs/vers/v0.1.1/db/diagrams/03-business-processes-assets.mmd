@@ -1,0 +1,104 @@
+erDiagram
+    app_tenants {
+        uuid id PK
+    }
+    local_users {
+        uuid id PK
+    }
+    business_processes {
+        uuid id PK
+        uuid tenant_id FK
+        uuid owner_user_id FK
+        uuid division_id
+        varchar name
+        text description
+        text purpose
+        text inputs
+        text outputs
+        varchar status
+        varchar confidentiality_need
+        varchar integrity_need
+        varchar availability_need
+        varchar process_type
+        int priority
+        timestamp created_at
+        timestamp updated_at
+        timestamp deleted_at
+        uuid deleted_by
+    }
+    business_process_dependencies {
+        uuid id PK
+        uuid tenant_id FK
+        uuid primary_process_id FK
+        uuid depends_on_process_id FK
+        varchar dependency_type
+        text description
+        timestamp created_at
+    }
+    process_assets {
+        uuid id PK
+        uuid tenant_id FK
+        uuid business_process_id FK
+        uuid asset_id FK
+        text relation_description
+    }
+    assets {
+        uuid id PK
+        uuid tenant_id FK
+        uuid owner_user_id FK
+        uuid person_id FK
+        varchar name
+        varchar asset_type
+        text description
+        text remarks
+        varchar criticality
+        varchar confidentiality_need
+        varchar integrity_need
+        varchar availability_need
+        varchar lifecycle_status
+        boolean is_grouped
+        int quantity
+        varchar group_name
+        boolean is_core
+        varchar asset_index
+        varchar asset_category FK
+        varchar location
+        varchar protection_need
+        text protection_need_justification
+        array protection_source_process_ids
+        timestamp deleted_at
+    }
+    asset_relations {
+        uuid id PK
+        uuid tenant_id FK
+        uuid source_asset_id FK
+        uuid target_asset_id FK
+        varchar relation_type
+        varchar relation_type_code FK
+        text description
+        boolean bidirectional
+        varchar strength
+        timestamp created_at
+    }
+    asset_relation_types {
+        uuid id PK
+        varchar code
+        varchar name
+        text description
+        varchar source_types
+        varchar target_types
+        boolean bidirectional
+        varchar strength
+    }
+
+    app_tenants ||--o{ business_processes : "has"
+    app_tenants ||--o{ assets : "has"
+    app_tenants ||--o{ asset_relations : "has"
+    local_users ||--o{ business_processes : "owns"
+    business_processes ||--o{ business_process_dependencies : "primary"
+    business_processes ||--o{ business_process_dependencies : "depends_on"
+    business_processes ||--o{ process_assets : "linked"
+    assets ||--o{ process_assets : "linked"
+    assets ||--o{ asset_relations : "source"
+    assets ||--o{ asset_relations : "target"
+    asset_relation_types ||--o{ asset_relations : "defines"
