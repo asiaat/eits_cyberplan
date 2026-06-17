@@ -33,6 +33,7 @@ export interface ImrItem {
   cost_eur?: number
   linked_asset_count?: number
   bp_names: string[]
+  asset_names?: string[]
 }
 
 export interface MeasureInfo {
