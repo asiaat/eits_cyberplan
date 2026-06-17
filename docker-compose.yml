@@ -71,7 +71,7 @@ services:
   frontend:
     build:
       context: .
-      dockerfile: infra/docker/frontend.Dockerfile
+      dockerfile: infra/docker/frontend.dev.Dockerfile
     container_name: eits_frontend
     ports:
       - "5173:5173"
@@ -82,7 +82,7 @@ services:
       - VITE_API_URL=http://localhost:8000
     depends_on:
       - backend
-    command: pnpm dev --host 0.0.0.0
+
 
 volumes:
   postgres_data:
