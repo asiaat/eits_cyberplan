@@ -7,7 +7,10 @@ from fastapi import HTTPException, status
 
 from app.models import (
     ImrItem, EvidenceLink, LocalUser, Tenant, 
-    ProtectionNeedSummary, EitsCatalogMeasure
+    ProtectionNeedSummary, EitsCatalogMeasure,
+    Asset, AssetModuleMapping,
+    BusinessProcess, BusinessProcessModuleMapping,
+    ProcessAsset,
 )
 from app.models.eits_catalog_measure import EitsCatalogMeasure
 
@@ -379,7 +382,7 @@ class ImrService:
         ws = wb.active
         ws.title = "IMR"
 
-        headers = ["Kood", "Meede", "Staatus", "Prioriteet", "Tähtaeg", "Vastutaja", "Profiil", "Tegevused (TODO)", "Maksumus (EUR)", "Kirjeldus", "Verifitseerimine", "Järgmine ülevaade"]
+        headers = ["Kood", "Meede", "Varad (Assets)", "Äriprotsessid (BPs)", "Staatus", "Prioriteet", "Tähtaeg", "Vastutaja", "Profiil", "Tegevused (TODO)", "Maksumus (EUR)", "Kirjeldus", "Verifitseerimine", "Järgmine ülevaade"]
         header_font = Font(bold=True, color="FFFFFF")
         header_fill = PatternFill(start_color="4F46E5", end_color="4F46E5", fill_type="solid")
         header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
@@ -407,9 +410,49 @@ class ImrService:
             if not profile and measure:
                 profile = "PÕHIMEEDE" if measure.measure_level == "BASE" else "PIIRATULT"
 
+            # Resolve asset names
+            asset_names: set[str] = set()
+            if item.asset_module_mapping_id:
+                mapping = db.query(AssetModuleMapping).filter(
+                    AssetModuleMapping.id == item.asset_module_mapping_id
+                ).first()
+                if mapping:
+                    asset = db.query(Asset).filter(Asset.id == mapping.asset_id).first()
+                    if asset and asset.name:
+                        asset_names.add(asset.name)
+
+            # Resolve BP names via direct link and via asset-process_assets link
+            bp_names: set[str] = set()
+            if item.bp_module_mapping_id:
+                bp_mapping = db.query(BusinessProcessModuleMapping).filter(
+                    BusinessProcessModuleMapping.id == item.bp_module_mapping_id
+                ).first()
+                if bp_mapping:
+                    bp = db.query(BusinessProcess).filter(
+                        BusinessProcess.id == bp_mapping.business_process_id
+                    ).first()
+                    if bp and bp.name:
+                        bp_names.add(bp.name)
+            if item.asset_module_mapping_id:
+                mapping = db.query(AssetModuleMapping).filter(
+                    AssetModuleMapping.id == item.asset_module_mapping_id
+                ).first()
+                if mapping:
+                    process_assets = db.query(ProcessAsset).filter(
+                        ProcessAsset.asset_id == mapping.asset_id
+                    ).all()
+                    for pa in process_assets:
+                        bp = db.query(BusinessProcess).filter(
+                            BusinessProcess.id == pa.business_process_id
+                        ).first()
+                        if bp and bp.name:
+                            bp_names.add(bp.name)
+
             row_data = [
                 measure.code if measure else "",
                 measure.name if measure else "",
+                ", ".join(sorted(asset_names)) if asset_names else "",
+                ", ".join(sorted(bp_names)) if bp_names else "",
                 peero_labels.get(item.pearo_status, item.pearo_status),
                 priority_labels.get(item.priority, item.priority),
                 str(item.due_date) if item.due_date else "",
@@ -429,16 +472,18 @@ class ImrService:
 
         ws.column_dimensions["A"].width = 14
         ws.column_dimensions["B"].width = 50
-        ws.column_dimensions["C"].width = 22
-        ws.column_dimensions["D"].width = 14
-        ws.column_dimensions["E"].width = 14
-        ws.column_dimensions["F"].width = 24
+        ws.column_dimensions["C"].width = 30
+        ws.column_dimensions["D"].width = 30
+        ws.column_dimensions["E"].width = 22
+        ws.column_dimensions["F"].width = 14
         ws.column_dimensions["G"].width = 14
-        ws.column_dimensions["H"].width = 40
-        ws.column_dimensions["I"].width = 16
-        ws.column_dimensions["J"].width = 50
-        ws.column_dimensions["K"].width = 30
-        ws.column_dimensions["L"].width = 16
+        ws.column_dimensions["H"].width = 24
+        ws.column_dimensions["I"].width = 14
+        ws.column_dimensions["J"].width = 40
+        ws.column_dimensions["K"].width = 16
+        ws.column_dimensions["L"].width = 50
+        ws.column_dimensions["M"].width = 30
+        ws.column_dimensions["N"].width = 16
 
         from io import BytesIO
         buffer = BytesIO()
