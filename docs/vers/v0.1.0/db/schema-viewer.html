@@ -6,38 +6,102 @@
 <title>E-ITS Database Schema — v0.1.0</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1a1a2e;color:#e0e0e0;overflow:hidden;height:100vh;user-select:none}
-#toolbar{position:fixed;top:0;left:0;right:0;z-index:1000;background:#16213e;padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #0f3460;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-#toolbar h1{font-size:16px;font-weight:600;color:#e94560;white-space:nowrap}
-#toolbar .sep{width:1px;height:28px;background:#0f3460}
-#toolbar input{padding:6px 12px;border-radius:6px;border:1px solid #0f3460;background:#1a1a2e;color:#e0e0e0;font-size:13px;width:240px;outline:none;transition:border-color .2s}
-#toolbar input:focus{border-color:#e94560}
-#toolbar label{font-size:12px;color:#888;display:flex;align-items:center;gap:6px;cursor:pointer}
+:root{
+--bg-page:#1a1a2e;
+--bg-surface:#16213e;
+--bg-raised:#161b22;
+--bg-input:#1a1a2e;
+--bg-canvas:#1a1a2e;
+--bg-ref:#0d1117;
+--bg-hover:#1c2128;
+--border:#0f3460;
+--border-soft:#30363d;
+--border-subtle:#21262d;
+--border-table:rgba(255,255,255,.08);
+--text:#e0e0e0;
+--text-em:#e6edf3;
+--text-soft:#888;
+--text-muted:#555;
+--text-ref:#8b949e;
+--accent:#e94560;
+--accent-glow:#e9456040;
+--code:#58a6ff;
+--rel-color:#0f3460;
+--rel-fk:#889;
+--rel-mult:#e94560;
+--grid-dot:rgba(255,255,255,.03);
+--badge-fk:#1f6feb;
+--badge-pkfk:#533483;
+--badge-ix:#238636;
+--badge-uq:#d29922;
+--badge-bg:rgba(31,111,235,.2);
+--shadow:rgba(0,0,0,.3);
+--shadow-hover:rgba(0,0,0,.5)
+}
+[data-theme="light"]{
+--bg-page:#f0f2f5;
+--bg-surface:#fff;
+--bg-raised:#fff;
+--bg-input:#fff;
+--bg-canvas:#f0f2f5;
+--bg-ref:#f0f2f5;
+--bg-hover:#f3f4f6;
+--border:#d0d5dd;
+--border-soft:#d0d5dd;
+--border-subtle:#e5e7eb;
+--border-table:#eef0f2;
+--text:#1a1a2e;
+--text-em:#1a1a2e;
+--text-soft:#667085;
+--text-muted:#98a2b3;
+--text-ref:#667085;
+--accent:#e94560;
+--accent-glow:#e9456040;
+--code:#1f6feb;
+--rel-color:#475467;
+--rel-fk:#667085;
+--rel-mult:#e94560;
+--grid-dot:rgba(0,0,0,.06);
+--badge-fk:#1f6feb;
+--badge-pkfk:#8957e5;
+--badge-ix:#238636;
+--badge-uq:#d29922;
+--badge-bg:rgba(31,111,235,.1);
+--shadow:rgba(0,0,0,.08);
+--shadow-hover:rgba(0,0,0,.12)
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-page);color:var(--text);overflow:hidden;height:100vh;user-select:none;transition:background .3s,color .3s}
+#toolbar{position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--bg-surface);padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);box-shadow:0 2px 8px var(--shadow);transition:background .3s,border-color .3s}
+#toolbar h1{font-size:16px;font-weight:600;color:var(--accent);white-space:nowrap}
+#toolbar .sep{width:1px;height:28px;background:var(--border)}
+#toolbar input{padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;width:240px;outline:none;transition:border-color .2s,background .3s,color .3s}
+#toolbar input:focus{border-color:var(--accent)}
+#toolbar label{font-size:12px;color:var(--text-soft);display:flex;align-items:center;gap:6px;cursor:pointer}
 #toolbar label input{cursor:pointer;width:auto}
-#toolbar .zoom-info{font-size:12px;color:#888;margin-left:auto;white-space:nowrap}
-#toolbar .hint{font-size:11px;color:#555;white-space:nowrap;margin-left:8px}
-#canvas{position:fixed;top:52px;left:0;right:0;bottom:0;overflow:hidden;cursor:grab;background:#1a1a2e;background-image:radial-gradient(circle,#ffffff08 1px,transparent 1px);background-size:24px 24px}
+#toolbar .zoom-info{font-size:12px;color:var(--text-soft);margin-left:auto;white-space:nowrap}
+#toolbar .hint{font-size:11px;color:var(--text-muted);white-space:nowrap;margin-left:8px}
+#canvas{position:fixed;top:52px;left:0;right:0;bottom:0;overflow:hidden;cursor:grab;background:var(--bg-canvas);background-image:radial-gradient(circle,var(--grid-dot) 1px,transparent 1px);background-size:24px 24px;transition:background .3s}
 #canvas:active{cursor:grabbing}
 #world{transform-origin:0 0;position:absolute}
 svg.rels{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
-svg.rels .rel-line{stroke:var(--rel-color,#0f3460);stroke-width:1;fill:none;stroke-linejoin:round}
-svg.rels .rel-fk{font-size:9px;fill:#889;font-family:'SF Mono',Consolas,monospace}
-svg.rels .rel-role{font-size:9px;fill:#e0e0e0;font-family:'SF Mono',Consolas,monospace}
-svg.rels .rel-mult{font-size:9px;fill:#e94560;font-weight:700;font-family:'SF Mono',Consolas,monospace}
-.table-card{position:absolute;z-index:2;background:#16213e;border-radius:8px;border:1px solid #0f3460;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.3);transition:box-shadow .2s,opacity .3s;min-width:260px;max-width:320px}
-.table-card:hover{box-shadow:0 6px 20px rgba(0,0,0,.5);z-index:10}
+svg.rels .rel-line{stroke:var(--rel-color);stroke-width:1;fill:none;stroke-linejoin:round;transition:stroke .3s}
+svg.rels .rel-fk{font-size:9px;fill:var(--rel-fk);font-family:'SF Mono',Consolas,monospace;transition:fill .3s}
+svg.rels .rel-role{font-size:9px;fill:var(--text);font-family:'SF Mono',Consolas,monospace;transition:fill .3s}
+svg.rels .rel-mult{font-size:9px;fill:var(--rel-mult);font-weight:700;font-family:'SF Mono',Consolas,monospace;transition:fill .3s}
+.table-card{position:absolute;z-index:2;background:var(--bg-surface);border-radius:8px;border:1px solid var(--border);overflow:hidden;box-shadow:0 4px 12px var(--shadow);transition:box-shadow .2s,opacity .3s,background .3s,border-color .3s;min-width:260px;max-width:320px}
+.table-card:hover{box-shadow:0 6px 20px var(--shadow-hover);z-index:10}
 .table-card.dimmed{opacity:.15}
-.table-card.highlighted{opacity:1;border-color:#e94560!important;box-shadow:0 0 20px #e9456040}
-.table-card .header{padding:8px 12px;cursor:move;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08)}
+.table-card.highlighted{opacity:1;border-color:var(--accent)!important;box-shadow:0 0 20px var(--accent-glow)}
+.table-card .header{padding:8px 12px;cursor:move;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-table)}
 .table-card .header .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .table-card .header .cnt{font-size:10px;font-weight:400;opacity:.5;margin-left:8px;white-space:nowrap}
-.table-card .col{padding:3px 12px;font-size:11.5px;display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(255,255,255,.04);line-height:1.6}
+.table-card .col{padding:3px 12px;font-size:11.5px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border-table);line-height:1.6}
 .table-card .col:last-child{border-bottom:none}
-.table-card .col .pk{background:#e94560;color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.3px}
-.table-card .col .fk{background:#0f3460;color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.3px}
-.table-card .col .pkfk{background:#533483;color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.3px}
-.table-card .col .type{color:#888;font-size:10px;margin-left:auto;font-family:'SF Mono',Consolas,monospace;white-space:nowrap}
-.table-card .col .name{color:#e0e0e0;font-weight:400}
+.table-card .col .pk{background:var(--accent);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.3px}
+.table-card .col .fk{background:var(--border);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.3px}
+.table-card .col .pkfk{background:var(--badge-pkfk);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.3px}
+.table-card .col .type{color:var(--text-soft);font-size:10px;margin-left:auto;font-family:'SF Mono',Consolas,monospace;white-space:nowrap}
+.table-card .col .name{color:var(--text);font-weight:400}
 .tier-A .header{border-left:3px solid #3b82f6}
 .tier-B .header{border-left:3px solid #22c55e}
 .tier-CATALOG .header{border-left:3px solid #a855f7}
@@ -47,10 +111,80 @@ svg.rels .rel-mult{font-size:9px;fill:#e94560;font-weight:700;font-family:'SF Mo
 .tier-EVIDENCE .header{border-left:3px solid #06b6d4}
 .tier-SUPPORT .header{border-left:3px solid #64748b}
 .tier-LEGACY .header{border-left:3px solid #78716c}
-#legend{position:fixed;bottom:16px;left:16px;z-index:100;background:#16213ee0;backdrop-filter:blur(8px);padding:10px 14px;border-radius:8px;border:1px solid #0f3460;font-size:11px;display:flex;flex-wrap:wrap;gap:6px 14px;pointer-events:none}
+#legend{position:fixed;bottom:16px;left:16px;z-index:100;background:var(--bg-surface);backdrop-filter:blur(8px);padding:10px 14px;border-radius:8px;border:1px solid var(--border);font-size:11px;display:flex;flex-wrap:wrap;gap:6px 14px;pointer-events:none;transition:background .3s,border-color .3s}
 #legend .item{display:flex;align-items:center;gap:6px}
 #legend .dot{width:10px;height:10px;border-radius:50%}
-#status{position:fixed;bottom:16px;right:16px;z-index:100;font-size:11px;color:#555;background:#16213ee0;backdrop-filter:blur(8px);padding:6px 12px;border-radius:6px;border:1px solid #0f3460;pointer-events:none}
+#status{position:fixed;bottom:16px;right:16px;z-index:100;font-size:11px;color:var(--text-muted);background:var(--bg-surface);backdrop-filter:blur(8px);padding:6px 12px;border-radius:6px;border:1px solid var(--border);pointer-events:none;transition:color .3s,background .3s,border-color .3s}
+#statsPanel{position:fixed;bottom:50px;right:16px;z-index:100;background:var(--bg-surface);backdrop-filter:blur(8px);padding:10px 14px;border-radius:8px;border:1px solid var(--border);font-size:10.5px;line-height:1.5;max-height:60vh;overflow-y:auto;min-width:200px;pointer-events:auto;transition:opacity .2s,transform .15s,background .3s,border-color .3s}
+#statsPanel.hidden{opacity:0;pointer-events:none;transform:translateY(6px)}
+#statsPanel .st{color:var(--text-soft);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.5px;margin:4px 0 2px}
+#statsPanel .st:first-child{margin-top:0}
+#statsPanel .row{display:flex;justify-content:space-between;gap:12px;padding:1px 0}
+#statsPanel .row .v{color:var(--text);font-weight:500}
+#statsPanel .row .l{color:var(--text-muted)}
+#statsPanel .tags{display:flex;flex-wrap:wrap;gap:3px 6px;padding:2px 0}
+#statsPanel .tags .tag{display:flex;align-items:center;gap:3px}
+#statsPanel .tags .tag .c{font-weight:700;font-size:9px}
+#statsPanel .tags .tag .n{color:var(--text-muted)}
+#toolbar button{background:none;border:1px solid var(--border);color:var(--text);padding:3px 10px;border-radius:5px;font-size:12px;cursor:pointer;transition:all .15s,background .3s,border-color .3s,color .3s}
+#toolbar button:hover{background:var(--border);border-color:var(--text-muted)}
+#toolbar button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+#toolbar .tab-btn{font-size:12px;border-radius:0;border:none;border-bottom:2px solid transparent;padding:2px 8px;color:var(--text-ref)}
+#toolbar .tab-btn:hover{color:var(--text-em);background:0 0;border-bottom-color:var(--border-soft)}
+#toolbar .tab-btn.active{color:var(--accent);background:0 0;border-bottom-color:var(--accent)}
+.diagram-only,.reference-only{display:flex;align-items:center;gap:8px}
+.tab-active-ref .diagram-only{display:none}
+.tab-active-diag .reference-only{display:none}
+#diagramView{position:fixed;top:52px;left:0;right:0;bottom:0;display:none}
+#diagramView.active{display:block}
+#refView{position:fixed;top:52px;left:0;right:0;bottom:0;overflow-y:auto;background:var(--bg-ref);display:none;transition:background .3s}
+#refView.active{display:block}
+#refContent{max-width:960px;margin:0 auto;padding:20px 24px 60px}
+#refView .tier{border:1px solid var(--border-soft);border-radius:8px;margin-bottom:8px;overflow:hidden;background:var(--bg-raised);transition:background .3s,border-color .3s}
+#refView .tier-header{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none;transition:background .15s;border-left:3px solid var(--tier-color,var(--text-soft))}
+#refView .tier-header:hover{background:var(--bg-hover)}
+#refView .tier-header .arrow{font-size:10px;color:var(--text-ref);transition:transform .2s;width:14px;text-align:center;flex-shrink:0}
+#refView .tier.open .tier-header .arrow{transform:rotate(90deg)}
+#refView .tier-header .name{font-size:13px;font-weight:600;color:var(--text-em)}
+#refView .tier-header .count{font-size:11px;color:var(--text-ref);margin-left:auto}
+#refView .tier-body{display:none;border-top:1px solid var(--border-subtle)}
+#refView .tier.open .tier-body{display:block}
+#refView .table-card{padding:0}
+#refView .table-card:last-child .table-header{border-bottom:none}
+#refView .table-header{display:flex;align-items:center;gap:10px;padding:6px 14px 6px 0;cursor:pointer;user-select:none;transition:background .1s}
+#refView .table-header:hover{background:var(--bg-hover)}
+#refView .table-header .arrow{font-size:9px;color:var(--text-ref);transition:transform .2s;width:11px;text-align:center;flex-shrink:0}
+#refView .table-card.open .table-header .arrow{transform:rotate(90deg)}
+#refView .table-header .tname{font-size:12.5px;font-weight:500;color:var(--code);font-family:'SF Mono',Consolas,monospace}
+#refView .table-header .comment{font-size:11px;color:var(--text-ref);margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#refView .table-header .badges{margin-left:auto;display:flex;gap:4px}
+#refView .table-header .badge{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--badge-bg);color:var(--code)}
+#refView .table-body{display:none;padding:0 0 4px 0}
+#refView .table-card.open .table-body{display:block}
+
+/* ── tree connectors ── */
+#refView .tree{padding:0}
+#refView .branch{position:relative;padding-left:18px}
+#refView .branch::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:1px;background:var(--border-subtle)}
+#refView .branch.last::before{display:none}
+#refView .branch::after{content:'';position:absolute;left:7px;top:14px;width:11px;height:0;border-top:1px solid var(--border-subtle)}
+#refView .leaf{position:relative;padding:3px 0 3px 30px;display:flex;align-items:center;gap:8px;font-size:12px;flex-wrap:wrap}
+#refView .leaf::before{content:'';position:absolute;left:18px;top:0;bottom:0;width:1px;background:var(--border-subtle)}
+#refView .leaf:last-child::before{display:none}
+#refView .leaf::after{content:'';position:absolute;left:18px;top:10px;width:12px;height:0;border-top:1px solid var(--border-subtle)}
+#refView .col-name{color:var(--text-em);font-family:'SF Mono',Consolas,monospace;font-weight:500;min-width:140px}
+#refView .col-type{color:var(--text-ref);font-family:'SF Mono',Consolas,monospace;font-size:11px;min-width:90px}
+#refView .col-badges{display:flex;gap:3px;min-width:70px}
+#refView .col-badges .cb{font-size:8px;padding:1px 4px;border-radius:3px;font-weight:700;letter-spacing:.3px}
+#refView .cb.pk{background:var(--accent);color:#fff}
+#refView .cb.fk{background:var(--badge-fk);color:#fff}
+#refView .cb.pkfk{background:var(--badge-pkfk);color:#fff}
+#refView .cb.ix{background:var(--badge-ix);color:#fff}
+#refView .cb.uq{background:var(--badge-uq);color:#fff}
+#refView .col-ref{font-size:10.5px;color:var(--code);font-family:'SF Mono',Consolas,monospace;white-space:nowrap}
+#refView .col-ref::before{content:'→ ';color:var(--text-ref)}
+#refView .col-default{font-size:10.5px;color:var(--text-ref);font-family:'SF Mono',Consolas,monospace;white-space:nowrap}
+#refView .ref-footer{text-align:center;padding:20px;font-size:11px;color:var(--text-muted)}
 </style>
 </head>
 <body>
@@ -58,19 +192,38 @@ svg.rels .rel-mult{font-size:9px;fill:#e94560;font-weight:700;font-family:'SF Mo
 <div id="toolbar">
   <h1>E-ITS Schema</h1>
   <div class="sep"></div>
-  <input id="search" type="text" placeholder="Search tables or columns..." autocomplete="off">
+  <button class="tab-btn active" data-tab="diag">Diagram</button>
+  <button class="tab-btn" data-tab="ref">Reference</button>
   <div class="sep"></div>
-  <label><input type="checkbox" id="showRels" checked>Relationships</label>
-  <span class="zoom-info" id="zoomInfo">100%</span>
-  <span class="hint">Scroll=zoom · Drag=pan · Drag table=move</span>
+  <input id="search" type="text" placeholder="Search tables or columns..." autocomplete="off">
+  <div class="sep diagram-only"></div>
+  <label class="diagram-only"><input type="checkbox" id="showRels" checked>Relationships</label>
+  <div class="sep diagram-only"></div>
+   <button class="diagram-only" id="statsBtn">Stats</button>
+  <span class="diagram-only sep"></span>
+  <button id="themeBtn" title="Toggle theme">☀️</button>
+  <span class="diagram-only sep"></span>
+  <span class="diagram-only zoom-info" id="zoomInfo">100%</span>
+  <span class="diagram-only hint">Scroll=zoom · Drag=pan · Drag table=move</span>
+  <div class="reference-only" style="display:none;margin-left:auto;gap:6px">
+    <button id="refExpandAll">Expand all</button>
+    <button id="refCollapseAll">Collapse all</button>
+  </div>
 </div>
 
-<div id="canvas">
-  <div id="world"></div>
+<div id="diagramView" class="active">
+  <div id="canvas">
+    <div id="world"></div>
+  </div>
+</div>
+<div id="refView">
+  <div id="refContent"></div>
+  <div class="ref-footer">E-ITS CyberPlan — Database Schema Reference v0.1.0</div>
 </div>
 
 <div id="legend"></div>
 <div id="status"></div>
+<div id="statsPanel" class="hidden"></div>
 
 <script>
 const TIERS = {
@@ -87,7 +240,7 @@ const TIERS = {
 
 // ─── SCHEMA DATA ────────────────────────────────────────────────
 const T = (name, tier, comment, cols) => ({ name, tier, comment, columns: cols });
-const c = (name, type, flags, def) => {
+const c = (name, type, flags, def, ref) => {
   const col = { name, type };
   if (flags) {
     if (flags.includes('pk')) col.pk = true;
@@ -96,6 +249,7 @@ const c = (name, type, flags, def) => {
     if (flags.includes('uq')) col.uq = true;
   }
   if (def) col.default = def;
+  if (ref) col.ref = ref;
   return col;
 };
 
@@ -702,9 +856,71 @@ function updateLegend() {
   });
 }
 
-function updateStatus() {
-  statusEl.textContent = `${SCHEMA.length} tables · ${RELS.length} relationships`;
+function computeStats() {
+  const totalTables = SCHEMA.length;
+  const totalCols = SCHEMA.reduce((s, t) => s + t.columns.length, 0);
+  const totalPK = SCHEMA.reduce((s, t) => s + t.columns.filter(c => c.pk).length, 0);
+  const totalFK = SCHEMA.reduce((s, t) => s + t.columns.filter(c => c.fk).length, 0);
+  const totalIX = SCHEMA.reduce((s, t) => s + t.columns.filter(c => c.ix).length, 0);
+  const totalUQ = SCHEMA.reduce((s, t) => s + t.columns.filter(c => c.uq).length, 0);
+  const totalRels = RELS.length;
+
+  const tierCounts = {};
+  SCHEMA.forEach(t => { tierCounts[t.tier] = (tierCounts[t.tier] || 0) + 1; });
+
+  const typeCounts = {};
+  SCHEMA.forEach(t => t.columns.forEach(c => {
+    const base = c.type.replace(/\(.+/, '');
+    typeCounts[base] = (typeCounts[base] || 0) + 1;
+  }));
+  const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+
+  const lagTables = SCHEMA.filter(t => t.tier === 'LEGACY').length;
+
+  return { totalTables, totalCols, totalPK, totalFK, totalIX, totalUQ, totalRels, tierCounts, sortedTypes, lagTables };
 }
+
+const DB_STATS = computeStats();
+
+function updateStatus() {
+  statusEl.textContent = `${DB_STATS.totalTables} tables · ${DB_STATS.totalCols} cols · ${DB_STATS.totalRels} relationships`;
+}
+
+function renderStatsPanel(show) {
+  const panel = document.getElementById('statsPanel');
+  panel.classList.toggle('hidden', !show);
+  const btn = document.getElementById('statsBtn');
+  btn.classList.toggle('active', show);
+  if (!show) return;
+
+  const S = DB_STATS;
+  const fmt = n => n.toLocaleString();
+
+  panel.innerHTML = `
+    <div class="st">Overview</div>
+    <div class="row"><span class="l">Tables</span><span class="v">${fmt(S.totalTables)}</span></div>
+    <div class="row"><span class="l">Columns</span><span class="v">${fmt(S.totalCols)}</span></div>
+    <div class="row"><span class="l">PK / FK / IX / UQ</span><span class="v">${fmt(S.totalPK)} / ${fmt(S.totalFK)} / ${fmt(S.totalIX)} / ${fmt(S.totalUQ)}</span></div>
+    <div class="row"><span class="l">FK relationships</span><span class="v">${fmt(S.totalRels)}</span></div>
+    <div class="row"><span class="l">Avg cols / table</span><span class="v">${(S.totalCols / S.totalTables).toFixed(1)}</span></div>
+    <div class="row" style="color:#78716c"><span class="l">Legacy (migrating)</span><span class="v">${fmt(S.lagTables)}</span></div>
+
+    <div class="st">Per Tier</div>
+    <div class="tags">${TIER_ORDER.map(t => `
+      <span class="tag"><span class="c" style="color:${TIERS[t]?.color || '#888'}">${t}</span><span class="n">${S.tierCounts[t] || 0}</span></span>
+    `).join('')}</div>
+
+    <div class="st">Column Types</div>
+    <div class="tags">${S.sortedTypes.slice(0, 8).map(([t, n]) => `
+      <span class="tag"><span class="c">${t}</span><span class="n">${fmt(n)}</span></span>
+    `).join('')}</div>
+  `;
+}
+
+document.getElementById('statsBtn').addEventListener('click', () => {
+  const panel = document.getElementById('statsPanel');
+  renderStatsPanel(panel.classList.contains('hidden'));
+});
 
 // ─── ZOOM / PAN ──────────────────────────────────────────────────
 function applyTransform() {
@@ -777,9 +993,22 @@ canvas.addEventListener('wheel', e => {
   applyTransform();
 });
 
-// ─── SEARCH ──────────────────────────────────────────────────────
-searchInput.addEventListener('input', () => {
-  const q = searchInput.value.toLowerCase().trim();
+// ─── TAB SWITCHING ────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('diagramView').classList.toggle('active', tab === 'diag');
+    document.getElementById('refView').classList.toggle('active', tab === 'ref');
+    document.querySelectorAll('.diagram-only').forEach(el => el.style.display = tab === 'diag' ? '' : 'none');
+    document.querySelectorAll('.reference-only').forEach(el => el.style.display = tab === 'ref' ? '' : 'none');
+    if (tab === 'ref' && !document.getElementById('refContent').children.length) renderReference();
+  });
+});
+
+// ─── SEARCH (dispatches to active tab) ────────────────────────────
+function searchDiagram(q) {
   Object.entries(tableEls).forEach(([name, el]) => {
     const t = tableData[name];
     const match = q === '' ||
@@ -789,6 +1018,32 @@ searchInput.addEventListener('input', () => {
     el.classList.toggle('dimmed', q !== '' && !match);
     el.classList.toggle('highlighted', q !== '' && match);
   });
+}
+
+function searchReference(q) {
+  document.querySelectorAll('#refView .table-card').forEach(card => {
+    const name = card.dataset.table;
+    const t = SCHEMA.find(x => x.name === name);
+    if (!t) return;
+    const match = q === '' ||
+      name.toLowerCase().includes(q) ||
+      t.columns.some(c => c.name.toLowerCase().includes(q)) ||
+      (t.comment && t.comment.toLowerCase().includes(q));
+    card.classList.toggle('dimmed', q !== '' && !match);
+    if (match) card.classList.add('highlighted');
+    else card.classList.remove('highlighted');
+  });
+  document.querySelectorAll('#refView .tier').forEach(tier => {
+    const hasMatch = [...tier.querySelectorAll('.table-card')].some(c => !c.classList.contains('dimmed'));
+    tier.classList.toggle('open', hasMatch);
+  });
+}
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
+  const refActive = document.getElementById('refView').classList.contains('active');
+  if (refActive) searchReference(q);
+  else searchDiagram(q);
 });
 
 // ─── KEYBOARD ────────────────────────────────────────────────────
@@ -809,6 +1064,84 @@ showRelsCheck.addEventListener('change', drawRelationships);
 // ─── RESIZE ──────────────────────────────────────────────────────
 const resizeObserver = new ResizeObserver(() => drawRelationships());
 resizeObserver.observe(canvas);
+
+// ─── REFERENCE VIEW ────────────────────────────────────────────────
+function badgeHTML(col) {
+  if (col.pk && col.fk) return '<span class="cb pkfk">PK/FK</span>';
+  if (col.pk)           return '<span class="cb pk">PK</span>';
+  if (col.fk)           return '<span class="cb fk">FK</span>';
+  let h = '';
+  if (col.ix) h += '<span class="cb ix">IX</span>';
+  if (col.uq) h += '<span class="cb uq">UQ</span>';
+  return h;
+}
+
+function renderReference() {
+  const content = document.getElementById('refContent');
+  let html = '';
+  TIER_ORDER.forEach(tier => {
+    const tables = byTier[tier] || [];
+    if (!tables.length) return;
+    const info = TIERS[tier];
+    html += `<div class="tier open" data-tier="${tier}" style="--tier-color:${info.color}">
+      <div class="tier-header"><span class="arrow">▶</span><span class="name">${info.label}</span><span class="count">${tables.length} table${tables.length > 1 ? 's' : ''}</span></div>
+      <div class="tier-body"><div class="tree">`;
+    tables.forEach((t, ti) => {
+      const last = ti === tables.length - 1;
+      html += `<div class="table-card${last ? ' branch last' : ' branch'}" data-table="${t.name}">
+        <div class="table-header"><span class="arrow">▶</span><span class="tname">${t.name}</span>${t.comment ? `<span class="comment">${t.comment}</span>` : ''}<span class="badges"><span class="badge">${t.columns.length} cols</span></span></div>
+        <div class="table-body">`;
+      t.columns.forEach(col => {
+        let ref = '';
+        if (col.ref) ref = `<span class="col-ref">${col.ref.replace('.', '.<wbr>')}</span>`;
+        html += `<div class="leaf">
+          <span class="col-name">${col.name}</span>
+          <span class="col-type">${col.type}</span>
+          <span class="col-badges">${badgeHTML(col)}</span>
+          ${ref}${col.default ? `<span class="col-default">${col.default === 'null' ? 'NULL' : col.default}</span>` : ''}</div>`;
+      });
+      html += `</div></div>`;
+    });
+    html += `</div></div></div>`;
+  });
+  content.innerHTML = html;
+
+  // Accordion clicks
+  document.querySelectorAll('#refView .tier-header').forEach(h => {
+    h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
+  });
+  document.querySelectorAll('#refView .table-header').forEach(h => {
+    h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
+  });
+
+  // Expand / collapse
+  document.getElementById('refExpandAll').addEventListener('click', () => {
+    document.querySelectorAll('#refView .tier, #refView .table-card').forEach(el => el.classList.add('open'));
+  });
+  document.getElementById('refCollapseAll').addEventListener('click', () => {
+    document.querySelectorAll('#refView .tier, #refView .table-card').forEach(el => el.classList.remove('open'));
+  });
+}
+
+// ─── THEME ─────────────────────────────────────────────────────────
+const stored = localStorage.getItem('eits-schema-theme');
+if (stored === 'light') document.documentElement.setAttribute('data-theme', 'light');
+
+function applyThemeUI() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  document.getElementById('themeBtn').textContent = isLight ? '🌙' : '☀️';
+}
+applyThemeUI();
+
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  if (isLight) html.removeAttribute('data-theme');
+  else html.setAttribute('data-theme', 'light');
+  localStorage.setItem('eits-schema-theme', isLight ? '' : 'light');
+  applyThemeUI();
+  drawRelationships();
+});
 
 // ─── INIT ────────────────────────────────────────────────────────
 render();
