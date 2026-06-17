@@ -37,6 +37,21 @@ from app.core.utils import active_query
 router = APIRouter()
 
 
+def _get_asset_names(db: Session, item: ImrItem) -> list[str]:
+    """Resolve asset name(s) associated with an IMR item."""
+    if not item.asset_module_mapping_id:
+        return []
+    mapping = db.query(AssetModuleMapping).filter(
+        AssetModuleMapping.id == item.asset_module_mapping_id
+    ).first()
+    if not mapping:
+        return []
+    asset = db.query(Asset).filter(Asset.id == mapping.asset_id).first()
+    if asset and asset.name:
+        return [asset.name]
+    return []
+
+
 def _get_bp_names(db: Session, item: ImrItem) -> list[str]:
     """Resolve all BP names associated with an IMR item."""
     bp_names: set[str] = set()
@@ -127,6 +142,7 @@ def _build_imr_response(db: Session, item: ImrItem, linked_asset_count: int = 0)
         cost_eur=float(item.cost_eur) if item.cost_eur else None,
         linked_asset_count=linked_asset_count,
         bp_names=bp_names,
+        asset_names=_get_asset_names(db, item),
     )
 
 

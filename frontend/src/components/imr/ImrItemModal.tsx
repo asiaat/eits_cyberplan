@@ -174,6 +174,40 @@ export function ImrItemModal({ item, isOpen, onClose, onSave }: ImrItemModalProp
           </div>
         )}
 
+        {/* Assets and Business Processes Info */}
+        {(item.asset_names?.length || item.bp_names?.length) ? (
+          <div className="mx-6 mt-4 grid grid-cols-2 gap-4">
+            {item.asset_names && item.asset_names.length > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
+                <label className="block text-xs font-bold text-blue-800 dark:text-blue-300 mb-1.5 uppercase tracking-wider">
+                  Varad (Assets)
+                </label>
+                <div className="flex flex-wrap gap-1">
+                  {item.asset_names.map((name, i) => (
+                    <span key={i} className="text-xs font-medium text-blue-700 dark:text-blue-200 bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 rounded">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {item.bp_names && item.bp_names.length > 0 && (
+              <div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                <label className="block text-xs font-bold text-emerald-800 dark:text-emerald-300 mb-1.5 uppercase tracking-wider">
+                  Äriprotsessid (BPs)
+                </label>
+                <div className="flex flex-wrap gap-1">
+                  {item.bp_names.map((name, i) => (
+                    <span key={i} className="text-xs font-medium text-emerald-700 dark:text-emerald-200 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
+
         {/* Error Message */}
         {saveError && (
           <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">

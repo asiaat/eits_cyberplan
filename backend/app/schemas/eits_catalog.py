@@ -372,6 +372,7 @@ class ImrItemResponse(ImrItemBase):
     measure: Optional[MeasureInfo] = None
     linked_asset_count: int = 0
     bp_names: list[str] = []
+    asset_names: list[str] = []
 
     model_config = ConfigDict(from_attributes=True)
 
