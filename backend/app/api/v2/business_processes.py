@@ -313,7 +313,6 @@ def delete_business_process_v2(
 
     active_mappings = db.query(BusinessProcessModuleMapping).filter(
         BusinessProcessModuleMapping.business_process_id == process_id,
-        BusinessProcessModuleMapping.deleted_at.is_(None),
     ).count()
     if active_mappings:
         raise HTTPException(

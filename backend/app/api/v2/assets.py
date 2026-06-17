@@ -659,7 +659,6 @@ def delete_asset_v2(
 
     active_mappings = db.query(AssetModuleMapping).filter(
         AssetModuleMapping.asset_id == asset_id,
-        AssetModuleMapping.deleted_at.is_(None),
     ).count()
     if active_mappings:
         raise HTTPException(
