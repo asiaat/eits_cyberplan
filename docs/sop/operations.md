@@ -550,7 +550,7 @@ Run these checks quarterly:
 - [ ] `.env` file contains no placeholder or default passwords
 - [ ] All Docker images are up to date with latest security patches
 - [ ] Backup restore has been tested within the last 30 days
-- [ ] Audit log is enabled and capturing expected events
+- [ ] Audit log is enabled and capturing expected events 
 
 ---
 
