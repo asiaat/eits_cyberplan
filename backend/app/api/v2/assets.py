@@ -289,6 +289,8 @@ def import_assets_csv(
     current_user: LocalUser = CurrentUserV2,
     file: UploadFile = File(...),
     on_conflict: str = Form("update"),
+    delimiter: str = Form(","),
+    force: bool = Form(False),
 ):
     """Import assets from CSV file with MinIO storage and SHA-256 dedup.
 
@@ -304,6 +306,9 @@ def import_assets_csv(
 
     Files are stored in MinIO at imports/{tenant_id}/{sha256}.csv
     to detect duplicate file uploads via SHA-256 hash.
+
+    Use delimiter=";" for semicolon-separated files (e.g. Excel exports).
+    Set force=true to re-import a file that was previously uploaded.
     """
     result = AssetImportResult()
 
@@ -335,13 +340,14 @@ def import_assets_csv(
             pass
 
     # Check if file was already imported (SHA-256 dedup)
-    try:
-        s3.head_object(Bucket=bucket, Key=storage_key)
-        result.duplicate_file = True
-        result.file_storage_path = storage_key
-        return result
-    except ClientError:
-        pass
+    if not force:
+        try:
+            s3.head_object(Bucket=bucket, Key=storage_key)
+            result.duplicate_file = True
+            result.file_storage_path = storage_key
+            return result
+        except ClientError:
+            pass
 
     # Store file in MinIO
     try:
@@ -357,7 +363,7 @@ def import_assets_csv(
         raise HTTPException(status_code=500, detail=f"Failed to store file in MinIO: {str(e)}")
 
     # Parse and process CSV rows
-    reader = csv.DictReader(io.StringIO(csv_content))
+    reader = csv.DictReader(io.StringIO(csv_content), delimiter=delimiter)
 
     for row_idx, row in enumerate(reader, 2):
         name = (row.get("name") or "").strip()
