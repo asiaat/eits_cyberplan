@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E-ITS Database Schema — v0.1.0</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg-page:#1a1a2e;
+--bg-surface:#16213e;
+--bg-raised:#161b22;
+--bg-input:#1a1a2e;
+--bg-canvas:#1a1a2e;
+--bg-ref:#0d1117;
+--bg-hover:#1c2128;
+--border:#0f3460;
+--border-soft:#30363d;
+--border-subtle:#21262d;
+--border-table:rgba(255,255,255,.08);
+--text:#e0e0e0;
+--text-em:#e6edf3;
+--text-soft:#888;
+--text-muted:#555;
+--text-ref:#8b949e;
+--accent:#e94560;
+--accent-glow:#e9456040;
+--code:#58a6ff;
+--rel-color:#0f3460;
+--rel-fk:#889;
+--rel-mult:#e94560;
+--grid-dot:rgba(255,255,255,.03);
+--badge-fk:#1f6feb;
+--badge-pkfk:#533483;
+--badge-ix:#238636;
+--badge-uq:#d29922;
+--badge-bg:rgba(31,111,235,.2);
+--shadow:rgba(0,0,0,.3);
+--shadow-hover:rgba(0,0,0,.5)
+}
+[data-theme="light"]{
+--bg-page:#f0f2f5;
+--bg-surface:#fff;
+--bg-raised:#fff;
+--bg-input:#fff;
+--bg-canvas:#f0f2f5;
+--bg-ref:#f0f2f5;
+--bg-hover:#f3f4f6;
+--border:#d0d5dd;
+--border-soft:#d0d5dd;
+--border-subtle:#e5e7eb;
+--border-table:#eef0f2;
+--text:#1a1a2e;
+--text-em:#1a1a2e;
+--text-soft:#667085;
+--text-muted:#98a2b3;
+--text-ref:#667085;
+--accent:#e94560;
+--accent-glow:#e9456040;
+--code:#1f6feb;
+--rel-color:#475467;
+--rel-fk:#667085;
+--rel-mult:#e94560;
+--grid-dot:rgba(0,0,0,.06);
+--badge-fk:#1f6feb;
+--badge-pkfk:#8957e5;
+--badge-ix:#238636;
+--badge-uq:#d29922;
+--badge-bg:rgba(31,111,235,.1);
+--shadow:rgba(0,0,0,.08);
+--shadow-hover:rgba(0,0,0,.12)
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg-page);color:var(--text);overflow:hidden;height:100vh;user-select:none;transition:background .3s,color .3s}
+#toolbar{position:fixed;top:0;left:0;right:0;z-index:1000;background:var(--bg-surface);padding:10px 16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);box-shadow:0 2px 8px var(--shadow);transition:background .3s,border-color .3s}
+#toolbar h1{font-size:16px;font-weight:600;color:var(--accent);white-space:nowrap}
+#toolbar .sep{width:1px;height:28px;background:var(--border)}
+#toolbar input{padding:6px 12px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;width:240px;outline:none;transition:border-color .2s,background .3s,color .3s}
+#toolbar input:focus{border-color:var(--accent)}
+#toolbar label{font-size:12px;color:var(--text-soft);display:flex;align-items:center;gap:6px;cursor:pointer}
+#toolbar label input{cursor:pointer;width:auto}
+#toolbar .zoom-info{font-size:12px;color:var(--text-soft);margin-left:auto;white-space:nowrap}
+#toolbar .hint{font-size:11px;color:var(--text-muted);white-space:nowrap;margin-left:8px}
+#canvas{position:fixed;top:52px;left:0;right:0;bottom:0;overflow:hidden;cursor:grab;background:var(--bg-canvas);background-image:radial-gradient(circle,var(--grid-dot) 1px,transparent 1px);background-size:24px 24px;transition:background .3s}
+#canvas:active{cursor:grabbing}
+#world{transform-origin:0 0;position:absolute}
+svg.rels{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
+svg.rels .rel-line{stroke:var(--rel-color);stroke-width:1;fill:none;stroke-linejoin:round;transition:stroke .3s}
+svg.rels .rel-fk{font-size:9px;fill:var(--rel-fk);font-family:'SF Mono',Consolas,monospace;transition:fill .3s}
+svg.rels .rel-role{font-size:9px;fill:var(--text);font-family:'SF Mono',Consolas,monospace;transition:fill .3s}
+svg.rels .rel-mult{font-size:9px;fill:var(--rel-mult);font-weight:700;font-family:'SF Mono',Consolas,monospace;transition:fill .3s}
+.table-card{position:absolute;z-index:2;background:var(--bg-surface);border-radius:8px;border:1px solid var(--border);overflow:hidden;box-shadow:0 4px 12px var(--shadow);transition:box-shadow .2s,opacity .3s,background .3s,border-color .3s;min-width:260px;max-width:320px}
+.table-card:hover{box-shadow:0 6px 20px var(--shadow-hover);z-index:10}
+.table-card.dimmed{opacity:.15}
+.table-card.highlighted{opacity:1;border-color:var(--accent)!important;box-shadow:0 0 20px var(--accent-glow)}
+.table-card .header{padding:8px 12px;cursor:move;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-table)}
+.table-card .header .name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.table-card .header .cnt{font-size:10px;font-weight:400;opacity:.5;margin-left:8px;white-space:nowrap}
+.table-card .col{padding:3px 12px;font-size:11.5px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--border-table);line-height:1.6}
+.table-card .col:last-child{border-bottom:none}
+.table-card .col .pk{background:var(--accent);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.3px}
+.table-card .col .fk{background:var(--border);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.3px}
+.table-card .col .pkfk{background:var(--badge-pkfk);color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.3px}
+.table-card .col .type{color:var(--text-soft);font-size:10px;margin-left:auto;font-family:'SF Mono',Consolas,monospace;white-space:nowrap}
+.table-card .col .name{color:var(--text);font-weight:400}
+.tier-A .header{border-left:3px solid #3b82f6}
+.tier-B .header{border-left:3px solid #22c55e}
+.tier-CATALOG .header{border-left:3px solid #a855f7}
+.tier-CORE .header{border-left:3px solid #f59e0b}
+.tier-IMR .header{border-left:3px solid #ec4899}
+.tier-RISK .header{border-left:3px solid #ef4444}
+.tier-EVIDENCE .header{border-left:3px solid #06b6d4}
+.tier-SUPPORT .header{border-left:3px solid #64748b}
+.tier-LEGACY .header{border-left:3px solid #78716c}
+#legend{position:fixed;bottom:16px;left:16px;z-index:100;background:var(--bg-surface);backdrop-filter:blur(8px);padding:10px 14px;border-radius:8px;border:1px solid var(--border);font-size:11px;display:flex;flex-wrap:wrap;gap:6px 14px;pointer-events:none;transition:background .3s,border-color .3s}
+#legend .item{display:flex;align-items:center;gap:6px}
+#legend .dot{width:10px;height:10px;border-radius:50%}
+#status{position:fixed;bottom:16px;right:16px;z-index:100;font-size:11px;color:var(--text-muted);background:var(--bg-surface);backdrop-filter:blur(8px);padding:6px 12px;border-radius:6px;border:1px solid var(--border);pointer-events:none;transition:color .3s,background .3s,border-color .3s}
+#statsPanel{position:fixed;bottom:50px;right:16px;z-index:100;background:var(--bg-surface);backdrop-filter:blur(8px);padding:10px 14px;border-radius:8px;border:1px solid var(--border);font-size:10.5px;line-height:1.5;max-height:60vh;overflow-y:auto;min-width:200px;pointer-events:auto;transition:opacity .2s,transform .15s,background .3s,border-color .3s}
+#statsPanel.hidden{opacity:0;pointer-events:none;transform:translateY(6px)}
+#statsPanel .st{color:var(--text-soft);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.5px;margin:4px 0 2px}
+#statsPanel .st:first-child{margin-top:0}
+#statsPanel .row{display:flex;justify-content:space-between;gap:12px;padding:1px 0}
+#statsPanel .row .v{color:var(--text);font-weight:500}
+#statsPanel .row .l{color:var(--text-muted)}
+#statsPanel .tags{display:flex;flex-wrap:wrap;gap:3px 6px;padding:2px 0}
+#statsPanel .tags .tag{display:flex;align-items:center;gap:3px}
+#statsPanel .tags .tag .c{font-weight:700;font-size:9px}
+#statsPanel .tags .tag .n{color:var(--text-muted)}
+#toolbar button{background:none;border:1px solid var(--border);color:var(--text);padding:3px 10px;border-radius:5px;font-size:12px;cursor:pointer;transition:all .15s,background .3s,border-color .3s,color .3s}
+#toolbar button:hover{background:var(--border);border-color:var(--text-muted)}
+#toolbar button.active{background:var(--accent);border-color:var(--accent);color:#fff}
+#toolbar .tab-btn{font-size:12px;border-radius:0;border:none;border-bottom:2px solid transparent;padding:2px 8px;color:var(--text-ref)}
+#toolbar .tab-btn:hover{color:var(--text-em);background:0 0;border-bottom-color:var(--border-soft)}
+#toolbar .tab-btn.active{color:var(--accent);background:0 0;border-bottom-color:var(--accent)}
+.diagram-only,.reference-only{display:flex;align-items:center;gap:8px}
+.tab-active-ref .diagram-only{display:none}
+.tab-active-diag .reference-only{display:none}
+#diagramView{position:fixed;top:52px;left:0;right:0;bottom:0;display:none}
+#diagramView.active{display:block}
+#refView{position:fixed;top:52px;left:0;right:0;bottom:0;overflow-y:auto;background:var(--bg-ref);display:none;transition:background .3s}
+#refView.active{display:block}
+#refContent{max-width:960px;margin:0 auto;padding:20px 24px 60px}
+#refView .tier{border:1px solid var(--border-soft);border-radius:8px;margin-bottom:8px;overflow:hidden;background:var(--bg-raised);transition:background .3s,border-color .3s}
+#refView .tier-header{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;user-select:none;transition:background .15s;border-left:3px solid var(--tier-color,var(--text-soft))}
+#refView .tier-header:hover{background:var(--bg-hover)}
+#refView .tier-header .arrow{font-size:10px;color:var(--text-ref);transition:transform .2s;width:14px;text-align:center;flex-shrink:0}
+#refView .tier.open .tier-header .arrow{transform:rotate(90deg)}
+#refView .tier-header .name{font-size:13px;font-weight:600;color:var(--text-em)}
+#refView .tier-header .count{font-size:11px;color:var(--text-ref);margin-left:auto}
+#refView .tier-body{display:none;border-top:1px solid var(--border-subtle)}
+#refView .tier.open .tier-body{display:block}
+#refView .table-card{padding:0}
+#refView .table-card:last-child .table-header{border-bottom:none}
+#refView .table-header{display:flex;align-items:center;gap:10px;padding:6px 14px 6px 0;cursor:pointer;user-select:none;transition:background .1s}
+#refView .table-header:hover{background:var(--bg-hover)}
+#refView .table-header .arrow{font-size:9px;color:var(--text-ref);transition:transform .2s;width:11px;text-align:center;flex-shrink:0}
+#refView .table-card.open .table-header .arrow{transform:rotate(90deg)}
+#refView .table-header .tname{font-size:12.5px;font-weight:500;color:var(--code);font-family:'SF Mono',Consolas,monospace}
+#refView .table-header .comment{font-size:11px;color:var(--text-ref);margin-left:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#refView .table-header .badges{margin-left:auto;display:flex;gap:4px}
+#refView .table-header .badge{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--badge-bg);color:var(--code)}
+#refView .table-body{display:none;padding:0 0 4px 0}
+#refView .table-card.open .table-body{display:block}
+
+/* ── tree connectors ── */
+#refView .tree{padding:0}
+#refView .branch{position:relative;padding-left:18px}
+#refView .branch::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:1px;background:var(--border-subtle)}
+#refView .branch.last::before{display:none}
+#refView .branch::after{content:'';position:absolute;left:7px;top:14px;width:11px;height:0;border-top:1px solid var(--border-subtle)}
+#refView .leaf{position:relative;padding:3px 0 3px 30px;display:flex;align-items:center;gap:8px;font-size:12px;flex-wrap:wrap}
+#refView .leaf::before{content:'';position:absolute;left:18px;top:0;bottom:0;width:1px;background:var(--border-subtle)}
+#refView .leaf:last-child::before{display:none}
+#refView .leaf::after{content:'';position:absolute;left:18px;top:10px;width:12px;height:0;border-top:1px solid var(--border-subtle)}
+#refView .col-name{color:var(--text-em);font-family:'SF Mono',Consolas,monospace;font-weight:500;min-width:140px}
+#refView .col-type{color:var(--text-ref);font-family:'SF Mono',Consolas,monospace;font-size:11px;min-width:90px}
+#refView .col-badges{display:flex;gap:3px;min-width:70px}
+#refView .col-badges .cb{font-size:8px;padding:1px 4px;border-radius:3px;font-weight:700;letter-spacing:.3px}
+#refView .cb.pk{background:var(--accent);color:#fff}
+#refView .cb.fk{background:var(--badge-fk);color:#fff}
+#refView .cb.pkfk{background:var(--badge-pkfk);color:#fff}
+#refView .cb.ix{background:var(--badge-ix);color:#fff}
+#refView .cb.uq{background:var(--badge-uq);color:#fff}
+#refView .col-ref{font-size:10.5px;color:var(--code);font-family:'SF Mono',Consolas,monospace;white-space:nowrap}
+#refView .col-ref::before{content:'→ ';color:var(--text-ref)}
+#refView .col-default{font-size:10.5px;color:var(--text-ref);font-family:'SF Mono',Consolas,monospace;white-space:nowrap}
+#refView .ref-footer{text-align:center;padding:20px;font-size:11px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>E-ITS Schema</h1>
+  <div class="sep"></div>
+  <button class="tab-btn active" data-tab="diag">Diagram</button>
+  <button class="tab-btn" data-tab="ref">Reference</button>
+  <div class="sep"></div>
+  <input id="search" type="text" placeholder="Search tables or columns..." autocomplete="off">
+  <div class="sep diagram-only"></div>
+  <label class="diagram-only"><input type="checkbox" id="showRels" checked>Relationships</label>
+  <div class="sep diagram-only"></div>
+   <button class="diagram-only" id="statsBtn">Stats</button>
+  <span class="diagram-only sep"></span>
+  <button id="themeBtn" title="Toggle theme">☀️</button>
+  <span class="diagram-only sep"></span>
+  <span class="diagram-only zoom-info" id="zoomInfo">100%</span>
+  <span class="diagram-only hint">Scroll=zoom · Drag=pan · Drag table=move</span>
+  <div class="reference-only" style="display:none;margin-left:auto;gap:6px">
+    <button id="refExpandAll">Expand all</button>
+    <button id="refCollapseAll">Collapse all</button>
+  </div>
+</div>
+
+<div id="diagramView" class="active">
+  <div id="canvas">
+    <div id="world"></div>
+  </div>
+</div>
+<div id="refView">
+  <div id="refContent"></div>
+  <div class="ref-footer">E-ITS CyberPlan — Database Schema Reference v0.1.0</div>
+</div>
+
+<div id="legend"></div>
+<div id="status"></div>
+<div id="statsPanel" class="hidden"></div>
+
+<script>
+const TIERS = {
+  A:        { label: 'Tier A — Subscription',      color: '#3b82f6', order: 0 },
+  B:        { label: 'Tier B — IAM & Roles',        color: '#22c55e', order: 1 },
+  CATALOG:  { label: 'E-ITS Catalog',               color: '#a855f7', order: 2 },
+  CORE:     { label: 'Core Business',               color: '#f59e0b', order: 3 },
+  IMR:      { label: 'IMR — Implementation',        color: '#ec4899', order: 4 },
+  RISK:     { label: 'Risk Register',               color: '#ef4444', order: 5 },
+  EVIDENCE: { label: 'Evidence',                    color: '#06b6d4', order: 6 },
+  SUPPORT:  { label: 'Supporting',                  color: '#64748b', order: 7 },
+  LEGACY:   { label: 'Legacy (migrating)',           color: '#78716c', order: 8 },
+};
+
+// ─── SCHEMA DATA ────────────────────────────────────────────────
+const T = (name, tier, comment, cols) => ({ name, tier, comment, columns: cols });
+const c = (name, type, flags, def, ref) => {
+  const col = { name, type };
+  if (flags) {
+    if (flags.includes('pk')) col.pk = true;
+    if (flags.includes('fk')) col.fk = true;
+    if (flags.includes('ix')) col.ix = true;
+    if (flags.includes('uq')) col.uq = true;
+  }
+  if (def) col.default = def;
+  if (ref) col.ref = ref;
+  return col;
+};
+
+const SCHEMA = [
+  // ── Tier A ──
+  T('app_tenants', 'A', 'Organization / tenant subscription', [
+    c('id','UUID','pk'), c('name','VARCHAR(255)'), c('status','VARCHAR(50)',0,'active'),
+    c('plan','VARCHAR(50)'), c('registry_code','VARCHAR(50)'), c('legal_form','VARCHAR(255)'),
+    c('registered_address','VARCHAR(500)'), c('phone','VARCHAR(50)'), c('email','VARCHAR(255)'),
+    c('divisions','JSON'), c('created_at','DateTime'),
+  ]),
+  T('global_users', 'A', 'Central identity (cross-tenant)', [
+    c('id','UUID','pk'), c('email','VARCHAR(255)','uq ix'), c('password_hash','VARCHAR(255)'),
+    c('mfa_enabled','Boolean',0,'false'), c('mfa_secret','VARCHAR(255)'), c('created_at','DateTime'),
+  ]),
+  T('tenant_users', 'A', 'Maps global user to tenant subscription', [
+    c('tenant_id','UUID','pk fk',null,'app_tenants'), c('user_id','UUID','pk fk',null,'global_users'),
+    c('assigned_at','DateTime',0,'now()'),
+  ]),
+
+  // ── Tier B ──
+  T('local_users', 'B', 'Per-tenant user profile', [
+    c('id','UUID','pk'), c('global_user_id','UUID','fk',null,'global_users'), c('tenant_id','UUID','fk ix',null,'app_tenants'),
+    c('full_name','VARCHAR(255)'), c('department','VARCHAR(100)'), c('is_active','Boolean',0,'true'),
+    c('created_at','DateTime',0,'now()'),
+  ]),
+  T('e_its_roles', 'B', 'E-ITS standard roles', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('role_name','VARCHAR(100)'),
+    c('description','Text'),
+  ]),
+  T('user_roles', 'B', 'User role assignments', [
+    c('id','UUID','pk'), c('user_id','UUID','fk',null,'local_users'), c('role_id','UUID','fk',null,'e_its_roles'),
+    c('granted_by','UUID','fk',null,'local_users'), c('granted_at','DateTime',0,'now()'),
+  ]),
+  T('e_its_role_permissions', 'B', 'E-ITS role → permission junction', [
+    c('role_id','UUID','pk fk',null,'e_its_roles'), c('permission_id','Text','pk fk',null,'permissions'),
+  ]),
+
+  // ── CATALOG ──
+  T('eits_catalog_versions', 'CATALOG', 'E-ITS catalog version metadata', [
+    c('id','UUID','pk'), c('version','VARCHAR(50)'), c('year','VARCHAR(4)'), c('name','VARCHAR(100)'),
+    c('source_name','VARCHAR(255)'), c('source_file_hash','VARCHAR(64)'), c('active','Boolean',0,'false'),
+    c('is_active','Boolean',0,'false'), c('released_at','Date'), c('imported_at','DateTime',0,'now()'),
+  ]),
+  T('eits_modules', 'CATALOG', 'E-ITS module', [
+    c('id','UUID','pk'), c('catalog_version_id','UUID','fk',null,'eits_catalog_versions'), c('code','VARCHAR(50)'),
+    c('name','VARCHAR(255)'), c('module_group','VARCHAR(10)'), c('category','VARCHAR(100)'),
+    c('description','Text'), c('module_type','VARCHAR(50)'), c('source_url','VARCHAR(500)'),
+  ]),
+  T('eits_measures', 'CATALOG', 'E-ITS measure definition', [
+    c('id','UUID','pk'), c('catalog_version_id','UUID','fk',null,'eits_catalog_versions'), c('code','VARCHAR(50)'),
+    c('title','VARCHAR(255)'), c('description','Text'), c('measure_level','VARCHAR(50)'),
+    c('responsible_role','VARCHAR(100)'), c('implementation_guidance','Text'),
+  ]),
+  T('eits_module_measures', 'CATALOG', 'Module ↔ measure association', [
+    c('id','UUID','pk'), c('module_id','UUID','fk',null,'eits_modules'), c('measure_id','UUID','fk',null,'eits_measures'),
+  ]),
+  T('eits_catalog_measures', 'CATALOG', 'Catalog measure with level (v2)', [
+    c('id','UUID','pk'), c('module_id','UUID','fk',null,'eits_modules'), c('code','VARCHAR(30)'),
+    c('name','VARCHAR(255)'), c('measure_level','VARCHAR(10)'), c('description','Text'),
+    c('responsible_role','VARCHAR(100)'),
+  ]),
+  T('eits_threats', 'CATALOG', 'E-ITS threat catalog', [
+    c('id','UUID','pk'), c('version_id','UUID','fk',null,'eits_catalog_versions'), c('code','VARCHAR(30)'),
+    c('category','VARCHAR(100)'), c('impact_area','VARCHAR(100)'), c('name','VARCHAR(255)'), c('description','Text'),
+  ]),
+  T('module_threats', 'CATALOG', 'Module ↔ threat association', [
+    c('id','UUID','pk'), c('module_id','UUID','fk',null,'eits_modules'), c('threat_id','UUID','fk',null,'eits_threats'),
+    c('relevance_note','Text'),
+  ]),
+  T('damage_scenarios', 'CATALOG', 'Fixed damage scenarios KS1–KS6', [
+    c('id','UUID','pk'), c('code','VARCHAR(10)','uq'), c('name','VARCHAR(255)'), c('description','Text'),
+  ]),
+  T('asset_type_categories', 'CATALOG', 'T/V/I/R/A asset types', [
+    c('id','UUID','pk'), c('code','VARCHAR(5)','uq'), c('name','VARCHAR(100)'), c('description','Text'),
+  ]),
+
+  // ── CORE: Business Processes & Assets ──
+  T('business_processes', 'CORE', 'Business process', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('owner_user_id','UUID','fk',null,'local_users'),
+    c('division_id','UUID'), c('name','VARCHAR(255)'), c('description','Text'), c('purpose','Text'),
+    c('inputs','Text'), c('outputs','Text'), c('status','VARCHAR(50)',0,'active'),
+    c('confidentiality_need','VARCHAR(20)',0,'normal'), c('integrity_need','VARCHAR(20)',0,'normal'),
+    c('availability_need','VARCHAR(20)',0,'normal'), c('process_type','VARCHAR(50)'), c('priority','VARCHAR(20)'),
+    c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+  T('business_process_dependencies', 'CORE', 'Process-to-process dependencies', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('primary_process_id','UUID','fk',null,'business_processes'),
+    c('depends_on_process_id','UUID','fk',null,'business_processes'), c('dependency_type','VARCHAR(50)'), c('description','Text'),
+    c('created_at','DateTime',0,'now()'),
+  ]),
+  T('assets', 'CORE', 'Information asset', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('owner_user_id','UUID','fk',null,'users'),
+    c('person_id','UUID','fk ix',null,'persons'), c('asset_category','UUID','fk',null,'asset_type_categories'),
+    c('name','VARCHAR(255)'), c('asset_type','VARCHAR(50)'), c('description','Text'), c('criticality','VARCHAR(20)',0,'normal'),
+    c('confidentiality_need','VARCHAR(20)',0,'normal'), c('integrity_need','VARCHAR(20)',0,'normal'),
+    c('availability_need','VARCHAR(20)',0,'normal'), c('lifecycle_status','VARCHAR(50)',0,'active'),
+    c('location','VARCHAR(255)'), c('protection_need','VARCHAR(20)'), c('protection_need_just','Text'),
+    c('protection_source_ids','ARRAY(UUID)'), c('is_grouped','Boolean',0,'false'), c('quantity','Integer',0,1),
+    c('group_name','VARCHAR(255)'), c('is_core','Boolean',0,'false'), c('asset_index','Integer'),
+    c('remarks','Text'), c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+  T('asset_relation_types', 'CORE', 'Asset relation type catalog', [
+    c('id','UUID','pk'), c('code','VARCHAR(50)','uq ix'), c('name','VARCHAR(255)'), c('description','Text'),
+    c('source_types','VARCHAR(500)'), c('target_types','VARCHAR(500)'), c('bidirectional','Boolean',0,'false'),
+    c('strength','VARCHAR(20)',0,'weak'), c('created_at','DateTime',0,'now()'),
+  ]),
+  T('asset_relations', 'CORE', 'Asset-to-asset relationships', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('source_asset_id','UUID','fk',null,'assets'),
+    c('target_asset_id','UUID','fk',null,'assets'), c('relation_type','VARCHAR(50)'), c('relation_type_code','VARCHAR(50)','fk',null,'asset_relation_types'),
+    c('description','Text'), c('bidirectional','Boolean',0,'false'), c('strength','VARCHAR(20)',0,'weak'),
+    c('created_at','DateTime',0,'now()'),
+  ]),
+  T('process_assets', 'CORE', 'Process ↔ asset association', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('business_process_id','UUID','fk',null,'business_processes'),
+    c('asset_id','UUID','fk',null,'assets'), c('relation_description','Text'),
+  ]),
+
+  // ── CORE: Module Mappings ──
+  T('asset_module_mappings', 'CORE', 'E-ITS module mapping for assets', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('asset_id','UUID','fk',null,'assets'),
+    c('module_id','UUID','fk',null,'eits_modules'), c('justification','Text'), c('modeled_by','UUID','fk',null,'local_users'),
+    c('modeled_at','DateTime',0,'now()'),
+  ]),
+  T('bp_module_mappings', 'CORE', 'E-ITS module mapping for business processes', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('business_process_id','UUID','fk',null,'business_processes'),
+    c('module_id','UUID','fk',null,'eits_modules'), c('justification','Text'), c('modeled_by','UUID','fk',null,'local_users'),
+    c('modeled_at','DateTime',0,'now()'),
+  ]),
+  T('object_module_mappings', 'CORE', 'Generic object-to-module mapping', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('target_type','VARCHAR(50)'), c('target_id','UUID'),
+    c('module_id','UUID','fk',null,'eits_modules'), c('applicability','VARCHAR(50)',0,'pending'), c('rationale','Text'),
+    c('selected_by_user_id','UUID','fk',null,'users'), c('selected_at','DateTime',0,'now()'),
+  ]),
+  T('process_module_assignments', 'CORE', 'Tenant-level module applicability', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('module_id','UUID','fk',null,'eits_modules'),
+    c('is_applicable','VARCHAR(1)',0,'1'), c('non_applicability_justification','Text'), c('assigned_by','UUID','fk',null,'local_users'),
+    c('assigned_at','DateTime',0,'now()'),
+  ]),
+  T('security_profiles', 'CORE', 'Protection mode / security approach', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('catalog_version_id','UUID','fk',null,'eits_catalog_versions'),
+    c('security_approach','VARCHAR(20)',0,'BASIC'), c('approved_by','UUID','fk',null,'local_users'), c('approved_at','DateTime'),
+    c('notes','Text'), c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+  T('protectionmode_selections', 'CORE', 'Protection mode with evidence (v2)', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('catalog_version_id','UUID','fk',null,'eits_catalog_versions'),
+    c('security_approach','VARCHAR(20)',0,'BASIC'), c('evidence_id','UUID','fk',null,'evidences'), c('approved_by','UUID','fk',null,'local_users'),
+    c('approved_at','DateTime'), c('notes','Text'), c('is_active','Boolean',0,'true'), c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+  T('protection_need_summaries', 'CORE', 'Aggregated protection need', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('business_process_id','UUID','fk',null,'business_processes'),
+    c('protection_need','VARCHAR(20)',0,'NORMAL'), c('confidentiality_need','VARCHAR(20)',0,'NORMAL'),
+    c('integrity_need','VARCHAR(20)',0,'NORMAL'), c('availability_need','VARCHAR(20)',0,'NORMAL'),
+    c('justification','Text'), c('approved_by','UUID','fk',null,'local_users'), c('approved_at','DateTime'),
+    c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+  T('damage_assessments', 'CORE', 'Damage assessment for protection need', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('business_process_id','UUID','fk',null,'business_processes'),
+    c('damage_scenario_id','UUID','fk',null,'damage_scenarios'), c('availability_impact','Integer',0,0),
+    c('confidentiality_impact','Integer',0,0), c('integrity_impact','Integer',0,0), c('damage_category','Integer'),
+    c('justification','Text'), c('assessed_by','UUID','fk',null,'local_users'), c('assessed_at','DateTime',0,'now()'),
+  ]),
+  T('damage_category_thresholds', 'CORE', 'Damage category descriptions per scenario', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('damage_scenario_id','UUID','fk',null,'damage_scenarios'),
+    c('negligible_description','Text'), c('limited_description','Text'), c('serious_description','Text'), c('catastrophic_description','Text'),
+    c('approved_by','UUID','fk',null,'local_users'), c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+
+  // ── IMR ──
+  T('imr_items', 'IMR', 'Implementation Maturity Review item (PEARO)', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('asset_module_mapping_id','UUID','fk',null,'asset_module_mappings'),
+    c('bp_module_mapping_id','UUID','fk',null,'bp_module_mappings'), c('measure_id','UUID','fk',null,'eits_catalog_measures'),
+    c('is_process_module_measure','Boolean',0,'false'), c('pearo_status','VARCHAR(1)',0,'E'),
+    c('implementation_description','Text'), c('non_implementation_justification','Text'), c('partial_scope_description','Text'),
+    c('responsible_user_id','UUID','fk',null,'local_users'), c('due_date','Date'), c('next_review_date','Date'),
+    c('priority','VARCHAR(5)',0,'P2'), c('risk_acceptance_approved_by','UUID','fk',null,'local_users'),
+    c('risk_acceptance_date','DateTime'), c('verification_method','Text'), c('last_verified_at','DateTime'),
+    c('imr_snapshot_id','UUID','fk ix',null,'imr_snapshots'), c('requirement_profile','VARCHAR(20)'), c('todo_description','Text'),
+    c('cost_eur','Numeric(12,2)'), c('created_by','UUID','fk',null,'local_users'), c('updated_by','UUID','fk',null,'local_users'),
+    c('status_changed_at','DateTime'), c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+  T('imr_snapshots', 'IMR', 'IMR snapshot for versioning', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('protection_mode_selection_id','UUID','fk',null,'protectionmode_selections'),
+    c('label','VARCHAR(255)'), c('description','Text'), c('is_current','Boolean',0,'false'), c('item_count','Integer',0,0),
+    c('created_by','UUID','fk',null,'local_users'), c('restored_from','UUID'), c('created_at','DateTime',0,'now()'),
+  ]),
+  T('implementation_plan_items', 'IMR', 'Legacy IMR implementation plan', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('measure_id','UUID','fk',null,'eits_measures'),
+    c('target_type','VARCHAR(50)'), c('target_id','UUID'), c('owner_user_id','UUID','fk',null,'users'),
+    c('status','VARCHAR(50)',0,'not_started'), c('priority','VARCHAR(20)',0,'medium'), c('due_date','DateTime'),
+    c('implementation_comment','Text'), c('verification_method','Text'), c('accepted_risk_id','UUID'),
+    c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+
+  // ── RISK ──
+  T('risks', 'RISK', 'Risk register entry', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('title','VARCHAR(255)'), c('scenario','Text'),
+    c('target_type','VARCHAR(50)'), c('target_id','UUID'), c('threat','Text'), c('vulnerability','Text'),
+    c('likelihood','VARCHAR(20)'), c('impact','VARCHAR(20)'), c('risk_level','VARCHAR(20)'), c('treatment','VARCHAR(50)'),
+    c('owner_user_id','UUID','fk',null,'users'), c('status','VARCHAR(50)',0,'identified'), c('review_date','DateTime'),
+    c('threat_id','UUID'), c('asset_id','UUID'), c('bp_id','UUID'), c('likelihood_score','Integer'), c('impact_score','Integer'),
+    c('risk_score','Integer'), c('risk_rating','VARCHAR(20)'), c('treatment_type','VARCHAR(50)'), c('residual_risk','Text'),
+    c('accepted_by','UUID'), c('accepted_at','DateTime'), c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+  T('risk_measure_links', 'RISK', 'Links risks to measures & IMR items', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('risk_id','UUID','fk',null,'risks'),
+    c('imr_item_id','UUID','fk',null,'imr_items'), c('measure_id','UUID','fk',null,'eits_catalog_measures'),
+    c('custom_measure_name','VARCHAR(255)'), c('custom_measure_description','Text'), c('created_at','DateTime',0,'now()'),
+  ]),
+
+  // ── EVIDENCE ──
+  T('evidences', 'EVIDENCE', 'Evidence / proof document', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('title','VARCHAR(255)'), c('evidence_type','VARCHAR(50)'),
+    c('storage_uri','VARCHAR(500)'), c('external_url','VARCHAR(500)'), c('file_hash','VARCHAR(64)','ix'), c('version','VARCHAR(20)'),
+    c('owner_user_id','UUID','fk',null,'local_users'), c('valid_from','DateTime'), c('valid_until','DateTime'), c('review_due_date','DateTime'),
+    c('file_size','BigInteger'), c('mime_type','VARCHAR(100)'), c('download_count','Integer',0,0), c('created_at','DateTime',0,'now()'),
+  ]),
+  T('evidence_links', 'EVIDENCE', 'Evidence → target entity (polymorphic)', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('evidence_id','UUID','fk',null,'evidences'),
+    c('target_type','VARCHAR(50)'), c('target_id','UUID'),
+  ]),
+
+  // ── SUPPORT ──
+  T('audit_logs', 'SUPPORT', 'Immutable change history', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('actor_user_id','UUID','fk',null,'global_users'),
+    c('action','VARCHAR(50)'), c('entity_type','VARCHAR(50)'), c('entity_id','UUID'), c('before_json','Text'), c('after_json','Text'),
+    c('created_at','DateTime',0,'now()'),
+  ]),
+  T('comments', 'SUPPORT', 'Entity comments', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk ix',null,'app_tenants'), c('entity_type','VARCHAR(50)'), c('entity_id','UUID'),
+    c('author_user_id','UUID','fk',null,'users'), c('body','Text'), c('created_at','DateTime',0,'now()'),
+  ]),
+  T('persons', 'SUPPORT', 'Natural person registry', [
+    c('id','UUID','pk'), c('national_id','VARCHAR(50)','uq'), c('first_name','VARCHAR(100)'), c('last_name','VARCHAR(100)'),
+    c('date_of_birth','Date'), c('email','VARCHAR(255)'), c('phone','VARCHAR(50)'), c('additional_info','Text'),
+    c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+  T('person_organizations', 'SUPPORT', 'Person ↔ tenant affiliation', [
+    c('id','UUID','pk'), c('person_id','UUID','fk ix',null,'persons'), c('tenant_id','UUID','fk ix',null,'app_tenants'),
+    c('role','VARCHAR(100)'), c('created_at','DateTime',0,'now()'),
+  ]),
+  T('organization_people', 'SUPPORT', 'Organization → people (v2)', [
+    c('id','UUID','pk'), c('tenant_id','UUID','ix'), c('person_asset_id','UUID','ix'), c('created_at','DateTime',0,'now()'),
+  ]),
+  T('alerts', 'SUPPORT', 'Notifications', [
+    c('id','UUID','pk'), c('title','VARCHAR(255)'), c('message','Text'), c('level','Enum(info/warning/error/success)',0,'info'),
+    c('target_role','Enum(admin/ism/all)',0,'all'), c('is_read','VARCHAR(10)',0,'false'), c('read_at','DateTime'),
+    c('link','VARCHAR(255)'), c('is_active','VARCHAR(10)',0,'true'), c('tenant_id','UUID'), c('created_at','DateTime',0,'now()'),
+  ]),
+
+  // ── LEGACY ──
+  T('tenants', 'LEGACY', 'Legacy tenant (being replaced by app_tenants)', [
+    c('id','UUID','pk'), c('name','VARCHAR(255)'), c('registry_code','VARCHAR(20)','uq'), c('legal_form','VARCHAR(50)'),
+    c('registration_date','Date'), c('status','VARCHAR(50)'), c('registered_address','Text'), c('phone','VARCHAR(50)'),
+    c('email','VARCHAR(255)'), c('website','VARCHAR(255)'), c('share_capital','Numeric(15,2)'), c('nace_codes','JSON'),
+    c('company_type','VARCHAR(20)'), c('parent_company_id','UUID','fk',null,'tenants'), c('divisions','JSON'),
+    c('created_at','DateTime',0,'now()'), c('updated_at','DateTime',0,'now()'),
+  ]),
+  T('users', 'LEGACY', 'Legacy user (being replaced by global_users+local_users)', [
+    c('id','UUID','pk'), c('email','VARCHAR(255)','uq ix'), c('name','VARCHAR(255)'), c('auth_provider','VARCHAR(50)',0,'local'),
+    c('hashed_password','VARCHAR(255)'), c('is_active','Boolean',0,'true'), c('created_at','DateTime',0,'now()'),
+  ]),
+  T('roles', 'LEGACY', 'Legacy role', [
+    c('id','Text','pk'), c('code','VARCHAR(50)','uq'), c('name','VARCHAR(100)'), c('description','Text'), c('is_default','VARCHAR(10)',0,'false'),
+  ]),
+  T('permissions', 'LEGACY', 'Permission catalog', [
+    c('id','Text','pk'), c('code','VARCHAR(100)','uq'), c('name','VARCHAR(100)'), c('description','Text'), c('category','VARCHAR(50)'),
+  ]),
+  T('role_permissions', 'LEGACY', 'Legacy role ↔ permission junction', [
+    c('role_id','Text','pk fk',null,'roles'), c('permission_id','Text','pk fk',null,'permissions'),
+  ]),
+  T('memberships', 'LEGACY', 'Legacy tenant-user-role junction', [
+    c('id','UUID','pk'), c('tenant_id','UUID','fk',null,'app_tenants'), c('user_id','UUID','fk',null,'users'),
+    c('role_id','VARCHAR(50)','fk',null,'roles'), c('local_user_id','UUID','fk',null,'local_users'),
+  ]),
+];
+
+// ─── FOREIGN KEY RELATIONSHIPS ───
+// Extracted from model analysis: [fromTable, fromCol, toTable, toCol]
+const RELS = [
+  ['tenant_users','tenant_id','app_tenants','id'],
+  ['tenant_users','user_id','global_users','id'],
+  ['local_users','tenant_id','app_tenants','id'],
+  ['local_users','global_user_id','global_users','id'],
+  ['e_its_roles','tenant_id','app_tenants','id'],
+  ['user_roles','user_id','local_users','id'],
+  ['user_roles','role_id','e_its_roles','id'],
+  ['user_roles','granted_by','local_users','id'],
+  ['e_its_role_permissions','role_id','e_its_roles','id'],
+  ['e_its_role_permissions','permission_id','permissions','id'],
+  ['eits_modules','catalog_version_id','eits_catalog_versions','id'],
+  ['eits_measures','catalog_version_id','eits_catalog_versions','id'],
+  ['eits_module_measures','module_id','eits_modules','id'],
+  ['eits_module_measures','measure_id','eits_measures','id'],
+  ['eits_catalog_measures','module_id','eits_modules','id'],
+  ['eits_threats','version_id','eits_catalog_versions','id'],
+  ['module_threats','module_id','eits_modules','id'],
+  ['module_threats','threat_id','eits_threats','id'],
+  ['business_processes','tenant_id','app_tenants','id'],
+  ['business_processes','owner_user_id','local_users','id'],
+  ['business_process_dependencies','tenant_id','app_tenants','id'],
+  ['business_process_dependencies','primary_process_id','business_processes','id'],
+  ['business_process_dependencies','depends_on_process_id','business_processes','id'],
+  ['assets','tenant_id','app_tenants','id'],
+  ['assets','owner_user_id','users','id'],
+  ['assets','person_id','persons','id'],
+  ['assets','asset_category','asset_type_categories','id'],
+  ['asset_relations','tenant_id','app_tenants','id'],
+  ['asset_relations','source_asset_id','assets','id'],
+  ['asset_relations','target_asset_id','assets','id'],
+  ['asset_relations','relation_type_code','asset_relation_types','code'],
+  ['process_assets','tenant_id','app_tenants','id'],
+  ['process_assets','business_process_id','business_processes','id'],
+  ['process_assets','asset_id','assets','id'],
+  ['asset_module_mappings','tenant_id','app_tenants','id'],
+  ['asset_module_mappings','asset_id','assets','id'],
+  ['asset_module_mappings','module_id','eits_modules','id'],
+  ['asset_module_mappings','modeled_by','local_users','id'],
+  ['bp_module_mappings','tenant_id','app_tenants','id'],
+  ['bp_module_mappings','business_process_id','business_processes','id'],
+  ['bp_module_mappings','module_id','eits_modules','id'],
+  ['bp_module_mappings','modeled_by','local_users','id'],
+  ['object_module_mappings','tenant_id','app_tenants','id'],
+  ['object_module_mappings','module_id','eits_modules','id'],
+  ['object_module_mappings','selected_by_user_id','users','id'],
+  ['process_module_assignments','tenant_id','app_tenants','id'],
+  ['process_module_assignments','module_id','eits_modules','id'],
+  ['process_module_assignments','assigned_by','local_users','id'],
+  ['security_profiles','tenant_id','app_tenants','id'],
+  ['security_profiles','catalog_version_id','eits_catalog_versions','id'],
+  ['security_profiles','approved_by','local_users','id'],
+  ['protectionmode_selections','tenant_id','app_tenants','id'],
+  ['protectionmode_selections','catalog_version_id','eits_catalog_versions','id'],
+  ['protectionmode_selections','evidence_id','evidences','id'],
+  ['protectionmode_selections','approved_by','local_users','id'],
+  ['protection_need_summaries','tenant_id','app_tenants','id'],
+  ['protection_need_summaries','business_process_id','business_processes','id'],
+  ['protection_need_summaries','approved_by','local_users','id'],
+  ['damage_assessments','tenant_id','app_tenants','id'],
+  ['damage_assessments','business_process_id','business_processes','id'],
+  ['damage_assessments','damage_scenario_id','damage_scenarios','id'],
+  ['damage_assessments','assessed_by','local_users','id'],
+  ['damage_category_thresholds','tenant_id','app_tenants','id'],
+  ['damage_category_thresholds','damage_scenario_id','damage_scenarios','id'],
+  ['damage_category_thresholds','approved_by','local_users','id'],
+  ['imr_items','tenant_id','app_tenants','id'],
+  ['imr_items','asset_module_mapping_id','asset_module_mappings','id'],
+  ['imr_items','bp_module_mapping_id','bp_module_mappings','id'],
+  ['imr_items','measure_id','eits_catalog_measures','id'],
+  ['imr_items','responsible_user_id','local_users','id'],
+  ['imr_items','risk_acceptance_approved_by','local_users','id'],
+  ['imr_items','imr_snapshot_id','imr_snapshots','id'],
+  ['imr_items','created_by','local_users','id'],
+  ['imr_items','updated_by','local_users','id'],
+  ['imr_snapshots','tenant_id','app_tenants','id'],
+  ['imr_snapshots','protection_mode_selection_id','protectionmode_selections','id'],
+  ['imr_snapshots','created_by','local_users','id'],
+  ['implementation_plan_items','tenant_id','app_tenants','id'],
+  ['implementation_plan_items','measure_id','eits_measures','id'],
+  ['implementation_plan_items','owner_user_id','users','id'],
+  ['risks','tenant_id','app_tenants','id'],
+  ['risks','owner_user_id','users','id'],
+  ['risk_measure_links','tenant_id','app_tenants','id'],
+  ['risk_measure_links','risk_id','risks','id'],
+  ['risk_measure_links','imr_item_id','imr_items','id'],
+  ['risk_measure_links','measure_id','eits_catalog_measures','id'],
+  ['evidences','tenant_id','app_tenants','id'],
+  ['evidences','owner_user_id','local_users','id'],
+  ['evidence_links','tenant_id','app_tenants','id'],
+  ['evidence_links','evidence_id','evidences','id'],
+  ['audit_logs','tenant_id','app_tenants','id'],
+  ['audit_logs','actor_user_id','global_users','id'],
+  ['comments','tenant_id','app_tenants','id'],
+  ['comments','author_user_id','users','id'],
+  ['person_organizations','person_id','persons','id'],
+  ['person_organizations','tenant_id','app_tenants','id'],
+  ['memberships','tenant_id','app_tenants','id'],
+  ['memberships','user_id','users','id'],
+  ['memberships','role_id','roles','id'],
+  ['memberships','local_user_id','local_users','id'],
+  ['tenants','parent_company_id','tenants','id'],
+  ['role_permissions','role_id','roles','id'],
+  ['role_permissions','permission_id','permissions','id'],
+];
+
+// ─── RENDER ──────────────────────────────────────────────────────
+const world = document.getElementById('world');
+const searchInput = document.getElementById('search');
+const showRelsCheck = document.getElementById('showRels');
+const zoomInfo = document.getElementById('zoomInfo');
+const statusEl = document.getElementById('status');
+
+let scale = 0.6;
+let panX = 40, panY = 40;
+let isPanning = false, startX, startY, startPanX, startPanY;
+let draggedTable = null, dragOffX, dragOffY;
+let tableEls = {};
+let tableData = {};
+let hoveredTable = null;
+
+// Layout: compute positions by tier
+const GUTTER_X = 50, GUTTER_Y = 30;
+const TIER_GAP_X = 36, TIER_GAP_Y = 50;
+const COL_WIDTH = 280;
+const TIER_ORDER = ['A','B','CATALOG','CORE','IMR','RISK','EVIDENCE','SUPPORT','LEGACY'];
+
+// Group tables by tier
+const byTier = {};
+SCHEMA.forEach(t => {
+  if (!byTier[t.tier]) byTier[t.tier] = [];
+  byTier[t.tier].push(t);
+});
+
+// Assign positions
+let cursorY = 0;
+const positions = {};
+TIER_ORDER.forEach(tier => {
+  const tables = byTier[tier] || [];
+  if (!tables.length) return;
+  // Each tier gets one column; if too many tables, split into multiple cols
+  const perCol = 10;
+  let x = cursorY === 0 ? 12 : cursorY + TIER_GAP_X;
+  let col = 0, row = 0;
+  tables.forEach((t, i) => {
+    const colIdx = Math.floor(i / perCol);
+    const rowIdx = i % perCol;
+    positions[t.name] = {
+      x: x + colIdx * (COL_WIDTH + 50),
+      y: 20 + rowIdx * GUTTER_Y,
+    };
+  });
+  cursorY = Math.max(cursorY, x + (Math.ceil(tables.length / perCol)) * (COL_WIDTH + 50));
+});
+
+// Recalculate positions based on actual table heights
+function calcHeights(tables) {
+  let y = 0;
+  tables.forEach(t => {
+    const h = 36 + t.columns.length * 26 + 6;
+    positions[t.name].h = h;
+    y = Math.max(y, positions[t.name].y + h);
+  });
+}
+TIER_ORDER.forEach(tier => {
+  const tables = byTier[tier] || [];
+  if (tables.length) calcHeights(tables);
+});
+
+function createTableCard(t) {
+  const el = document.createElement('div');
+  el.className = `table-card tier-${t.tier}`;
+  el.dataset.table = t.name;
+
+  // Header
+  const hdr = document.createElement('div');
+  hdr.className = 'header';
+  hdr.innerHTML = `<span class="name">${t.name}</span><span class="cnt">${t.columns.length}</span>`;
+  el.appendChild(hdr);
+
+  // Columns
+  t.columns.forEach(col => {
+    const row = document.createElement('div');
+    row.className = 'col';
+    let badges = '';
+    if (col.pk) badges += '<span class="pk">PK</span> ';
+    if (col.fk) badges += (col.pk ? '<span class="pkfk">FK</span>' : '<span class="fk">FK</span>');
+    row.innerHTML = `${badges}<span class="name">${col.name}</span><span class="type">${col.type}</span>`;
+    el.appendChild(row);
+  });
+
+  // Drag header
+  hdr.addEventListener('mousedown', e => {
+    e.stopPropagation();
+    draggedTable = el;
+    const rect = el.getBoundingClientRect();
+    dragOffX = e.clientX - rect.left;
+    dragOffY = e.clientY - rect.top;
+    el.style.cursor = 'grabbing';
+    el.style.zIndex = 100;
+  });
+
+  return el;
+}
+
+function render() {
+  world.innerHTML = '';
+  tableEls = {};
+  tableData = {};
+
+  // SVG overlay for relationships
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('rels');
+  svg.setAttribute('id','relSvg');
+  world.appendChild(svg);
+
+  // Render tables
+  SCHEMA.forEach(t => {
+    tableData[t.name] = t;
+    const el = createTableCard(t);
+    const p = positions[t.name];
+    el.style.left = p.x + 'px';
+    el.style.top = p.y + 'px';
+    world.appendChild(el);
+    tableEls[t.name] = el;
+  });
+
+  // Size world so SVG has a viewport
+  let mX = 0, mY = 0;
+  SCHEMA.forEach(t => {
+    const p = positions[t.name];
+    const h = p.h || 36 + t.columns.length * 26 + 6;
+    mX = Math.max(mX, p.x + 320);
+    mY = Math.max(mY, p.y + h + 80);
+  });
+  world.style.width = mX + 'px';
+  world.style.height = mY + 'px';
+
+  drawRelationships();
+  updateLegend();
+  updateStatus();
+}
+
+function drawRelationships() {
+  const svg = document.getElementById('relSvg');
+  if (!svg) return;
+  const show = showRelsCheck.checked;
+  svg.innerHTML = '';
+  if (!show) return;
+
+  RELS.forEach(([fromTable, fromCol, toTable, toCol]) => {
+    if (fromTable === toTable) return;
+    const fromEl = tableEls[fromTable];
+    const toEl = tableEls[toTable];
+    if (!fromEl || !toEl) return;
+
+    const wR = world.getBoundingClientRect();
+    const fR = fromEl.getBoundingClientRect(), tR = toEl.getBoundingClientRect();
+    const fx1 = (fR.left - wR.left) / scale, fy1 = (fR.top - wR.top) / scale;
+    const fx2 = fx1 + fR.width / scale, fy2 = fy1 + fR.height / scale;
+    const tx1 = (tR.left - wR.left) / scale, ty1 = (tR.top - wR.top) / scale;
+    const tx2 = tx1 + tR.width / scale, ty2 = ty1 + tR.height / scale;
+    const fcx = (fx1 + fx2) / 2, fcy = (fy1 + fy2) / 2;
+    const tcx = (tx1 + tx2) / 2, tcy = (ty1 + ty2) / 2;
+    const dx = tcx - fcx, dy = tcy - fcy, aX = Math.abs(dx), aY = Math.abs(dy);
+
+    let sx, sy, ex, ey, sDir, eDir;
+    if (aX > aY) {
+      if (dx > 0) { sx = fx2; sy = fcy; sDir = 'r'; ex = tx1; ey = tcy; eDir = 'l'; }
+      else        { sx = fx1; sy = fcy; sDir = 'l'; ex = tx2; ey = tcy; eDir = 'r'; }
+    } else {
+      if (dy > 0) { sx = fcx; sy = fy2; sDir = 'd'; ex = tcx; ey = ty1; eDir = 'u'; }
+      else        { sx = fcx; sy = fy1; sDir = 'u'; ex = tcx; ey = ty2; eDir = 'd'; }
+    }
+
+    const mid = aX > aY ? (sx + ex) / 2 : (sy + ey) / 2;
+    const d = aX > aY
+      ? `M ${sx} ${sy} L ${mid} ${sy} L ${mid} ${ey} L ${ex} ${ey}`
+      : `M ${sx} ${sy} L ${sx} ${mid} L ${ex} ${mid} L ${ex} ${ey}`;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', d); path.setAttribute('class', 'rel-line');
+    svg.appendChild(path);
+
+    // FK column name label
+    const lb = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    if (aX > aY) {
+      lb.setAttribute('x', Math.max(sx + 18, (sx + mid) / 2));
+      lb.setAttribute('y', sy - 5);
+    } else {
+      lb.setAttribute('x', sx + 6);
+      lb.setAttribute('y', Math.max(sy + 16, (sy + mid) / 2) + 3);
+    }
+    lb.setAttribute('class', 'rel-fk'); lb.textContent = fromCol;
+    svg.appendChild(lb);
+
+    // Multiplicity labels
+    const mult = (el, x, y, txt, cls) => {
+      const t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', x); t.setAttribute('y', y);
+      t.setAttribute('class', cls); t.textContent = txt;
+      el.appendChild(t);
+    };
+
+    if (aX > aY) {
+      // * at FK side (near sx), 1 at PK side (near ex)
+      mult(svg, (sDir === 'r' ? sx + 10 : sx - 20), sy + 13, '*', 'rel-mult');
+      mult(svg, (eDir === 'l' ? ex - 10 : ex + 10), ey + 13, '1', 'rel-mult');
+    } else {
+      mult(svg, sx - 16, (sDir === 'd' ? sy + 14 : sy - 6), '*', 'rel-mult');
+      mult(svg, ex - 16, (eDir === 'u' ? ey - 6 : ey + 14), '1', 'rel-mult');
+    }
+  });
+}
+
+function updateLegend() {
+  const el = document.getElementById('legend');
+  el.innerHTML = '';
+  TIER_ORDER.forEach(tier => {
+    if (!byTier[tier] || !byTier[tier].length) return;
+    const item = document.createElement('span');
+    item.className = 'item';
+    item.innerHTML = `<span class="dot" style="background:${TIERS[tier].color}"></span>${TIERS[tier].label}`;
+    el.appendChild(item);
+  });
+}
+
+function computeStats() {
+  const totalTables = SCHEMA.length;
+  const totalCols = SCHEMA.reduce((s, t) => s + t.columns.length, 0);
+  const totalPK = SCHEMA.reduce((s, t) => s + t.columns.filter(c => c.pk).length, 0);
+  const totalFK = SCHEMA.reduce((s, t) => s + t.columns.filter(c => c.fk).length, 0);
+  const totalIX = SCHEMA.reduce((s, t) => s + t.columns.filter(c => c.ix).length, 0);
+  const totalUQ = SCHEMA.reduce((s, t) => s + t.columns.filter(c => c.uq).length, 0);
+  const totalRels = RELS.length;
+
+  const tierCounts = {};
+  SCHEMA.forEach(t => { tierCounts[t.tier] = (tierCounts[t.tier] || 0) + 1; });
+
+  const typeCounts = {};
+  SCHEMA.forEach(t => t.columns.forEach(c => {
+    const base = c.type.replace(/\(.+/, '');
+    typeCounts[base] = (typeCounts[base] || 0) + 1;
+  }));
+  const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+
+  const lagTables = SCHEMA.filter(t => t.tier === 'LEGACY').length;
+
+  return { totalTables, totalCols, totalPK, totalFK, totalIX, totalUQ, totalRels, tierCounts, sortedTypes, lagTables };
+}
+
+const DB_STATS = computeStats();
+
+function updateStatus() {
+  statusEl.textContent = `${DB_STATS.totalTables} tables · ${DB_STATS.totalCols} cols · ${DB_STATS.totalRels} relationships`;
+}
+
+function renderStatsPanel(show) {
+  const panel = document.getElementById('statsPanel');
+  panel.classList.toggle('hidden', !show);
+  const btn = document.getElementById('statsBtn');
+  btn.classList.toggle('active', show);
+  if (!show) return;
+
+  const S = DB_STATS;
+  const fmt = n => n.toLocaleString();
+
+  panel.innerHTML = `
+    <div class="st">Overview</div>
+    <div class="row"><span class="l">Tables</span><span class="v">${fmt(S.totalTables)}</span></div>
+    <div class="row"><span class="l">Columns</span><span class="v">${fmt(S.totalCols)}</span></div>
+    <div class="row"><span class="l">PK / FK / IX / UQ</span><span class="v">${fmt(S.totalPK)} / ${fmt(S.totalFK)} / ${fmt(S.totalIX)} / ${fmt(S.totalUQ)}</span></div>
+    <div class="row"><span class="l">FK relationships</span><span class="v">${fmt(S.totalRels)}</span></div>
+    <div class="row"><span class="l">Avg cols / table</span><span class="v">${(S.totalCols / S.totalTables).toFixed(1)}</span></div>
+    <div class="row" style="color:#78716c"><span class="l">Legacy (migrating)</span><span class="v">${fmt(S.lagTables)}</span></div>
+
+    <div class="st">Per Tier</div>
+    <div class="tags">${TIER_ORDER.map(t => `
+      <span class="tag"><span class="c" style="color:${TIERS[t]?.color || '#888'}">${t}</span><span class="n">${S.tierCounts[t] || 0}</span></span>
+    `).join('')}</div>
+
+    <div class="st">Column Types</div>
+    <div class="tags">${S.sortedTypes.slice(0, 8).map(([t, n]) => `
+      <span class="tag"><span class="c">${t}</span><span class="n">${fmt(n)}</span></span>
+    `).join('')}</div>
+  `;
+}
+
+document.getElementById('statsBtn').addEventListener('click', () => {
+  const panel = document.getElementById('statsPanel');
+  renderStatsPanel(panel.classList.contains('hidden'));
+});
+
+// ─── ZOOM / PAN ──────────────────────────────────────────────────
+function applyTransform() {
+  world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  zoomInfo.textContent = Math.round(scale * 100) + '%';
+  drawRelationships();
+}
+
+const canvas = document.getElementById('canvas');
+
+canvas.addEventListener('mousedown', e => {
+  if (e.target !== canvas && !e.target.closest('#canvas')) return;
+  if (draggedTable) return;
+  isPanning = true;
+  startX = e.clientX;
+  startY = e.clientY;
+  startPanX = panX;
+  startPanY = panY;
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (draggedTable) {
+    const worldRect = world.getBoundingClientRect();
+    const x = (e.clientX - worldRect.left - dragOffX) / scale;
+    const y = (e.clientY - worldRect.top - dragOffY) / scale;
+    draggedTable.style.left = x + 'px';
+    draggedTable.style.top = y + 'px';
+    const nm = draggedTable.dataset.table;
+    if (nm && positions[nm]) { positions[nm].x = x; positions[nm].y = y; }
+    drawRelationships();
+    return;
+  }
+  if (!isPanning) return;
+  panX = startPanX + (e.clientX - startX);
+  panY = startPanY + (e.clientY - startY);
+  applyTransform();
+});
+
+canvas.addEventListener('mouseup', () => {
+  if (draggedTable) {
+    draggedTable.style.cursor = '';
+    draggedTable.style.zIndex = 2;
+    draggedTable = null;
+    drawRelationships();
+  }
+  isPanning = false;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  if (draggedTable) {
+    draggedTable.style.cursor = '';
+    draggedTable.style.zIndex = 2;
+    draggedTable = null;
+    drawRelationships();
+  }
+  isPanning = false;
+});
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  const newScale = Math.min(2, Math.max(0.15, scale * delta));
+  // Zoom toward cursor
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  panX = mx - (mx - panX) * (newScale / scale);
+  panY = my - (my - panY) * (newScale / scale);
+  scale = newScale;
+  applyTransform();
+});
+
+// ─── TAB SWITCHING ────────────────────────────────────────────────
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('diagramView').classList.toggle('active', tab === 'diag');
+    document.getElementById('refView').classList.toggle('active', tab === 'ref');
+    document.querySelectorAll('.diagram-only').forEach(el => el.style.display = tab === 'diag' ? '' : 'none');
+    document.querySelectorAll('.reference-only').forEach(el => el.style.display = tab === 'ref' ? '' : 'none');
+    if (tab === 'ref' && !document.getElementById('refContent').children.length) renderReference();
+  });
+});
+
+// ─── SEARCH (dispatches to active tab) ────────────────────────────
+function searchDiagram(q) {
+  Object.entries(tableEls).forEach(([name, el]) => {
+    const t = tableData[name];
+    const match = q === '' ||
+      name.toLowerCase().includes(q) ||
+      t.columns.some(c => c.name.toLowerCase().includes(q)) ||
+      (t.comment && t.comment.toLowerCase().includes(q));
+    el.classList.toggle('dimmed', q !== '' && !match);
+    el.classList.toggle('highlighted', q !== '' && match);
+  });
+}
+
+function searchReference(q) {
+  document.querySelectorAll('#refView .table-card').forEach(card => {
+    const name = card.dataset.table;
+    const t = SCHEMA.find(x => x.name === name);
+    if (!t) return;
+    const match = q === '' ||
+      name.toLowerCase().includes(q) ||
+      t.columns.some(c => c.name.toLowerCase().includes(q)) ||
+      (t.comment && t.comment.toLowerCase().includes(q));
+    card.classList.toggle('dimmed', q !== '' && !match);
+    if (match) card.classList.add('highlighted');
+    else card.classList.remove('highlighted');
+  });
+  document.querySelectorAll('#refView .tier').forEach(tier => {
+    const hasMatch = [...tier.querySelectorAll('.table-card')].some(c => !c.classList.contains('dimmed'));
+    tier.classList.toggle('open', hasMatch);
+  });
+}
+
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.toLowerCase().trim();
+  const refActive = document.getElementById('refView').classList.contains('active');
+  if (refActive) searchReference(q);
+  else searchDiagram(q);
+});
+
+// ─── KEYBOARD ────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    searchInput.value = '';
+    searchInput.dispatchEvent(new Event('input'));
+  }
+  if (e.key === '0' && e.ctrlKey) {
+    scale = 0.6; panX = 40; panY = 40;
+    applyTransform();
+  }
+});
+
+// ─── TOGGLE RELATIONSHIPS ────────────────────────────────────────
+showRelsCheck.addEventListener('change', drawRelationships);
+
+// ─── RESIZE ──────────────────────────────────────────────────────
+const resizeObserver = new ResizeObserver(() => drawRelationships());
+resizeObserver.observe(canvas);
+
+// ─── REFERENCE VIEW ────────────────────────────────────────────────
+function badgeHTML(col) {
+  if (col.pk && col.fk) return '<span class="cb pkfk">PK/FK</span>';
+  if (col.pk)           return '<span class="cb pk">PK</span>';
+  if (col.fk)           return '<span class="cb fk">FK</span>';
+  let h = '';
+  if (col.ix) h += '<span class="cb ix">IX</span>';
+  if (col.uq) h += '<span class="cb uq">UQ</span>';
+  return h;
+}
+
+function renderReference() {
+  const content = document.getElementById('refContent');
+  let html = '';
+  TIER_ORDER.forEach(tier => {
+    const tables = byTier[tier] || [];
+    if (!tables.length) return;
+    const info = TIERS[tier];
+    html += `<div class="tier open" data-tier="${tier}" style="--tier-color:${info.color}">
+      <div class="tier-header"><span class="arrow">▶</span><span class="name">${info.label}</span><span class="count">${tables.length} table${tables.length > 1 ? 's' : ''}</span></div>
+      <div class="tier-body"><div class="tree">`;
+    tables.forEach((t, ti) => {
+      const last = ti === tables.length - 1;
+      html += `<div class="table-card${last ? ' branch last' : ' branch'}" data-table="${t.name}">
+        <div class="table-header"><span class="arrow">▶</span><span class="tname">${t.name}</span>${t.comment ? `<span class="comment">${t.comment}</span>` : ''}<span class="badges"><span class="badge">${t.columns.length} cols</span></span></div>
+        <div class="table-body">`;
+      t.columns.forEach(col => {
+        let ref = '';
+        if (col.ref) ref = `<span class="col-ref">${col.ref.replace('.', '.<wbr>')}</span>`;
+        html += `<div class="leaf">
+          <span class="col-name">${col.name}</span>
+          <span class="col-type">${col.type}</span>
+          <span class="col-badges">${badgeHTML(col)}</span>
+          ${ref}${col.default ? `<span class="col-default">${col.default === 'null' ? 'NULL' : col.default}</span>` : ''}</div>`;
+      });
+      html += `</div></div>`;
+    });
+    html += `</div></div></div>`;
+  });
+  content.innerHTML = html;
+
+  // Accordion clicks
+  document.querySelectorAll('#refView .tier-header').forEach(h => {
+    h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
+  });
+  document.querySelectorAll('#refView .table-header').forEach(h => {
+    h.addEventListener('click', () => h.parentElement.classList.toggle('open'));
+  });
+
+  // Expand / collapse
+  document.getElementById('refExpandAll').addEventListener('click', () => {
+    document.querySelectorAll('#refView .tier, #refView .table-card').forEach(el => el.classList.add('open'));
+  });
+  document.getElementById('refCollapseAll').addEventListener('click', () => {
+    document.querySelectorAll('#refView .tier, #refView .table-card').forEach(el => el.classList.remove('open'));
+  });
+}
+
+// ─── THEME ─────────────────────────────────────────────────────────
+const stored = localStorage.getItem('eits-schema-theme');
+if (stored === 'light') document.documentElement.setAttribute('data-theme', 'light');
+
+function applyThemeUI() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  document.getElementById('themeBtn').textContent = isLight ? '🌙' : '☀️';
+}
+applyThemeUI();
+
+document.getElementById('themeBtn').addEventListener('click', () => {
+  const html = document.documentElement;
+  const isLight = html.getAttribute('data-theme') === 'light';
+  if (isLight) html.removeAttribute('data-theme');
+  else html.setAttribute('data-theme', 'light');
+  localStorage.setItem('eits-schema-theme', isLight ? '' : 'light');
+  applyThemeUI();
+  drawRelationships();
+});
+
+// ─── INIT ────────────────────────────────────────────────────────
+render();
+applyTransform();
+</script>
+
+</body>
+</html>
