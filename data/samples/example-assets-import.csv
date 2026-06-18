@@ -1,0 +1,6 @@
+name;asset_type;description;criticality;confidentiality_need;integrity_need;availability_need;lifecycle_status;quantity;group_name;remarks;is_core
+Windows Laptops - Finance Dept;hardware;Finance department Dell Latitude 5540 laptops with Windows 11 Pro;high;high;high;high;active;15;Finance Endpoints;Managed by Intune - BitLocker encrypted;true
+Lenovo Tab M10 - Warehouse;hardware;Warehouse inventory tablets running Android 14 for stock management;normal;normal;high;high;active;8;Warehouse Mobile;Used with SOTI MDM - barcode scanners attached;false
+Microsoft 365 Business Premium;software;Organization-wide M365 E3 licenses incl Exchange SharePoint Teams and Defender;high;high;high;very_high;active;50;;Enterprise agreement EA-2024-0471;true
+Windows Server 2025 - Domain Controllers;software;Active Directory domain controllers running Windows Server 2025 Datacenter;high;very_high;very_high;very_high;active;2;AD Infrastructure;Patch Tuesday schedule - Core infrastructure;true
+Warehouse Management System (WMS);service;Cloud-based WMS for inventory tracking order fulfillment and logistics;normal;high;high;very_high;active;1;;SLA 99.9% - Hosted in Azure Finland;true
