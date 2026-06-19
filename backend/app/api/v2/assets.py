@@ -289,7 +289,7 @@ def import_assets_csv(
     current_user: LocalUser = CurrentUserV2,
     file: UploadFile = File(...),
     on_conflict: str = Form("update"),
-    delimiter: str = Form(","),
+    delimiter: str = Form(None),
     force: bool = Form(False),
 ):
     """Import assets from CSV file with MinIO storage and SHA-256 dedup.
@@ -307,7 +307,7 @@ def import_assets_csv(
     Files are stored in MinIO at imports/{tenant_id}/{sha256}.csv
     to detect duplicate file uploads via SHA-256 hash.
 
-    Use delimiter=";" for semicolon-separated files (e.g. Excel exports).
+    Delimiter is auto-detected (semicolon detected from header row).
     Set force=true to re-import a file that was previously uploaded.
     """
     result = AssetImportResult()
@@ -362,8 +362,15 @@ def import_assets_csv(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to store file in MinIO: {str(e)}")
 
-    # Parse and process CSV rows
-    reader = csv.DictReader(io.StringIO(csv_content), delimiter=delimiter)
+    # Parse and process CSV rows — auto-detect delimiter
+    first_line = csv_content.split("\n", 1)[0].strip()
+    if delimiter:
+        sep = delimiter
+    elif ";" in first_line:
+        sep = ";"
+    else:
+        sep = ","
+    reader = csv.DictReader(io.StringIO(csv_content), delimiter=sep)
 
     for row_idx, row in enumerate(reader, 2):
         name = (row.get("name") or "").strip()
